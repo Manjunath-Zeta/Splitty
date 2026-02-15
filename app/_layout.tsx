@@ -23,6 +23,9 @@ export default function RootLayout() {
             setSession(session);
             if (session) {
                 fetchData();
+                router.replace('/(tabs)');
+            } else {
+                router.replace('/auth');
             }
         });
 
@@ -67,6 +70,8 @@ export default function RootLayout() {
                 headerTintColor: Colors.primary,
             }}
         >
+            <Stack.Screen name="index" options={{ headerShown: false }} />
+            <Stack.Screen name="auth" options={{ headerShown: false }} />
             <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
             <Stack.Screen
                 name="add-expense"
