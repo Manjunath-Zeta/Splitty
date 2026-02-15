@@ -5,6 +5,13 @@ import { Platform } from 'react-native';
 const supabaseUrl = process.env.EXPO_PUBLIC_SUPABASE_URL || '';
 const supabaseAnonKey = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY || '';
 
+console.log('Supabase Initialization:', {
+    hasUrl: !!supabaseUrl,
+    urlPrefix: supabaseUrl.substring(0, 10),
+    hasKey: !!supabaseAnonKey,
+    keyLength: supabaseAnonKey.length
+});
+
 // Custom storage to handle SSR (Static Site Generation)
 const isWeb = Platform.OS === 'web';
 const isServer = isWeb && typeof window === 'undefined';

@@ -12,6 +12,8 @@ export default function RootLayout() {
     const session = useSplittyStore(state => state.session);
 
     useEffect(() => {
+        console.log('RootLayout: Initializing Auth...');
+
         // Recurring Expenses Check
         const count = useSplittyStore.getState().checkRecurringExpenses();
         if (count > 0) {
@@ -20,17 +22,21 @@ export default function RootLayout() {
 
         // Auth Initial Session
         supabase.auth.getSession().then(({ data: { session } }) => {
+            console.log('RootLayout: Session fetched', !!session);
             setSession(session);
             if (session) {
                 fetchData();
+                console.log('RootLayout: Redirecting to Tabs');
                 router.replace('/(tabs)');
             } else {
+                console.log('RootLayout: Redirecting to Auth');
                 router.replace('/auth');
             }
         });
 
         // Auth Listener
         const { data: { subscription: authSubscription } } = supabase.auth.onAuthStateChange((event, session) => {
+            console.log('RootLayout: Auth event', event, !!session);
             setSession(session);
             if (session) {
                 fetchData();
@@ -60,18 +66,18 @@ export default function RootLayout() {
         <Stack
             screenOptions={{
                 headerStyle: {
-                    backgroundColor: Colors.background,
+                    backgroundColor: '#1E1B4B',
                 },
                 headerTitleStyle: {
-                    color: Colors.text,
+                    color: '#FFFFFF',
                     fontWeight: 'bold',
                 },
                 headerShadowVisible: false,
                 headerTintColor: Colors.primary,
             }}
         >
-            <Stack.Screen name="index" options={{ headerShown: false }} />
-            <Stack.Screen name="auth" options={{ headerShown: false }} />
+            <Stack.Screen name="index" options={{ headerShown: false, title: '' }} />
+            <Stack.Screen name="auth" options={{ headerShown: false, title: '' }} />
             <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
             <Stack.Screen
                 name="add-expense"
