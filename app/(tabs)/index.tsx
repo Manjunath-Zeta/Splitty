@@ -39,6 +39,11 @@ export default function DashboardScreen() {
         );
     };
 
+    const getPayerName = (id: string) => {
+        if (id === 'self') return 'You';
+        return friends.find(f => f.id === id)?.name || 'Someone';
+    };
+
     const handleRefresh = async () => {
         setRefreshing(true);
         await fetchData();
@@ -124,7 +129,12 @@ export default function DashboardScreen() {
                                     </View>
                                     <View style={{ flex: 1, marginLeft: 12 }}>
                                         <Text style={[styles.activityDesc, { color: colors.text }]}>{expense.description}</Text>
-                                        <Text style={[styles.activityDate, { color: colors.textSecondary }]}>{new Date(expense.date).toLocaleDateString()}</Text>
+                                        <Text style={[styles.activityDate, { color: colors.textSecondary }]}>
+                                            {new Date(expense.date).toLocaleDateString()}
+                                        </Text>
+                                        <Text style={[styles.paidByText, { color: colors.textSecondary }]}>
+                                            {getPayerName(expense.payerId)} paid
+                                        </Text>
                                     </View>
                                     <View style={styles.activityRight}>
                                         <Text style={[styles.activityAmount, { color: colors.text }]}>{formatCurrency(expense.amount)}</Text>
@@ -248,6 +258,11 @@ const styles = StyleSheet.create({
     activityAmount: {
         fontSize: 16,
         fontWeight: '700',
+    },
+    paidByText: {
+        fontSize: 12,
+        marginTop: 4,
+        fontStyle: 'italic',
     },
     addButton: {
         marginBottom: 12,
