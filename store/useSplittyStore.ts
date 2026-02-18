@@ -879,8 +879,12 @@ export const useSplittyStore = create<SplittyState>()(
                                 }
                             }
 
-                            // Always refresh for external changes (INSERT/UPDATE/DELETE from others, or any DELETE)
-                            if (payload.eventType === 'DELETE' || payload.eventType === 'UPDATE' || (payload.new as any)?.created_by !== session.user.id) {
+                            // Only refresh from server for:
+                            // - INSERTs from other users (we don't have them locally)
+                            // - UPDATEs from other users (edits we didn't make)
+                            // Do NOT fetchData on DELETE — local state is already updated above,
+                            // and fetchData can race with the DB delete and bring the expense back.
+                            if (payload.eventType === 'UPDATE' || (payload.eventType === 'INSERT' && (payload.new as any)?.created_by !== session.user.id)) {
                                 console.log('🔄 Triggering fetchData due to event...');
                                 fetchData();
                             }
