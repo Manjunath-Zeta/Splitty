@@ -1,3 +1,4 @@
+import { Alert } from 'react-native';
 import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -62,6 +63,7 @@ export interface Expense {
     splitDetails?: { [id: string]: number }; // ID -> Amount (ID can be 'self' or friendId)
     category: string;
     isSettlement?: boolean;
+    createdBy?: string;
 }
 
 export type Frequency = 'daily' | 'weekly' | 'monthly';
@@ -353,7 +355,8 @@ export const useSplittyStore = create<SplittyState>()(
                             splitType: e.split_type as any,
                             splitDetails: localSplitDetails,
                             category: e.category,
-                            isSettlement: false
+                            isSettlement: e.is_settlement,
+                            createdBy: e.created_by
                         };
                     });
                     console.log(`✅ fetchData complete. Loaded ${mappedExpenses.length} expenses.`);
@@ -641,11 +644,22 @@ export const useSplittyStore = create<SplittyState>()(
 
                 // Await the DB delete FIRST so any subsequent fetchData won't re-fetch it
                 if (session?.user) {
-                    const { error } = await supabase.from('expenses').delete().eq('id', id);
-                    if (error) {
-                        console.error("Error deleting expense:", error);
-                        return; // Don't update local state if DB delete failed
+                    // Check if user is the creator
+                    if (expense.createdBy && expense.createdBy !== session.user.id) {
+                        console.warn("⛔ Cannot delete expense: user is not the creator.", id);
+                        Alert.alert("Permission Denied", "Only the person who added this expense can delete it.");
+                        return;
                     }
+
+                    console.log('🗑️ Attempting DB delete for:', id);
+                    const { error, count } = await supabase.from('expenses').delete().eq('id', id);
+
+                    if (error) {
+                        console.error("❌ Error deleting expense:", error);
+                        Alert.alert("Error", "Failed to delete expense from server.");
+                        return;
+                    }
+                    console.log(`✅ DB delete successful. Rows affected: ${count}`);
                 }
 
                 // Only update local state after DB confirms deletion
@@ -878,13 +892,14 @@ export const useSplittyStore = create<SplittyState>()(
                                 }
                             }
 
-                            // Only refresh from server for:
-                            // - INSERTs from other users (we don't have them locally)
-                            // - UPDATEs from other users (edits we didn't make)
-                            // Do NOT fetchData on DELETE — local state is already updated above,
-                            // and fetchData can race with the DB delete and bring the expense back.
-                            if (payload.eventType === 'UPDATE' || (payload.eventType === 'INSERT' && (payload.new as any)?.created_by !== session.user.id)) {
-                                console.log('🔄 Triggering fetchData due to event...');
+                            // Only refresh from server for events that we can't fully handle locally
+                            const isMyChange = (payload.new as any)?.created_by === session.user.id || (payload.old as any)?.created_by === session.user.id;
+
+                            // Refresh for:
+                            // 1. Any UPDATE (to get latest metadata/calculations from server)
+                            // 2. INSERTs from other users
+                            if (payload.eventType === 'UPDATE' || (payload.eventType === 'INSERT' && !isMyChange)) {
+                                console.log('🔄 Triggering fetchData due to expense event...');
                                 fetchData();
                             }
                         }
@@ -909,7 +924,16 @@ export const useSplittyStore = create<SplittyState>()(
                                     }));
                                 }
                             }
-                            fetchData();
+                            // Only fetchData if it's an event we didn't initiate or if we need fresh totals
+                            // Since friends table usually doesn't have 'created_by', we check 'user_id'
+                            const isMyFriend = (payload.new as any)?.user_id === session.user.id || (payload.old as any)?.user_id === session.user.id;
+
+                            if (isMyFriend && payload.eventType !== 'DELETE') {
+                                // For self-initiated updates, we usually have the state, but triggers on DB 
+                                // might have updated balances, so fetchData is sometimes needed.
+                                // However, we skip it if we just did a delete (handled locally).
+                                fetchData();
+                            }
                         }
                     )
                     .on(
