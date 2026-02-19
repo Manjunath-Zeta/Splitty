@@ -81,6 +81,57 @@ export default function DashboardScreen() {
                     </GlassCard>
                 </View>
 
+                {/* Balance Breakdown */}
+                {(owed > 0 || owe > 0) && (
+                    <View style={styles.breakdownSection}>
+                        {owed > 0 && (
+                            <GlassCard style={[styles.breakdownCard, { backgroundColor: colors.surface, marginBottom: owe > 0 ? 16 : 0 }]}>
+                                <Text style={[styles.breakdownTitle, { color: colors.textSecondary }]}>People who owe you</Text>
+                                {friends
+                                    .filter(f => f.balance > 0)
+                                    .sort((a, b) => b.balance - a.balance)
+                                    .slice(0, 3)
+                                    .map(friend => (
+                                        <TouchableOpacity
+                                            key={friend.id}
+                                            style={styles.breakdownItem}
+                                            onPress={() => router.push({ pathname: '/friend-details/[id]', params: { id: friend.id } })}
+                                            activeOpacity={0.7}
+                                        >
+                                            <Text style={[styles.breakdownName, { color: colors.text }]}>{friend.name}</Text>
+                                            <Text style={[styles.breakdownAmount, { color: colors.success }]}>
+                                                {formatCurrency(friend.balance)}
+                                            </Text>
+                                        </TouchableOpacity>
+                                    ))}
+                            </GlassCard>
+                        )}
+
+                        {owe > 0 && (
+                            <GlassCard style={[styles.breakdownCard, { backgroundColor: colors.surface }]}>
+                                <Text style={[styles.breakdownTitle, { color: colors.textSecondary }]}>People you owe</Text>
+                                {friends
+                                    .filter(f => f.balance < 0)
+                                    .sort((a, b) => Math.abs(a.balance) - Math.abs(b.balance))
+                                    .slice(0, 3)
+                                    .map(friend => (
+                                        <TouchableOpacity
+                                            key={friend.id}
+                                            style={styles.breakdownItem}
+                                            onPress={() => router.push({ pathname: '/friend-details/[id]', params: { id: friend.id } })}
+                                            activeOpacity={0.7}
+                                        >
+                                            <Text style={[styles.breakdownName, { color: colors.text }]}>{friend.name}</Text>
+                                            <Text style={[styles.breakdownAmount, { color: colors.accent }]}>
+                                                {formatCurrency(Math.abs(friend.balance))}
+                                            </Text>
+                                        </TouchableOpacity>
+                                    ))}
+                            </GlassCard>
+                        )}
+                    </View>
+                )}
+
                 <VibrantButton
                     title="Add New Expense"
                     onPress={() => {
@@ -279,5 +330,34 @@ const styles = StyleSheet.create({
     analyticsButton: {
         marginBottom: 30,
         borderColor: 'rgba(150,150,150,0.5)',
+    },
+    breakdownSection: {
+        marginBottom: 30,
+    },
+    breakdownCard: {
+        padding: 16,
+    },
+    breakdownTitle: {
+        fontSize: 13,
+        fontWeight: '600',
+        marginBottom: 12,
+        textTransform: 'uppercase',
+        letterSpacing: 0.5,
+    },
+    breakdownItem: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        paddingVertical: 8,
+        borderBottomWidth: 0.5,
+        borderBottomColor: 'rgba(150,150,150,0.1)',
+    },
+    breakdownName: {
+        fontSize: 16,
+        fontWeight: '500',
+    },
+    breakdownAmount: {
+        fontSize: 16,
+        fontWeight: '700',
     },
 });

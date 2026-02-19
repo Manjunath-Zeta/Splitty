@@ -1,9 +1,10 @@
+
 import React, { useState } from 'react';
 import { View, Text, StyleSheet, ScrollView, Switch, TouchableOpacity, Alert, SafeAreaView, Image } from 'react-native';
 import { AccentPalettes, AccentName, AppearanceMode } from '../../constants/Colors';
 import { GlassCard } from '../../components/GlassCard';
 import { useSplittyStore } from '../../store/useSplittyStore';
-import { User, Bell, Trash2, LogOut, ChevronRight, CreditCard, DollarSign } from 'lucide-react-native';
+import { User, Bell, Trash2, LogOut, ChevronRight, CreditCard, DollarSign, Activity } from 'lucide-react-native';
 import { useRouter } from 'expo-router';
 
 export default function SettingsScreen() {
@@ -151,6 +152,12 @@ export default function SettingsScreen() {
                 <View style={styles.section}>
                     <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>General</Text>
                     <GlassCard style={[styles.settingsCard, { backgroundColor: colors.surface }]}>
+                        {renderSettingItem(
+                            <Activity size={20} color={colors.textSecondary} />,
+                            "Activity Log",
+                            <ChevronRight size={20} color={colors.textSecondary} />,
+                            () => router.push('/activity-log')
+                        )}
                         <View style={[styles.separator, { backgroundColor: colors.border }]} />
                         {renderSettingItem(
                             <DollarSign size={20} color={colors.textSecondary} />,

@@ -100,7 +100,7 @@ export default function RootLayout() {
                     name="add-expense"
                     options={{
                         presentation: 'modal',
-                        headerShown: true
+                        headerShown: false,
                     }}
                 />
             </Stack>

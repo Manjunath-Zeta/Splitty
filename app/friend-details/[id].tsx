@@ -233,7 +233,7 @@ export default function FriendDetailsScreen() {
                                             )}
                                         </View>
                                         <Text style={[styles.paidByText, { color: colors.textSecondary }]}>
-                                            {expense.payerId === 'self' ? 'You paid' : `${expense.payerId === friend.id ? friend.name : 'Someone'} paid`}
+                                            {expense.payerId === 'self' ? 'You paid' : `${expense.payerName || (expense.payerId === friend.id ? friend.name : 'Someone')} paid`}
                                         </Text>
                                     </View>
                                     <View style={styles.activityRight}>

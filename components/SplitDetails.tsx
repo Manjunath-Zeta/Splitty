@@ -17,6 +17,7 @@ interface SplitDetailsProps {
     remainingAmount: number;
     amount: string;
     getName: (id: string) => string;
+    disabled?: boolean;
 }
 
 export const SplitDetails = memo(({
@@ -29,7 +30,8 @@ export const SplitDetails = memo(({
     setManualAmounts,
     remainingAmount,
     amount,
-    getName
+    getName,
+    disabled
 }: SplitDetailsProps) => {
     const colors = useSplittyStore(state => state.colors);
     const formatCurrency = useSplittyStore(state => state.formatCurrency);
@@ -47,9 +49,11 @@ export const SplitDetails = memo(({
                             style={[
                                 styles.chip,
                                 { backgroundColor: colors.background, borderColor: colors.border },
-                                payerId === pId && { backgroundColor: colors.primary, borderColor: colors.primary }
+                                payerId === pId && { backgroundColor: colors.primary, borderColor: colors.primary },
+                                disabled && { opacity: 0.7 }
                             ]}
                             onPress={() => setPayerId(pId)}
+                            disabled={disabled}
                         >
                             <Text style={[
                                 styles.chipText,
@@ -69,12 +73,14 @@ export const SplitDetails = memo(({
                     <TouchableOpacity
                         style={[styles.toggleOption, splitType === 'equal' && { backgroundColor: colors.surface }]}
                         onPress={() => setSplitType('equal')}
+                        disabled={disabled}
                     >
                         <Text style={[styles.toggleText, { color: colors.textSecondary }, splitType === 'equal' && { color: colors.text, fontWeight: '600' }]}>Equally</Text>
                     </TouchableOpacity>
                     <TouchableOpacity
                         style={[styles.toggleOption, splitType === 'unequal' && { backgroundColor: colors.surface }]}
                         onPress={() => setSplitType('unequal')}
+                        disabled={disabled}
                     >
                         <Text style={[styles.toggleText, { color: colors.textSecondary }, splitType === 'unequal' && { color: colors.text, fontWeight: '600' }]}>Unequal</Text>
                     </TouchableOpacity>
@@ -91,6 +97,7 @@ export const SplitDetails = memo(({
                                 onChangeText={(text) => setManualAmounts(prev => ({ ...prev, [pId]: text }))}
                                 placeholder="0.00"
                                 keyboardType="numeric"
+                                editable={!disabled}
                             />
                         ))}
                     </View>

@@ -56,6 +56,7 @@ export interface Expense {
     description: string;
     amount: number;
     payerId: string;
+    payerName?: string;
     groupId?: string;
     splitWith: string[]; // Friend IDs
     date: string;
@@ -83,6 +84,27 @@ export interface RecurringExpense {
     active: boolean;
 }
 
+export interface ActivityLog {
+    id: string;
+    user_id: string;
+    actor_id: string;
+    entity_type: 'expense' | 'group' | 'settlement';
+    entity_id: string;
+    action: string;
+    description: string;
+    metadata?: {
+        amount?: number;
+        currency?: string;
+        payer_name?: string;
+        group_name?: string;
+        split_type?: string;
+        participants?: string[];
+        [key: string]: any;
+    };
+    created_at: string;
+    is_read: boolean;
+}
+
 export interface UserProfile {
     name: string;
     email: string;
@@ -98,6 +120,7 @@ interface SplittyState {
     groups: Group[];
     expenses: Expense[];
     recurringExpenses: RecurringExpense[];
+    activities: ActivityLog[];
     addExpense: (expense: Omit<Expense, 'id' | 'date'>) => void;
     deleteExpense: (id: string) => Promise<void>;
     editExpense: (id: string, updatedExpense: Omit<Expense, 'id' | 'date'>) => void;
@@ -223,12 +246,31 @@ export const useSplittyStore = create<SplittyState>()(
                 };
 
                 // Parallelize fetching for better performance
-                const [profileRes, friendsRes, groupsRes, expensesRes, groupMembersRes] = await Promise.all([
+                const [profileRes, friendsRes, expensesRes, groupsRes, activitiesRes] = await Promise.all([
                     supabase.from('profiles').select('*').eq('id', userId).single(),
                     supabase.from('friends').select('*').order('name'),
-                    supabase.from('groups').select('*').order('created_at', { ascending: false }),
-                    supabase.from('expenses').select('*').order('date', { ascending: false }),
-                    supabase.from('group_members').select('*')
+                    // Fetch expenses AND their participants in one go
+                    supabase.from('expenses').select(`
+                        *,
+                        expense_participants (
+                            profile_id,
+                            friend_id,
+                            amount
+                        )
+                    `).order('date', { ascending: false }),
+                    // Fetch Groups Logic: Get memberships -> Get Groups -> Get All Members
+                    (async () => {
+                        const { data: myMemberships } = await supabase.from('group_members').select('group_id').eq('user_id', userId);
+                        const myGroupIds = myMemberships?.map((m: any) => m.group_id) || [];
+
+                        if (myGroupIds.length === 0) return { groups: [], members: [] };
+
+                        const { data: groups } = await supabase.from('groups').select('*').in('id', myGroupIds).order('created_at', { ascending: false });
+                        const { data: members } = await supabase.from('group_members').select('*').in('group_id', myGroupIds);
+                        return { groups, members };
+                    })(),
+                    // Fetch Activity Logs
+                    supabase.from('activity_logs').select('*').order('created_at', { ascending: false }).limit(50)
                 ]);
 
                 // 1. Handle Profile
@@ -297,10 +339,9 @@ export const useSplittyStore = create<SplittyState>()(
                 };
 
                 // 3. Handle Groups
-                const { data: groupsData, error: groupsError } = groupsRes;
-                const { data: groupMembersData, error: groupMembersError } = groupMembersRes;
+                const { groups: groupsData, members: groupMembersData } = groupsRes;
 
-                if (!groupsError && groupsData) {
+                if (groupsData) {
                     const mappedGroups: Group[] = groupsData
                         .filter((g: any) => {
                             // Soft delete: hide groups the current user has archived
@@ -332,16 +373,39 @@ export const useSplittyStore = create<SplittyState>()(
                         const localPayerId = mapRealToLocal(e.payer_id);
 
                         // Map split_with
-                        const localSplitWith = (e.split_with || [])
-                            .map((realId: string) => mapRealToLocal(realId))
-                            .filter((id: string) => id !== 'self');
+                        let localSplitWith: string[] = [];
 
                         // Map split_details
-                        const localSplitDetails: Record<string, number> = {};
-                        if (e.split_details) {
-                            Object.entries(e.split_details).forEach(([realId, amount]) => {
-                                localSplitDetails[mapRealToLocal(realId)] = Number(amount);
+                        let localSplitDetails: Record<string, number> = {};
+
+                        // NEW: Try reading from expense_participants first
+                        if (e.expense_participants && e.expense_participants.length > 0) {
+                            e.expense_participants.forEach((p: any) => {
+                                // Determine local ID
+                                let localId = 'unknown';
+                                if (p.profile_id) {
+                                    localId = mapRealToLocal(p.profile_id);
+                                } else if (p.friend_id) {
+                                    localId = mapRealToLocal(p.friend_id);
+                                }
+
+                                if (localId !== 'self') {
+                                    localSplitWith.push(localId);
+                                }
+
+                                localSplitDetails[localId] = Number(p.amount);
                             });
+                        } else {
+                            // FALLBACK: Read from JSON (Old way)
+                            localSplitWith = (e.split_with || [])
+                                .map((realId: string) => mapRealToLocal(realId))
+                                .filter((id: string) => id !== 'self');
+
+                            if (e.split_details) {
+                                Object.entries(e.split_details).forEach(([realId, amount]) => {
+                                    localSplitDetails[mapRealToLocal(realId)] = Number(amount);
+                                });
+                            }
                         }
 
                         return {
@@ -349,6 +413,7 @@ export const useSplittyStore = create<SplittyState>()(
                             description: e.description,
                             amount: Number(e.amount),
                             payerId: localPayerId,
+                            payerName: e.payer_name,
                             groupId: e.group_id,
                             splitWith: localSplitWith,
                             date: e.date,
@@ -374,7 +439,8 @@ export const useSplittyStore = create<SplittyState>()(
                     userProfile,
                     friends: balancedFriends,
                     groups: balancedGroups,
-                    expenses: loadedExpenses
+                    expenses: loadedExpenses,
+                    activities: (activitiesRes as any)?.data || []
                 });
             },
             friends: [
@@ -385,6 +451,7 @@ export const useSplittyStore = create<SplittyState>()(
                 { id: 'g1', name: 'Rent & Bills', members: ['1', '2'], balance: 120.50 },
             ],
             expenses: [],
+            activities: [],
             userProfile: {
                 name: 'Guest',
                 email: '',
@@ -425,9 +492,34 @@ export const useSplittyStore = create<SplittyState>()(
                         if (!error) {
                             const memberInserts = [
                                 { group_id: groupId, user_id: session.user.id },
-                                ...members.filter(mId => mId !== 'self' && mId.length > 10).map(mId => ({ group_id: groupId, user_id: mId }))
+                                ...members
+                                    .filter(mId => mId !== 'self')
+                                    .map(mId => {
+                                        const friend = get().friends.find(f => f.id === mId);
+                                        return friend?.linkedUserId ? friend.linkedUserId : null;
+                                    })
+                                    .filter((realId): realId is string => !!realId && realId !== session.user.id)
+                                    .map(realId => ({ group_id: groupId, user_id: realId }))
                             ];
-                            supabase.from('group_members').insert(memberInserts).then();
+
+                            if (memberInserts.length > 1) {
+                                supabase.from('group_members').insert(memberInserts).then(({ error: memberError }) => {
+                                    if (memberError) {
+                                        console.error("Error adding members:", memberError);
+                                        Alert.alert("Error", "Group created but failed to sync some members. Ensure friends are linked to real users.");
+                                    }
+                                });
+                            } else {
+                                // Only the creator is in the group (online), valid for just creating the group container
+                                console.log("Group created with only the creator locally linked.");
+                            }
+                        } else {
+                            console.error("Error creating group:", error);
+                            Alert.alert("Error", "Failed to create group on server.");
+                            // Revert optimistic update
+                            set((state) => ({
+                                groups: state.groups.filter(g => g.id !== groupId)
+                            }));
                         }
                     });
                 }
@@ -594,13 +686,17 @@ export const useSplittyStore = create<SplittyState>()(
                         id: Crypto.randomUUID(),
                         date: new Date().toISOString(),
                         splitType: expense.splitType || 'equal',
-                        splitDetails: expense.splitDetails || {}
+                        splitDetails: expense.splitDetails || {},
+                        payerName: 'Someone' // Placeholder, will update below
                     };
 
                     const { session, friends, userProfile } = get();
+                    const payer = friends.find(f => f.id === expense.payerId);
+                    const payerName = expense.payerId === 'self' ? (userProfile.name || 'You') : (payer?.name || 'Someone');
+                    newExpense.payerName = payerName;
+
                     if (session?.user) {
-                        const payer = friends.find(f => f.id === expense.payerId);
-                        const payerName = expense.payerId === 'self' ? (userProfile.name || 'You') : (payer?.name || 'Someone');
+                        // ... existing logic ...
 
                         // Map IDs to Real UUIDs for Supabase
                         const realPayerId = mapToRealId(expense.payerId, friends, session.user.id);
@@ -620,9 +716,92 @@ export const useSplittyStore = create<SplittyState>()(
                             split_details: realSplitDetails,
                             split_with: realSplitWith, // Persist real UUIDs
                             created_by: session.user.id
-                        }).then(({ error }) => {
+                        }).then(async ({ error }) => {
                             if (error) {
                                 console.error("Expense sync error details:", error);
+                            } else {
+                                // DUAL WRITE: Insert into expense_participants
+                                // We need to convert the realSplitDetails (Map<RealUUID, Amount>) into rows
+                                const participantsToInsert = [];
+
+                                // Iterate over all participants in the split
+                                const allParticipants = new Set([...realSplitWith, realPayerId]);
+                                if (realPayerId === session.user.id) allParticipants.add(session.user.id);
+
+                                for (const realId of allParticipants) {
+                                    let amount = 0;
+
+                                    // Calculate amount based on split type logic if needed, 
+                                    // BUT realSplitDetails should already be fully populated by logic in AddExpenseScreen?
+                                    // Actually AddExpenseScreen populates 'splitDetails' ONLY for 'unequal'.
+                                    // For 'equal', we calculate it dynamically usually.
+                                    // However, to store ANY value in DB, we need the number.
+
+                                    if (newExpense.splitType === 'unequal') {
+                                        amount = realSplitDetails[realId] || 0;
+                                    } else {
+                                        // Equal split logic: Amount / Count
+                                        // participants includes self?
+                                        // In AddExpense, 'splitWith' excludes self. 
+                                        // 'allParticipants' here tries to include self.
+                                        // Let's use the exact amounts if we can, 
+                                        // but if splitDetails is empty (equal split), we calculate.
+                                        const count = (newExpense.splitWith?.length || 0) + 1; // +1 for self
+                                        amount = Number((newExpense.amount / count).toFixed(2));
+
+                                        // Handle remainder? For MVP, simple division.
+                                    }
+
+                                    // Determine if Profile or Friend
+                                    // 1. Is it a Profile? (Check profiles table - expensive here)
+                                    // Better: We know if it's a UUID.
+                                    // But we need to know if it goes into profile_id or friend_id column.
+                                    // Strategy: Try looking up in `friends` array to see if it is a friend.
+                                    // If strict realId is session.user.id -> Profile
+
+                                    let pId = null;
+                                    let fId = null;
+
+                                    if (realId === session.user.id) {
+                                        pId = realId;
+                                    } else {
+                                        // Check if this Real ID belongs to a friend
+                                        // We have 'friends' in store, but they have 'id' (local) and 'linkedUserId' (real profile)
+                                        // realId matches either friend.id (local-only friend) OR friend.linkedUserId (profile friend)
+
+                                        const friendObj = friends.find(f => f.linkedUserId === realId);
+                                        if (friendObj) {
+                                            // It's a profile-linked friend
+                                            pId = realId;
+                                        } else {
+                                            // It might be a purely local friend (where realId == localId)
+                                            // OR it might be a profile ID that we just don't have locally linked?
+                                            // Assume local friend ID if not found as linked
+                                            const localFriend = friends.find(f => f.id === realId);
+                                            if (localFriend) {
+                                                fId = realId;
+                                            } else {
+                                                // If we can't find it in friends list, it might be a Profile ID from a Group Member we don't have as a friend?
+                                                // Fallback to Profile ID if it looks like a valid UUID and not in friends list
+                                                pId = realId;
+                                            }
+                                        }
+                                    }
+
+                                    participantsToInsert.push({
+                                        expense_id: newExpense.id,
+                                        profile_id: pId,
+                                        friend_id: fId,
+                                        amount: amount
+                                    });
+                                }
+
+                                if (participantsToInsert.length > 0) {
+                                    const { error: partError } = await supabase
+                                        .from('expense_participants')
+                                        .insert(participantsToInsert);
+                                    if (partError) console.error("Participants sync error:", partError);
+                                }
                             }
                         });
                     }
@@ -676,17 +855,20 @@ export const useSplittyStore = create<SplittyState>()(
                     const oldExpense = state.expenses.find(e => e.id === id);
                     if (!oldExpense) return state;
 
+                    const payer = friends.find(f => f.id === updatedExpense.payerId);
+                    const payerName = updatedExpense.payerId === 'self' ? (userProfile.name || 'You') : (payer?.name || 'Someone');
+
                     const newExpenseFull = {
                         ...updatedExpense,
                         id,
                         date: oldExpense.date,
                         splitType: updatedExpense.splitType || 'equal',
-                        splitDetails: updatedExpense.splitDetails || {}
+                        splitDetails: updatedExpense.splitDetails || {},
+                        payerName: payerName
                     };
 
                     if (session?.user) {
-                        const payer = friends.find(f => f.id === updatedExpense.payerId);
-                        const payerName = updatedExpense.payerId === 'self' ? (userProfile.name || 'You') : (payer?.name || 'Someone');
+                        // payerName already calculated above
 
                         // Map IDs to Real UUIDs
                         const realPayerId = mapToRealId(updatedExpense.payerId, friends, session.user.id);
@@ -705,8 +887,60 @@ export const useSplittyStore = create<SplittyState>()(
                             split_with: realSplitWith
                         })
                             .eq('id', id)
-                            .then(({ error }) => {
+                            .then(async ({ error }) => {
                                 if (error) console.error("Expense edit sync error:", error);
+                                else {
+                                    // DUAL WRITE: Update participants
+                                    // Simplest strategy: Delete all for this expense and re-insert
+                                    await supabase.from('expense_participants').delete().eq('expense_id', id);
+
+                                    const participantsToInsert = [];
+                                    const allParticipants = new Set([...realSplitWith, realPayerId]);
+                                    if (realPayerId === session.user.id) allParticipants.add(session.user.id);
+
+                                    // ... exact same logic as Add Expense ...
+                                    // DRY refactor in future. For now, duplication for safety.
+
+                                    for (const realId of allParticipants) {
+                                        let amount = 0;
+                                        if (newExpenseFull.splitType === 'unequal') {
+                                            amount = realSplitDetails[realId] || 0;
+                                        } else {
+                                            const count = (newExpenseFull.splitWith?.length || 0) + 1;
+                                            amount = Number((newExpenseFull.amount / count).toFixed(2));
+                                        }
+
+                                        let pId = null;
+                                        let fId = null;
+
+                                        if (realId === session.user.id) {
+                                            pId = realId;
+                                        } else {
+                                            const friendObj = friends.find(f => f.linkedUserId === realId);
+                                            if (friendObj) {
+                                                pId = realId;
+                                            } else {
+                                                const localFriend = friends.find(f => f.id === realId);
+                                                if (localFriend) {
+                                                    fId = realId;
+                                                } else {
+                                                    pId = realId;
+                                                }
+                                            }
+                                        }
+
+                                        participantsToInsert.push({
+                                            expense_id: id,
+                                            profile_id: pId,
+                                            friend_id: fId,
+                                            amount: amount
+                                        });
+                                    }
+
+                                    if (participantsToInsert.length > 0) {
+                                        await supabase.from('expense_participants').insert(participantsToInsert);
+                                    }
+                                }
                             });
                     }
 
@@ -954,8 +1188,28 @@ export const useSplittyStore = create<SplittyState>()(
                         console.log('📡 Real-time Subscription Status:', status);
                     });
 
+                const activityChannel = supabase
+                    .channel('activity-logs')
+                    .on(
+                        'postgres_changes',
+                        {
+                            event: 'INSERT',
+                            schema: 'public',
+                            table: 'activity_logs',
+                            filter: `user_id=eq.${session.user.id}`
+                        },
+                        (payload) => {
+                            console.log('🔔 Real-time Activity Log:', payload.new);
+                            set((state) => ({
+                                activities: [payload.new as ActivityLog, ...state.activities]
+                            }));
+                        }
+                    )
+                    .subscribe();
+
                 return () => {
                     supabase.removeChannel(channel);
+                    supabase.removeChannel(activityChannel);
                 };
             },
         }),

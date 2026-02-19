@@ -5,7 +5,7 @@ import { GlassCard } from '../components/GlassCard';
 import { StyledInput } from '../components/StyledInput';
 import { VibrantButton } from '../components/VibrantButton';
 import { useSplittyStore } from '../store/useSplittyStore';
-import { ChevronRight, Users, Landmark, Check, Plus, Minus, Repeat } from 'lucide-react-native';
+import { ChevronRight, Users, Landmark, Check, Plus, Minus, Repeat, X, Edit2 } from 'lucide-react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { CATEGORIES, CategoryKey } from '../constants/Categories';
 import { Frequency } from '../store/useSplittyStore';
@@ -18,6 +18,10 @@ export default function AddExpenseScreen() {
     const { id } = useLocalSearchParams<{ id: string }>();
     const { friends, groups, addExpense, editExpense, expenses, appearance, colors, formatCurrency } = useSplittyStore();
     const isDark = appearance === 'dark';
+
+    // Edit Mode State
+    // If ID exists, default to VIEW ONLY (false). If ID is missing, we are adding new -> EDITING (true).
+    const [isEditing, setIsEditing] = useState(!id);
 
     const [description, setDescription] = useState('');
     const [amount, setAmount] = useState('');
@@ -47,7 +51,7 @@ export default function AddExpenseScreen() {
             // but if we supported multi-group splits it would be complex. Sticking to 1 group).
             const groupId = selectedIds[0];
             const group = groups.find(g => g.id === groupId);
-            return group ? ['self', ...group.members] : ['self'];
+            return group ? Array.from(new Set(['self', ...group.members])) : ['self'];
         }
     };
 
@@ -68,6 +72,7 @@ export default function AddExpenseScreen() {
     // Initialize Edit Mode
     useEffect(() => {
         if (id) {
+            setIsEditing(false); // Reset to view mode when loading an ID
             const expense = expenses.find(e => e.id === id);
             if (expense) {
                 setDescription(expense.description);
@@ -92,8 +97,10 @@ export default function AddExpenseScreen() {
                     setManualAmounts(stringMap);
                 }
 
-                router.setParams({ title: 'Edit Expense' });
+
             }
+        } else {
+            setIsEditing(true); // Default to editing if adding new
         }
     }, [id, expenses]);
 
@@ -180,59 +187,78 @@ export default function AddExpenseScreen() {
 
     return (
         <ScrollView style={[styles.container, { backgroundColor: colors.background }]} keyboardShouldPersistTaps="handled">
-            <GlassCard style={styles.card}>
-                <StyledInput
-                    label="Description"
-                    placeholder="What was it for?"
-                    value={description}
-                    onChangeText={setDescription}
-                />
-                <StyledInput
-                    label="Amount"
-                    placeholder="0.00"
-                    value={amount}
-                    onChangeText={setAmount}
-                    keyboardType="numeric"
-                />
+            <View style={styles.customHeader}>
+                <TouchableOpacity onPress={() => router.back()} style={styles.closeButton}>
+                    <X size={24} color={colors.text} />
+                </TouchableOpacity>
+                <Text style={[styles.screenTitle, { color: colors.text }]}>
+                    {id ? (isEditing ? 'Edit Expense' : 'Expense Details') : 'New Expense'}
+                </Text>
 
-                {!id && (
-                    <View style={styles.recurringContainer}>
-                        <TouchableOpacity
-                            style={styles.recurringRow}
-                            onPress={() => setIsRecurring(!isRecurring)}
-                            activeOpacity={0.8}
-                        >
-                            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-                                <Repeat size={20} color={isRecurring ? colors.primary : colors.textSecondary} />
-                                <Text style={[styles.label, { marginBottom: 0, color: isRecurring ? colors.primary : colors.textSecondary }]}>Repeat this expense</Text>
-                            </View>
-                            <View style={[styles.checkbox, { borderColor: colors.textSecondary }, isRecurring && { backgroundColor: colors.primary, borderColor: colors.primary }]}>
-                                {isRecurring && <Check size={14} color="white" />}
-                            </View>
-                        </TouchableOpacity>
-
-                        {isRecurring && (
-                            <View style={styles.frequencyRow}>
-                                {(['daily', 'weekly', 'monthly'] as Frequency[]).map((freq) => (
-                                    <TouchableOpacity
-                                        key={freq}
-                                        style={[
-                                            styles.freqChip,
-                                            { borderColor: colors.border },
-                                            frequency === freq && { backgroundColor: colors.primary, borderColor: colors.primary }
-                                        ]}
-                                        onPress={() => setFrequency(freq)}
-                                    >
-                                        <Text style={[styles.freqText, { color: colors.textSecondary }, frequency === freq && { color: 'white', fontWeight: '600' }]}>
-                                            {freq.charAt(0).toUpperCase() + freq.slice(1)}
-                                        </Text>
-                                    </TouchableOpacity>
-                                ))}
-                            </View>
-                        )}
-                    </View>
+                {id && !isEditing ? (
+                    <TouchableOpacity onPress={() => setIsEditing(true)} style={styles.closeButton}>
+                        <Edit2 size={24} color={colors.primary} />
+                    </TouchableOpacity>
+                ) : (
+                    <View style={{ width: 24 }} />
                 )}
+            </View>
+
+            <GlassCard style={styles.card}>
+                <View style={styles.inputRow}>
+                    <StyledInput
+                        label="Description"
+                        placeholder="What for?"
+                        value={description}
+                        onChangeText={setDescription}
+                        containerStyle={{ flex: 2, marginBottom: 0 }}
+                        editable={isEditing}
+                    />
+                    <View style={styles.gap} />
+                    <StyledInput
+                        label="Amount"
+                        placeholder="0.00"
+                        value={amount}
+                        onChangeText={setAmount}
+                        keyboardType="numeric"
+                        containerStyle={{ flex: 1, marginBottom: 0 }}
+                        editable={isEditing}
+                    />
+                </View>
+
             </GlassCard>
+
+            <Text style={[styles.sectionTitle, { color: colors.text }]}>Split with</Text>
+
+            <View style={[styles.tabContainer, { backgroundColor: colors.surface }]}>
+                <TouchableOpacity
+                    style={[styles.tab, type === 'individual' && { backgroundColor: colors.primary }, !isEditing && { opacity: 0.7 }]}
+                    onPress={() => handleTypeChange('individual')}
+                    disabled={!isEditing}
+                >
+                    <Landmark size={20} color={type === 'individual' ? 'white' : colors.textSecondary} />
+                    <Text style={[styles.tabText, { color: type === 'individual' ? 'white' : colors.textSecondary }]}>Friends</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                    style={[styles.tab, type === 'group' && { backgroundColor: colors.primary }, !isEditing && { opacity: 0.7 }]}
+                    onPress={() => handleTypeChange('group')}
+                    disabled={!isEditing}
+                >
+                    <Users size={20} color={type === 'group' ? 'white' : colors.textSecondary} />
+                    <Text style={[styles.tabText, { color: type === 'group' ? 'white' : colors.textSecondary }]}>Groups</Text>
+                </TouchableOpacity>
+            </View>
+
+            <FriendSelector
+                type={type}
+                friends={friends}
+                groups={groups}
+                selectedIds={selectedIds}
+                onToggle={toggleSelection}
+                disabled={!isEditing}
+            />
+
+
 
             <Text style={[styles.sectionTitle, { color: colors.text }]}>Category</Text>
             <View style={{ marginBottom: 24 }}>
@@ -243,9 +269,11 @@ export default function AddExpenseScreen() {
                             style={[
                                 styles.chip,
                                 { backgroundColor: colors.background, borderColor: colors.border },
-                                category === cat.id && { backgroundColor: cat.color, borderColor: cat.color }
+                                category === cat.id && { backgroundColor: cat.color, borderColor: cat.color },
+                                !isEditing && { opacity: 0.7 }
                             ]}
                             onPress={() => setCategory(cat.id)}
+                            disabled={!isEditing}
                         >
                             <cat.icon size={16} color={category === cat.id ? 'white' : colors.textSecondary} />
                             <Text style={[
@@ -261,39 +289,6 @@ export default function AddExpenseScreen() {
                 </ScrollView>
             </View>
 
-            <Text style={[styles.sectionTitle, { color: colors.text }]}>Split with</Text>
-
-            <View style={[styles.tabContainer, { backgroundColor: colors.surface }]}>
-                <TouchableOpacity
-                    style={[styles.tab, type === 'individual' && { backgroundColor: colors.primary }]}
-                    onPress={() => handleTypeChange('individual')}
-                >
-                    <Landmark size={20} color={type === 'individual' ? 'white' : colors.textSecondary} />
-                    <Text style={[styles.tabText, { color: type === 'individual' ? 'white' : colors.textSecondary }]}>Friends</Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                    style={[styles.tab, type === 'group' && { backgroundColor: colors.primary }]}
-                    onPress={() => handleTypeChange('group')}
-                >
-                    <Users size={20} color={type === 'group' ? 'white' : colors.textSecondary} />
-                    <Text style={[styles.tabText, { color: type === 'group' ? 'white' : colors.textSecondary }]}>Groups</Text>
-                </TouchableOpacity>
-            </View>
-
-            <FriendSelector
-                type={type}
-                friends={friends}
-                groups={groups}
-                selectedIds={selectedIds}
-                onToggle={toggleSelection}
-            />
-
-            {
-                selectedIds.length === 0 && (
-                    <Text style={[styles.warningText, { color: colors.textSecondary }]}>Please select at least one friend or group to split with.</Text>
-                )
-            }
-
             {
                 selectedIds.length > 0 && (
                     <SplitDetails
@@ -307,15 +302,56 @@ export default function AddExpenseScreen() {
                         remainingAmount={remainingAmount}
                         amount={amount}
                         getName={getName}
+                        disabled={!isEditing}
                     />
                 )
             }
 
-            <VibrantButton
-                title={id ? "Update Expense" : "Save Expense"}
-                onPress={handleSave}
-                style={styles.saveButton}
-            />
+            {!id && (
+                <View style={styles.recurringContainer}>
+                    <TouchableOpacity
+                        style={styles.recurringRow}
+                        onPress={() => setIsRecurring(!isRecurring)}
+                        activeOpacity={0.8}
+                    >
+                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                            <Repeat size={20} color={isRecurring ? colors.primary : colors.textSecondary} />
+                            <Text style={[styles.label, { marginBottom: 0, color: isRecurring ? colors.primary : colors.textSecondary }]}>Repeat this expense</Text>
+                        </View>
+                        <View style={[styles.checkbox, { borderColor: colors.textSecondary }, isRecurring && { backgroundColor: colors.primary, borderColor: colors.primary }]}>
+                            {isRecurring && <Check size={14} color="white" />}
+                        </View>
+                    </TouchableOpacity>
+
+                    {isRecurring && (
+                        <View style={styles.frequencyRow}>
+                            {(['daily', 'weekly', 'monthly'] as Frequency[]).map((freq) => (
+                                <TouchableOpacity
+                                    key={freq}
+                                    style={[
+                                        styles.freqChip,
+                                        { borderColor: colors.border },
+                                        frequency === freq && { backgroundColor: colors.primary, borderColor: colors.primary }
+                                    ]}
+                                    onPress={() => setFrequency(freq)}
+                                >
+                                    <Text style={[styles.freqText, { color: colors.textSecondary }, frequency === freq && { color: 'white', fontWeight: '600' }]}>
+                                        {freq.charAt(0).toUpperCase() + freq.slice(1)}
+                                    </Text>
+                                </TouchableOpacity>
+                            ))}
+                        </View>
+                    )}
+                </View>
+            )}
+
+            {isEditing && (
+                <VibrantButton
+                    title={id ? "Update Expense" : "Save Expense"}
+                    onPress={handleSave}
+                    style={styles.saveButton}
+                />
+            )}
         </ScrollView >
     );
 }
@@ -323,48 +359,49 @@ export default function AddExpenseScreen() {
 const styles = StyleSheet.create({
     container: {
         flex: 1,
-        padding: 20,
+        padding: 16, // Reduced from 20
     },
     header: {
-        marginBottom: 20,
+        marginBottom: 16, // Reduced from 20
     },
     card: {
-        marginBottom: 24,
+        marginBottom: 16, // Reduced from 24
     },
     sectionTitle: {
-        fontSize: 18,
+        fontSize: 17, // Slightly smaller
         fontWeight: '700',
-        marginBottom: 16,
+        marginBottom: 12, // Reduced from 16
     },
     tabContainer: {
         flexDirection: 'row',
         borderRadius: 12,
         padding: 4,
-        marginBottom: 16,
+        marginBottom: 12, // Reduced from 16
     },
     tab: {
         flex: 1,
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'center',
-        paddingVertical: 12,
-        gap: 8,
+        paddingVertical: 10, // Reduced from 12
+        gap: 6,
         borderRadius: 8,
     },
     activeTab: {
     },
     tabText: {
         fontWeight: '600',
+        fontSize: 14,
     },
     activeTabText: {
         color: 'white',
     },
     saveButton: {
-        marginBottom: 50,
+        marginBottom: 40,
     },
     label: {
         fontSize: 14,
-        marginBottom: 8,
+        marginBottom: 6, // Reduced
         fontWeight: '600',
     },
     checkbox: {
@@ -377,47 +414,48 @@ const styles = StyleSheet.create({
     },
     chipScroll: {
         flexDirection: 'row',
-        marginBottom: 8,
+        marginBottom: 4, // Reduced
     },
     chip: {
-        paddingHorizontal: 16,
+        paddingHorizontal: 14, // Reduced
         paddingVertical: 8,
-        borderRadius: 20,
+        borderRadius: 18,
         marginRight: 8,
         flexDirection: 'row',
         alignItems: 'center',
         borderWidth: 1,
     },
     chipText: {
-        fontSize: 14,
+        fontSize: 13, // Reduced
     },
     warningText: {
         textAlign: 'center',
         fontStyle: 'italic',
-        marginTop: 20,
-        marginBottom: 20,
+        marginTop: 16,
+        marginBottom: 16,
     },
     recurringContainer: {
-        marginTop: 16,
-        paddingTop: 16,
+        marginTop: 12, // Reduced
+        paddingTop: 12,
         borderTopWidth: 1,
         borderTopColor: 'rgba(150,150,150,0.1)',
+        marginBottom: 24, // Added to fix overlap with Save button
     },
     recurringRow: {
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'space-between',
-        paddingVertical: 8,
+        paddingVertical: 6, // Reduced
     },
     frequencyRow: {
         flexDirection: 'row',
-        marginTop: 12,
+        marginTop: 8, // Reduced
         gap: 8,
     },
     freqChip: {
         flex: 1,
         alignItems: 'center',
-        paddingVertical: 8,
+        paddingVertical: 6, // Reduced
         borderRadius: 8,
         borderWidth: 1,
     },
@@ -428,6 +466,27 @@ const styles = StyleSheet.create({
     },
     activeFreqText: {
         color: 'white',
+        fontWeight: '600',
+    },
+    inputRow: {
+        flexDirection: 'row',
+        alignItems: 'flex-start',
+    },
+    gap: {
+        width: 12,
+    },
+    customHeader: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        marginBottom: 16,
+        marginTop: Platform.OS === 'android' ? 40 : 10,
+    },
+    closeButton: {
+        padding: 4,
+    },
+    screenTitle: {
+        fontSize: 16,
         fontWeight: '600',
     },
 });

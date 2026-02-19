@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, FlatList, SafeAreaView, TouchableOpacity, Alert } from 'react-native';
+import { View, Text, StyleSheet, FlatList, SafeAreaView, TouchableOpacity, Alert, RefreshControl } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Themes, ThemeName, Colors } from '../../constants/Colors';
 import { GlassCard } from '../../components/GlassCard';
@@ -10,13 +10,20 @@ import { Users, Plus, Pencil, Trash2 } from 'lucide-react-native';
 
 export default function GroupsScreen() {
     const router = useRouter();
-    const { groups, friends, addGroup, editGroup, deleteGroup, appearance, colors, formatCurrency } = useSplittyStore();
+    const { groups, friends, addGroup, editGroup, deleteGroup, appearance, colors, formatCurrency, fetchData } = useSplittyStore();
     const [groupName, setGroupName] = useState('');
     const [selectedMembers, setSelectedMembers] = useState<string[]>([]);
     const [showAdd, setShowAdd] = useState(false);
     const [editingId, setEditingId] = useState<string | null>(null);
+    const [refreshing, setRefreshing] = useState(false);
 
     const isDark = appearance === 'dark';
+
+    const handleRefresh = async () => {
+        setRefreshing(true);
+        await fetchData();
+        setRefreshing(false);
+    };
 
     const handleSaveGroup = () => {
         if (groupName.trim() && selectedMembers.length > 0) {
@@ -137,6 +144,13 @@ export default function GroupsScreen() {
                     <FlatList
                         data={groups}
                         keyExtractor={(item) => item.id}
+                        refreshControl={
+                            <RefreshControl
+                                refreshing={refreshing}
+                                onRefresh={handleRefresh}
+                                tintColor={colors.primary}
+                            />
+                        }
                         renderItem={({ item }) => (
                             <TouchableOpacity
                                 key={item.id}
