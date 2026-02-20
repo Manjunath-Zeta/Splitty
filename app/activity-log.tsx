@@ -85,7 +85,23 @@ export default function ActivityLogScreen() {
                         </View>
                         <View style={styles.textContainer}>
                             <Text style={[styles.description, { color: colors.text }]}>
-                                {item.description}
+                                {(() => {
+                                    let desc = item.description;
+                                    if (isExpense) {
+                                        // 1. "You added 'Paid Manasa'" -> "You settled 'Manasa'"
+                                        desc = desc.replace(/^You added 'Paid (.*)'$/, "You settled '$1'");
+
+                                        // 2. "You added 'Manasa paid you'" -> "Manasa settled with you"
+                                        desc = desc.replace(/^You added '(.*) paid you'$/, "$1 settled with you");
+
+                                        // 3. "Manasa added you to 'Paid ...'" -> "Manasa settled with you"
+                                        desc = desc.replace(/^(.*) added you to 'Paid .*'$/, "$1 settled with you");
+
+                                        // 4. "Manasa added you to '... paid you'" -> "Manasa settled with you"
+                                        desc = desc.replace(/^(.*) added you to '.* paid you'$/, "$1 settled with you");
+                                    }
+                                    return desc;
+                                })()}
                             </Text>
 
                             {/* Rich Details Row */}
@@ -131,6 +147,7 @@ export default function ActivityLogScreen() {
 
     return (
         <View style={[styles.container, { backgroundColor: colors.background }]}>
+            <Stack.Screen options={{ headerShown: false }} />
             <StatusBar style={isDarkMode ? 'light' : 'dark'} />
 
             {/* Header */}

@@ -98,7 +98,7 @@ export default function GroupsScreen() {
                         />
                         <Text style={[styles.label, { color: colors.text }]}>Select Members</Text>
                         <View style={styles.membersList}>
-                            {friends.map(friend => {
+                            {friends.filter(f => !!f.linkedUserId).map(friend => {
                                 const isSelected = selectedMembers.includes(friend.id);
                                 return (
                                     <TouchableOpacity

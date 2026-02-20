@@ -6,11 +6,12 @@ import { Themes, ThemeName, Colors } from '../../constants/Colors';
 import { GlassCard } from '../../components/GlassCard';
 import { ArrowLeft, Users, Receipt, Banknote, Trash2 } from 'lucide-react-native';
 import { getCategoryById } from '../../constants/Categories';
+import { InitialsAvatar } from '../../components/InitialsAvatar';
 
 export default function GroupDetailsScreen() {
     const { id } = useLocalSearchParams<{ id: string }>();
     const router = useRouter();
-    const { groups, expenses, friends, appearance, colors, formatCurrency, deleteExpense } = useSplittyStore();
+    const { groups, expenses, friends, appearance, colors, formatCurrency, deleteExpense, userProfile } = useSplittyStore();
     const isDark = appearance === 'dark';
 
     const group = groups.find(g => g.id === id);
@@ -105,23 +106,27 @@ export default function GroupDetailsScreen() {
                     <Text style={[styles.cardTitle, { color: colors.text }]}>Spending Summary</Text>
                     <View style={styles.contributionRow}>
                         <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                            <View style={[styles.smallAvatar, { backgroundColor: colors.primary }]}>
-                                <Text style={styles.avatarText}>YP</Text>
-                            </View>
+                            <InitialsAvatar
+                                name={userProfile.name || 'You'}
+                                avatarUrl={userProfile.avatar}
+                                size={32}
+                            />
+                            <View style={{ width: 10 }} />
                             <Text style={[styles.contributionName, { color: colors.text }]}>You</Text>
                         </View>
                         <Text style={[styles.contributionAmount, { color: colors.text }]}>
                             {formatCurrency(contributions['self'] || 0)}
                         </Text>
                     </View>
-                    {group.members.map(mId => (
+                    {group.members.filter(mId => mId !== 'self').map(mId => (
                         <View key={mId} style={styles.contributionRow}>
                             <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                                <View style={[styles.smallAvatar, { backgroundColor: colors.inputBackground }]}>
-                                    <Text style={[styles.avatarText, { color: colors.textSecondary }]}>
-                                        {getMemberName(mId).substring(0, 2).toUpperCase()}
-                                    </Text>
-                                </View>
+                                <InitialsAvatar
+                                    name={getMemberName(mId)}
+                                    avatarUrl={friends.find(f => f.id === mId)?.avatarUrl}
+                                    size={32}
+                                />
+                                <View style={{ width: 10 }} />
                                 <Text style={[styles.contributionName, { color: colors.text }]}>{getMemberName(mId)}</Text>
                             </View>
                             <Text style={[styles.contributionAmount, { color: colors.text }]}>
@@ -138,17 +143,23 @@ export default function GroupDetailsScreen() {
                 <Text style={[styles.sectionTitle, { color: colors.text }]}>Members</Text>
                 <View style={styles.membersRow}>
                     <View style={styles.memberItem}>
-                        <View style={[styles.memberAvatar, { backgroundColor: colors.primary }]}>
-                            <Text style={{ color: 'white', fontWeight: 'bold' }}>YP</Text>
+                        <View style={{ marginBottom: 8 }}>
+                            <InitialsAvatar
+                                name={userProfile.name || 'You'}
+                                avatarUrl={userProfile.avatar}
+                                size={48}
+                            />
                         </View>
                         <Text style={[styles.memberName, { color: colors.text }]}>You</Text>
                     </View>
-                    {group.members.map(mId => (
+                    {group.members.filter(mId => mId !== 'self').map(mId => (
                         <View key={mId} style={styles.memberItem}>
-                            <View style={[styles.memberAvatar, { backgroundColor: colors.inputBackground }]}>
-                                <Text style={{ color: colors.textSecondary, fontWeight: 'bold' }}>
-                                    {getMemberName(mId).substring(0, 2).toUpperCase()}
-                                </Text>
+                            <View style={{ marginBottom: 8 }}>
+                                <InitialsAvatar
+                                    name={getMemberName(mId)}
+                                    avatarUrl={friends.find(f => f.id === mId)?.avatarUrl}
+                                    size={48}
+                                />
                             </View>
                             <Text style={[styles.memberName, { color: colors.text }]}>{getMemberName(mId)}</Text>
                         </View>

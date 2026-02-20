@@ -44,6 +44,56 @@ export const AccentPalettes = {
     secondary: '#2DD4BF',
     accent: '#FACC15',
   },
+  ruby: {
+    primary: '#EF4444',
+    secondary: '#F87171',
+    accent: '#B91C1C',
+  },
+  ocean: {
+    primary: '#06B6D4',
+    secondary: '#22D3EE',
+    accent: '#0891B2',
+  },
+  sunflower: {
+    primary: '#EAB308',
+    secondary: '#FDE047',
+    accent: '#CA8A04',
+  },
+  emerald: {
+    primary: '#10B981',
+    secondary: '#34D399',
+    accent: '#059669',
+  },
+  amethyst: {
+    primary: '#8B5CF6',
+    secondary: '#A78BFA',
+    accent: '#7C3AED',
+  },
+  rose: {
+    primary: '#F43F5E',
+    secondary: '#FB7185',
+    accent: '#E11D48',
+  },
+  amber: {
+    primary: '#F59E0B',
+    secondary: '#FBBF24',
+    accent: '#D97706',
+  },
+  sapphire: {
+    primary: '#3B82F6',
+    secondary: '#60A5FA',
+    accent: '#2563EB',
+  },
+  fuchsia: {
+    primary: '#D946EF',
+    secondary: '#E879F9',
+    accent: '#C026D3',
+  },
+  slate: {
+    primary: '#64748B',
+    secondary: '#94A3B8',
+    accent: '#475569',
+  }
 };
 
 export type AppearanceMode = 'light' | 'dark';
@@ -66,13 +116,23 @@ export const getThemeColors = (appearance: AppearanceMode, accent: AccentName): 
 };
 
 // For backward compatibility during migration
-export type ThemeName = 'light' | 'dark' | 'midnight' | 'sunset' | 'forest';
+export type ThemeName = 'light' | 'dark' | 'midnight' | 'sunset' | 'forest' | 'ruby' | 'ocean' | 'sunflower' | 'emerald' | 'amethyst' | 'rose' | 'amber' | 'sapphire' | 'fuchsia' | 'slate';
 export const Themes: Record<ThemeName, ThemeColors> = {
   light: getThemeColors('light', 'classic'),
   dark: getThemeColors('dark', 'classic'),
   midnight: getThemeColors('dark', 'midnight'),
   sunset: getThemeColors('dark', 'sunset'),
   forest: getThemeColors('dark', 'forest'),
+  ruby: getThemeColors('light', 'ruby'),
+  ocean: getThemeColors('light', 'ocean'),
+  sunflower: getThemeColors('light', 'sunflower'),
+  emerald: getThemeColors('light', 'emerald'),
+  amethyst: getThemeColors('light', 'amethyst'),
+  rose: getThemeColors('light', 'rose'),
+  amber: getThemeColors('light', 'amber'),
+  sapphire: getThemeColors('light', 'sapphire'),
+  fuchsia: getThemeColors('light', 'fuchsia'),
+  slate: getThemeColors('light', 'slate'),
 };
 
 export const Colors = BasePalettes.light; // Base fallback

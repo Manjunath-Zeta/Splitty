@@ -135,9 +135,11 @@ export default function ActivityScreen() {
                                         </View>
                                     )}
                                 </View>
-                                <Text style={[styles.paidByText, { color: colors.textSecondary }]}>
-                                    {getPayerName(item.payerId)} paid
-                                </Text>
+                                {!item.isSettlement && (
+                                    <Text style={[styles.paidByText, { color: colors.textSecondary }]}>
+                                        {getPayerName(item.payerId)} paid
+                                    </Text>
+                                )}
                             </View>
                             <View style={styles.activityRight}>
                                 <Text style={[styles.activityAmount, { color: colors.text }]}>{formatCurrency(item.amount)}</Text>

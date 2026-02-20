@@ -149,7 +149,7 @@ export default function FriendsScreen() {
                 <View style={styles.listContainer}>
                     <Text style={[styles.sectionTitle, { color: colors.text }]}>Your Friends</Text>
                     <FlatList
-                        data={friends}
+                        data={friends.filter(f => !!f.linkedUserId)}
                         keyExtractor={(item) => item.id}
                         renderItem={({ item }) => (
                             <TouchableOpacity
@@ -158,11 +158,13 @@ export default function FriendsScreen() {
                                 onPress={() => router.push({ pathname: '/friend-details/[id]', params: { id: item.id } })}
                             >
                                 <GlassCard style={[styles.friendCard, { backgroundColor: colors.surface }]}>
-                                    <InitialsAvatar
-                                        name={item.name}
-                                        avatarUrl={item.avatarUrl}
-                                        size={44}
-                                    />
+                                    <View style={{ marginRight: 16 }}>
+                                        <InitialsAvatar
+                                            name={item.name}
+                                            avatarUrl={item.avatarUrl}
+                                            size={44}
+                                        />
+                                    </View>
                                     <View style={styles.friendInfo}>
                                         <Text style={[styles.friendName, { color: colors.text }]}>{item.name}</Text>
                                         <Text style={[

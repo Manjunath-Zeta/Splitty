@@ -3,11 +3,13 @@ import { View, Text, StyleSheet, TouchableOpacity, Alert, SafeAreaView, Activity
 import { useRouter } from 'expo-router';
 import * as WebBrowser from 'expo-web-browser';
 import * as Linking from 'expo-linking';
+import * as AppleAuthentication from 'expo-apple-authentication';
 import { supabase } from '../lib/supabase';
 import { Themes, ThemeName, Colors } from '../constants/Colors';
 import { useSplittyStore } from '../store/useSplittyStore';
 import { StyledInput } from '../components/StyledInput';
 import { VibrantButton } from '../components/VibrantButton';
+import { GoogleIcon } from '../components/GoogleIcon';
 
 WebBrowser.maybeCompleteAuthSession();
 
@@ -25,6 +27,37 @@ export default function AuthScreen() {
     const [authMethod, setAuthMethod] = useState<'email' | 'phone'>('email');
     const [verificationCode, setVerificationCode] = useState('');
     const [showVerification, setShowVerification] = useState(false);
+
+    const handleAppleSignIn = async () => {
+        setLoading(true);
+        try {
+            const credential = await AppleAuthentication.signInAsync({
+                requestedScopes: [
+                    AppleAuthentication.AppleAuthenticationScope.FULL_NAME,
+                    AppleAuthentication.AppleAuthenticationScope.EMAIL,
+                ],
+            });
+
+            if (credential.identityToken) {
+                const { error } = await supabase.auth.signInWithIdToken({
+                    provider: 'apple',
+                    token: credential.identityToken,
+                });
+
+                if (error) throw error;
+            } else {
+                throw new Error('No identityToken returned from Apple.');
+            }
+        } catch (e: any) {
+            if (e.code === 'ERR_REQUEST_CANCELED') {
+                // handle that the user canceled the sign-in flow
+            } else {
+                Alert.alert('Apple Sign In Error', e.message);
+            }
+        } finally {
+            setLoading(false);
+        }
+    };
 
     const handleGoogleSignIn = async () => {
         setLoading(true);
@@ -234,12 +267,24 @@ export default function AuthScreen() {
                     <View style={[styles.line, { backgroundColor: colors.border }]} />
                 </View>
 
+                {Platform.OS === 'ios' && (
+                    <AppleAuthentication.AppleAuthenticationButton
+                        buttonType={AppleAuthentication.AppleAuthenticationButtonType.SIGN_IN}
+                        buttonStyle={isDark ? AppleAuthentication.AppleAuthenticationButtonStyle.WHITE : AppleAuthentication.AppleAuthenticationButtonStyle.BLACK}
+                        cornerRadius={12}
+                        style={styles.appleButton}
+                        onPress={handleAppleSignIn}
+                    />
+                )}
+
                 <VibrantButton
                     title="Continue with Google"
                     onPress={handleGoogleSignIn}
                     variant="outline"
                     disabled={loading}
+                    leftIcon={<GoogleIcon />}
                     style={styles.googleButton}
+                    textStyle={styles.googleButtonText}
                 />
             </View>
         </SafeAreaView>
@@ -281,8 +326,19 @@ const styles = StyleSheet.create({
         fontSize: 14,
         fontWeight: '600',
     },
+    appleButton: {
+        width: '100%',
+        height: 56,
+        marginBottom: 16,
+    },
     googleButton: {
         marginTop: 0,
+        height: 56,
+        borderRadius: 12,
+    },
+    googleButtonText: {
+        fontSize: 19,
+        fontWeight: '600',
     },
     methodToggle: {
         flexDirection: 'row',

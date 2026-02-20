@@ -1,5 +1,5 @@
 import React from 'react';
-import { TouchableOpacity, Text, StyleSheet, ViewStyle, TextStyle } from 'react-native';
+import { TouchableOpacity, Text, StyleSheet, ViewStyle, TextStyle, View } from 'react-native';
 import { Themes, ThemeName } from '../constants/Colors';
 import { useSplittyStore } from '../store/useSplittyStore';
 
@@ -10,6 +10,7 @@ interface VibrantButtonProps {
     textStyle?: TextStyle;
     variant?: 'primary' | 'secondary' | 'outline';
     disabled?: boolean;
+    leftIcon?: React.ReactNode;
 }
 
 export const VibrantButton: React.FC<VibrantButtonProps> = ({
@@ -18,7 +19,8 @@ export const VibrantButton: React.FC<VibrantButtonProps> = ({
     style,
     textStyle,
     variant = 'primary',
-    disabled = false
+    disabled = false,
+    leftIcon
 }) => {
     const colors = useSplittyStore(state => state.colors);
     const isOutline = variant === 'outline';
@@ -43,6 +45,7 @@ export const VibrantButton: React.FC<VibrantButtonProps> = ({
             activeOpacity={0.8}
             disabled={disabled}
         >
+            {leftIcon && <View style={styles.iconContainer}>{leftIcon}</View>}
             <Text style={[
                 styles.text,
                 { color: finalTextColor },
@@ -62,6 +65,10 @@ const styles = StyleSheet.create({
         borderRadius: 16,
         alignItems: 'center',
         justifyContent: 'center',
+        flexDirection: 'row',
+    },
+    iconContainer: {
+        marginRight: 8,
     },
     text: {
         fontSize: 16,

@@ -1,10 +1,11 @@
 
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, Switch, TouchableOpacity, Alert, SafeAreaView, Image } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, Switch, TouchableOpacity, Alert, SafeAreaView, Image, Modal } from 'react-native';
 import { AccentPalettes, AccentName, AppearanceMode } from '../../constants/Colors';
+import { supabase } from '../../lib/supabase';
 import { GlassCard } from '../../components/GlassCard';
 import { useSplittyStore } from '../../store/useSplittyStore';
-import { User, Bell, Trash2, LogOut, ChevronRight, CreditCard, DollarSign, Activity } from 'lucide-react-native';
+import { User, Bell, Trash2, LogOut, ChevronRight, CreditCard, DollarSign, Activity, Palette, X } from 'lucide-react-native';
 import { useRouter } from 'expo-router';
 
 export default function SettingsScreen() {
@@ -25,12 +26,23 @@ export default function SettingsScreen() {
     const router = useRouter();
 
     const isDark = appearance === 'dark';
+    const [themeModalVisible, setThemeModalVisible] = useState(false);
 
     const accentOptions: { name: AccentName; label: string; preview: string }[] = [
         { name: 'classic', label: 'Classic', preview: AccentPalettes.classic.primary },
         { name: 'midnight', label: 'Midnight', preview: AccentPalettes.midnight.primary },
         { name: 'sunset', label: 'Sunset', preview: AccentPalettes.sunset.primary },
         { name: 'forest', label: 'Forest', preview: AccentPalettes.forest.primary },
+        { name: 'ruby', label: 'Ruby', preview: AccentPalettes.ruby.primary },
+        { name: 'ocean', label: 'Ocean', preview: AccentPalettes.ocean.primary },
+        { name: 'sunflower', label: 'Sunflower', preview: AccentPalettes.sunflower.primary },
+        { name: 'emerald', label: 'Emerald', preview: AccentPalettes.emerald.primary },
+        { name: 'amethyst', label: 'Amethyst', preview: AccentPalettes.amethyst.primary },
+        { name: 'rose', label: 'Rose', preview: AccentPalettes.rose.primary },
+        { name: 'amber', label: 'Amber', preview: AccentPalettes.amber.primary },
+        { name: 'sapphire', label: 'Sapphire', preview: AccentPalettes.sapphire.primary },
+        { name: 'fuchsia', label: 'Fuchsia', preview: AccentPalettes.fuchsia.primary },
+        { name: 'slate', label: 'Slate', preview: AccentPalettes.slate.primary },
     ];
 
     const handleCurrencyChange = () => {
@@ -48,18 +60,25 @@ export default function SettingsScreen() {
         );
     };
 
-    const handleClearData = () => {
+    const handleClearData = async () => {
         Alert.alert(
-            "Clear All Data",
+            "Delete Account",
             "This will delete all friends, groups, and expenses. This action cannot be undone.",
             [
                 { text: "Cancel", style: "cancel" },
                 {
-                    text: "Delete Everything",
+                    text: "Delete Account",
                     style: "destructive",
-                    onPress: () => {
-                        clearData();
-                        Alert.alert("Success", "All data has been reset.");
+                    onPress: async () => {
+                        try {
+                            const { error } = await supabase.rpc('delete_user_account');
+                            if (error) throw error;
+
+                            await signOut();
+                            Alert.alert("Account Deleted", "Your account and all associated data have been permanently removed.");
+                        } catch (err: any) {
+                            Alert.alert("Error Deleting Account", err.message);
+                        }
                     }
                 }
             ]
@@ -67,7 +86,7 @@ export default function SettingsScreen() {
     };
 
     const handleSettleUp = () => {
-        Alert.alert("Coming Soon", "Settle Up feature will allow you to record payments and clear debts effectively.");
+        router.push('/settle-up');
     };
 
     const renderSettingItem = (icon: React.ReactNode, label: string, rightElement: React.ReactNode, onPress?: () => void) => (
@@ -131,22 +150,17 @@ export default function SettingsScreen() {
 
                 <View style={styles.section}>
                     <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>Accent Theme</Text>
-                    <View style={styles.themeGrid}>
-                        {accentOptions.map((opt) => (
-                            <TouchableOpacity
-                                key={opt.name}
-                                style={[
-                                    styles.themeOption,
-                                    { borderColor: accent === opt.name ? colors.primary : colors.border },
-                                    accent === opt.name && { backgroundColor: colors.primary + '10' }
-                                ]}
-                                onPress={() => setAccent(opt.name)}
-                            >
-                                <View style={[styles.themePreview, { backgroundColor: opt.preview }]} />
-                                <Text style={[styles.themeLabel, { color: accent === opt.name ? colors.primary : colors.text }]}>{opt.label}</Text>
-                            </TouchableOpacity>
-                        ))}
-                    </View>
+                    <GlassCard style={[styles.settingsCard, { backgroundColor: colors.surface }]}>
+                        {renderSettingItem(
+                            <Palette size={20} color={colors.textSecondary} />,
+                            "Choose Theme",
+                            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                                <View style={{ width: 16, height: 16, borderRadius: 8, backgroundColor: AccentPalettes[accent].primary }} />
+                                <ChevronRight size={20} color={colors.textSecondary} />
+                            </View>,
+                            () => setThemeModalVisible(true)
+                        )}
+                    </GlassCard>
                 </View>
 
                 <View style={styles.section}>
@@ -191,10 +205,15 @@ export default function SettingsScreen() {
                             <ChevronRight size={20} color={colors.textSecondary} />,
                             handleSettleUp
                         )}
-                        <View style={[styles.separator, { backgroundColor: colors.border }]} />
+                    </GlassCard>
+                </View>
+
+                <View style={styles.section}>
+                    <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>Danger Zone</Text>
+                    <GlassCard style={[styles.settingsCard, { backgroundColor: colors.surface }]}>
                         {renderSettingItem(
                             <Trash2 size={20} color={colors.error} />,
-                            "Clear Data",
+                            "Delete Account",
                             <ChevronRight size={20} color={colors.textSecondary} />,
                             handleClearData
                         )}
@@ -218,6 +237,44 @@ export default function SettingsScreen() {
                     <Text style={[styles.copyrightText, { color: colors.textSecondary }]}>Made with ❤️ by AntiGravity</Text>
                 </View>
             </ScrollView>
+
+            <Modal
+                visible={themeModalVisible}
+                animationType="slide"
+                transparent={true}
+                onRequestClose={() => setThemeModalVisible(false)}
+            >
+                <View style={[styles.modalOverlay, { backgroundColor: isDark ? 'rgba(0,0,0,0.8)' : 'rgba(0,0,0,0.5)' }]}>
+                    <View style={[styles.modalContent, { backgroundColor: colors.background }]}>
+                        <View style={styles.modalHeader}>
+                            <Text style={[styles.modalTitle, { color: colors.text }]}>Choose Accent Theme</Text>
+                            <TouchableOpacity onPress={() => setThemeModalVisible(false)} style={styles.modalCloseButton}>
+                                <X size={24} color={colors.textSecondary} />
+                            </TouchableOpacity>
+                        </View>
+                        <ScrollView contentContainerStyle={styles.modalGrid} showsVerticalScrollIndicator={false}>
+                            {accentOptions.map((opt) => (
+                                <TouchableOpacity
+                                    key={opt.name}
+                                    style={[
+                                        styles.themeOptionModal,
+                                        { borderColor: accent === opt.name ? colors.primary : colors.border },
+                                        accent === opt.name && { backgroundColor: colors.primary + '10' }
+                                    ]}
+                                    onPress={() => {
+                                        setAccent(opt.name);
+                                        setThemeModalVisible(false);
+                                    }}
+                                >
+                                    <View style={[styles.themePreviewModal, { backgroundColor: opt.preview }]} />
+                                    <Text style={[styles.themeLabelModal, { color: accent === opt.name ? colors.primary : colors.text }]}>{opt.label}</Text>
+                                </TouchableOpacity>
+                            ))}
+                            <View style={{ width: '100%', height: 20 }} />
+                        </ScrollView>
+                    </View>
+                </View>
+            </Modal>
         </SafeAreaView>
     );
 }
@@ -312,13 +369,38 @@ const styles = StyleSheet.create({
         fontSize: 12,
         marginTop: 4,
     },
-    themeGrid: {
+    modalOverlay: {
+        flex: 1,
+        justifyContent: 'flex-end',
+    },
+    modalContent: {
+        borderTopLeftRadius: 24,
+        borderTopRightRadius: 24,
+        maxHeight: '80%',
+        paddingBottom: 40,
+    },
+    modalHeader: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        padding: 20,
+        borderBottomWidth: 1,
+        borderBottomColor: 'rgba(150,150,150,0.1)',
+    },
+    modalTitle: {
+        fontSize: 18,
+        fontWeight: '700',
+    },
+    modalCloseButton: {
+        padding: 4,
+    },
+    modalGrid: {
         flexDirection: 'row',
         flexWrap: 'wrap',
         gap: 12,
-        paddingHorizontal: 4,
+        padding: 20,
     },
-    themeOption: {
+    themeOptionModal: {
         width: '30%',
         aspectRatio: 1,
         borderRadius: 12,
@@ -328,13 +410,13 @@ const styles = StyleSheet.create({
         justifyContent: 'center',
         backgroundColor: 'rgba(255, 255, 255, 0.05)',
     },
-    themePreview: {
+    themePreviewModal: {
         width: 32,
         height: 32,
         borderRadius: 16,
         marginBottom: 8,
     },
-    themeLabel: {
+    themeLabelModal: {
         fontSize: 12,
         fontWeight: '600',
     },
