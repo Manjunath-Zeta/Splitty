@@ -21,6 +21,8 @@ export default function SettingsScreen() {
         userProfile,
         notificationsEnabled,
         setNotificationsEnabled,
+        dashboardViewPreference,
+        setDashboardViewPreference,
         signOut
     } = useSplittyStore();
     const router = useRouter();
@@ -186,6 +188,17 @@ export default function SettingsScreen() {
                             "Activity Log",
                             <ChevronRight size={20} color={colors.textSecondary} />,
                             () => router.push('/activity-log')
+                        )}
+                        <View style={[styles.separator, { backgroundColor: colors.border }]} />
+                        {renderSettingItem(
+                            <View style={{ width: 20, height: 20, borderRadius: 10, borderWidth: 2, borderColor: colors.textSecondary }} />,
+                            "Use Debt Flow Tree",
+                            <Switch
+                                value={dashboardViewPreference === 'tree'}
+                                onValueChange={(val) => setDashboardViewPreference(val ? 'tree' : 'list')}
+                                trackColor={{ false: colors.border, true: colors.primary }}
+                                thumbColor={'white'}
+                            />
                         )}
                         <View style={[styles.separator, { backgroundColor: colors.border }]} />
                         {renderSettingItem(

@@ -5,6 +5,7 @@ import { Colors } from '../constants/Colors';
 import { StatusBar } from 'expo-status-bar';
 import { useSplittyStore } from '../store/useSplittyStore';
 import { supabase } from '../lib/supabase';
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
 
 export default function RootLayout() {
     const router = useRouter();
@@ -80,30 +81,32 @@ export default function RootLayout() {
                     </Text>
                 </View>
             )}
-            <Stack
-                screenOptions={{
-                    headerStyle: {
-                        backgroundColor: colors.background,
-                    },
-                    headerTitleStyle: {
-                        color: colors.text,
-                        fontWeight: 'bold',
-                    },
-                    headerShadowVisible: false,
-                    headerTintColor: colors.primary,
-                }}
-            >
-                <Stack.Screen name="index" options={{ headerShown: false, title: '' }} />
-                <Stack.Screen name="auth" options={{ headerShown: false, title: '' }} />
-                <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-                <Stack.Screen
-                    name="add-expense"
-                    options={{
-                        presentation: 'modal',
-                        headerShown: false,
+            <GestureHandlerRootView style={{ flex: 1 }}>
+                <Stack
+                    screenOptions={{
+                        headerStyle: {
+                            backgroundColor: colors.background,
+                        },
+                        headerTitleStyle: {
+                            color: colors.text,
+                            fontWeight: 'bold',
+                        },
+                        headerShadowVisible: false,
+                        headerTintColor: colors.primary,
                     }}
-                />
-            </Stack>
+                >
+                    <Stack.Screen name="index" options={{ headerShown: false, title: '' }} />
+                    <Stack.Screen name="auth" options={{ headerShown: false, title: '' }} />
+                    <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+                    <Stack.Screen
+                        name="add-expense"
+                        options={{
+                            presentation: 'modal',
+                            headerShown: false,
+                        }}
+                    />
+                </Stack>
+            </GestureHandlerRootView>
         </>
     );
 }

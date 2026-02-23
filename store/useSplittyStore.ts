@@ -156,6 +156,9 @@ interface SplittyState {
     notificationsEnabled: boolean;
     setNotificationsEnabled: (enabled: boolean) => void;
     initNotifications: () => Promise<void>;
+    // View Preferences
+    dashboardViewPreference: 'tree' | 'list';
+    setDashboardViewPreference: (pref: 'tree' | 'list') => void;
 }
 
 const calculateBalances = (expenses: Expense[], friends: Friend[], groups: Group[]) => {
@@ -707,6 +710,8 @@ export const useSplittyStore = create<SplittyState>()(
                     console.log('Push Data: Local Notifications Ready');
                 }
             },
+            dashboardViewPreference: 'tree',
+            setDashboardViewPreference: (pref) => set({ dashboardViewPreference: pref }),
             toggleTheme: () => set((state) => {
                 const nextMode: AppearanceMode = state.appearance === 'light' ? 'dark' : 'light';
                 return {
@@ -789,11 +794,24 @@ export const useSplittyStore = create<SplittyState>()(
                         const realSplitWith = mapIdsToReal(newExpense.splitWith, friends, session.user.id);
                         const realSplitDetails = newExpense.splitDetails ? mapSplitDetailsToReal(newExpense.splitDetails, friends, session.user.id) : {};
 
+                        // Determine the correct payer_id for Supabase
+                        // Supabase expects a profile UUID, so we must map it. 
+                        // If it's the session user, it's their UUID. 
+                        // If it's a friend, we need to try getting their linked real user UUID.
+                        // If they don't have a linked user id (local only), payer_id must be null 
+                        // and we rely on payer_name. 
+                        let finalSupabasePayerId = null;
+                        if (expense.payerId === 'self') {
+                            finalSupabasePayerId = session.user.id;
+                        } else if (payer?.linkedUserId) {
+                            finalSupabasePayerId = payer.linkedUserId;
+                        }
+
                         supabase.from('expenses').insert({
                             id: newExpense.id,
                             description: newExpense.description,
                             amount: newExpense.amount,
-                            payer_id: realPayerId === session.user.id ? session.user.id : (realPayerId || null),
+                            payer_id: finalSupabasePayerId,
                             payer_name: payerName,
                             group_id: newExpense.groupId,
                             date: newExpense.date,
