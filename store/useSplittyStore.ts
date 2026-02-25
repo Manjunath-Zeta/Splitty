@@ -7,6 +7,7 @@ import { supabase } from '../lib/supabase';
 import { ThemeName, AppearanceMode, AccentName, getThemeColors, ThemeColors } from '../constants/Colors';
 import { notificationService } from '../lib/NotificationService';
 import * as Crypto from 'expo-crypto';
+import { CATEGORIES, Category } from '../constants/Categories';
 
 // --- ID Mapping Helpers ---
 const mapToRealId = (localId: string, friends: Friend[], sessionUserId: string): string => {
@@ -67,6 +68,11 @@ export interface Expense {
     createdBy?: string;
 }
 
+export interface MonthlyBudget {
+    month: string; // e.g. "2023-11"
+    categories: Record<string, number>; // Maps category ID to budget amount
+}
+
 export type Frequency = 'daily' | 'weekly' | 'monthly';
 
 export interface RecurringExpense {
@@ -121,6 +127,13 @@ interface SplittyState {
     expenses: Expense[];
     recurringExpenses: RecurringExpense[];
     activities: ActivityLog[];
+    budgets: MonthlyBudget[];
+    categories: Category[];
+    addCategory: (category: Omit<Category, 'id'>) => void;
+    deleteCategory: (categoryId: string) => void;
+    getCategoryById: (categoryId: string) => Category;
+    setCategoryBudget: (month: string, categoryId: string, amount: number) => void;
+    autoFillBudget: (month: string) => void;
     addExpense: (expense: Omit<Expense, 'id' | 'date'>) => void;
     deleteExpense: (id: string) => Promise<void>;
     editExpense: (id: string, updatedExpense: Omit<Expense, 'id' | 'date'>) => void;
@@ -159,6 +172,7 @@ interface SplittyState {
     // View Preferences
     dashboardViewPreference: 'tree' | 'list';
     setDashboardViewPreference: (pref: 'tree' | 'list') => void;
+    unknownFriendNames: Record<string, string>;
 }
 
 const calculateBalances = (expenses: Expense[], friends: Friend[], groups: Group[]) => {
@@ -440,13 +454,70 @@ export const useSplittyStore = create<SplittyState>()(
                 // This ensures that friend balances are accurate based on fetched expense history
                 const { friends: balancedFriends, groups: balancedGroups } = calculateBalances(loadedExpenses, loadedFriends, loadedGroups);
 
+                // 5.5. Fetch Names for Unknown Friends (Local users of other people)
+                let newUnknownFriendNames: Record<string, string> = {};
+                if (loadedExpenses.length > 0) {
+                    const knownFriendIds = new Set([userId, 'self', ...loadedFriends.map(f => f.id)]);
+                    const unknownFriendIds = new Set<string>();
+
+                    loadedExpenses.forEach(e => {
+                        if (!knownFriendIds.has(e.payerId)) unknownFriendIds.add(e.payerId);
+                        e.splitWith.forEach(id => {
+                            if (!knownFriendIds.has(id)) unknownFriendIds.add(id);
+                        });
+                    });
+
+                    if (unknownFriendIds.size > 0) {
+                        // 1. Fetch friend records to get their name and user_id (creator)
+                        const { data: missingFriendsData } = await supabase
+                            .from('friends')
+                            .select('id, name, user_id')
+                            .in('id', Array.from(unknownFriendIds));
+
+                        if (missingFriendsData && missingFriendsData.length > 0) {
+                            // 2. Collect unique creator IDs
+                            const creatorIds = new Set(
+                                missingFriendsData
+                                    .map((f: any) => f.user_id)
+                                    .filter((id: string) => !!id && id !== userId) // Exclude current user just in case
+                            );
+
+                            // 3. Fetch creator profiles
+                            const creatorMap = new Map<string, string>();
+                            if (creatorIds.size > 0) {
+                                const { data: creatorProfiles } = await supabase
+                                    .from('profiles')
+                                    .select('id, full_name, email')
+                                    .in('id', Array.from(creatorIds));
+
+                                if (creatorProfiles) {
+                                    creatorProfiles.forEach((p: any) => {
+                                        creatorMap.set(p.id, p.full_name || p.email?.split('@')[0] || 'Unknown User');
+                                    });
+                                }
+                            }
+
+                            // 4. Build the mapping
+                            missingFriendsData.forEach((f: any) => {
+                                const creatorName = creatorMap.get(f.user_id);
+                                if (creatorName) {
+                                    newUnknownFriendNames[f.id] = `Local user of ${creatorName}`;
+                                } else {
+                                    newUnknownFriendNames[f.id] = f.name ? `${f.name} (Local user)` : 'Unknown';
+                                }
+                            });
+                        }
+                    }
+                }
+
                 // 6. Set Final State
                 set({
                     userProfile,
                     friends: balancedFriends,
                     groups: balancedGroups,
                     expenses: loadedExpenses,
-                    activities: (activitiesRes as any)?.data || []
+                    activities: (activitiesRes as any)?.data || [],
+                    unknownFriendNames: newUnknownFriendNames
                 });
             },
             friends: [
@@ -458,6 +529,95 @@ export const useSplittyStore = create<SplittyState>()(
             ],
             expenses: [],
             activities: [],
+            budgets: [],
+            categories: CATEGORIES,
+            unknownFriendNames: {},
+            addCategory: (category) => set((state) => ({
+                categories: [...state.categories, { ...category, id: Crypto.randomUUID() }]
+            })),
+            deleteCategory: (categoryId) => set((state) => {
+                // Replace category of any expense using the deleted category with 'general'
+                const updatedExpenses = state.expenses.map(e =>
+                    e.category === categoryId ? { ...e, category: 'general' } : e
+                );
+
+                return {
+                    categories: state.categories.filter(c => c.id !== categoryId),
+                    expenses: updatedExpenses
+                };
+            }),
+            getCategoryById: (categoryId) => {
+                const { categories } = get();
+                return categories.find(c => c.id === categoryId) || categories.find(c => c.id === 'general') || CATEGORIES[0];
+            },
+            setCategoryBudget: (month, categoryId, amount) => set((state) => {
+                const existingBudgetIndex = state.budgets.findIndex(b => b.month === month);
+                if (existingBudgetIndex >= 0) {
+                    const newBudgets = [...state.budgets];
+                    newBudgets[existingBudgetIndex] = {
+                        ...newBudgets[existingBudgetIndex],
+                        categories: {
+                            ...newBudgets[existingBudgetIndex].categories,
+                            [categoryId]: amount
+                        }
+                    };
+                    return { budgets: newBudgets };
+                } else {
+                    return {
+                        budgets: [...state.budgets, { month, categories: { [categoryId]: amount } }]
+                    };
+                }
+            }),
+            autoFillBudget: (month) => set((state) => {
+                const currentMonthDate = new Date(`${month}-01T00:00:00Z`);
+                const threeMonthsAgo = new Date(currentMonthDate);
+                threeMonthsAgo.setMonth(threeMonthsAgo.getMonth() - 3);
+
+                const recentExpenses = state.expenses.filter(e => {
+                    if (e.isSettlement) return false;
+                    const eDate = new Date(e.date);
+                    return eDate >= threeMonthsAgo && eDate < currentMonthDate;
+                });
+
+                const categoryTotals: Record<string, number> = {};
+                recentExpenses.forEach(e => {
+                    let myShare = 0;
+                    if (e.splitType === 'unequal' && e.splitDetails) {
+                        myShare = e.splitDetails['self'] || 0;
+                    } else {
+                        const totalPeople = (e.splitWith?.length || 0) + 1;
+                        myShare = e.amount / totalPeople;
+                    }
+
+                    if (myShare > 0) {
+                        if (!categoryTotals[e.category]) categoryTotals[e.category] = 0;
+                        categoryTotals[e.category] += myShare;
+                    }
+                });
+
+                const newCategories: Record<string, number> = {};
+                Object.entries(categoryTotals).forEach(([cat, total]) => {
+                    const avg = Math.round(total / 3);
+                    if (avg > 0) {
+                        newCategories[cat] = avg;
+                    }
+                });
+
+                const existingBudgetIndex = state.budgets.findIndex(b => b.month === month);
+                if (existingBudgetIndex >= 0) {
+                    const newBudgets = [...state.budgets];
+                    newBudgets[existingBudgetIndex] = {
+                        ...newBudgets[existingBudgetIndex],
+                        categories: {
+                            ...newBudgets[existingBudgetIndex].categories,
+                            ...newCategories
+                        }
+                    };
+                    return { budgets: newBudgets };
+                } else {
+                    return { budgets: [...state.budgets, { month, categories: newCategories }] };
+                }
+            }),
             userProfile: {
                 name: 'Guest',
                 email: '',
@@ -558,6 +718,9 @@ export const useSplittyStore = create<SplittyState>()(
                 groups: [],
                 expenses: [],
                 recurringExpenses: [],
+                budgets: [],
+                categories: CATEGORIES,
+                unknownFriendNames: {},
                 session: null,
                 userProfile: { name: 'Guest', email: '' }
             })),

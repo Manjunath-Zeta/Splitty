@@ -4,9 +4,9 @@ import { useLocalSearchParams, useRouter, Stack } from 'expo-router';
 import { useSplittyStore } from '../../store/useSplittyStore';
 import { GlassCard } from '../../components/GlassCard';
 import { ArrowLeft, Banknote, Trash2, Users, Mail, Phone, ChevronRight, Edit2, X, Camera } from 'lucide-react-native';
-import { getCategoryById } from '../../constants/Categories';
 import { supabase } from '../../lib/supabase';
 import { InitialsAvatar } from '../../components/InitialsAvatar';
+import { CategoryIcon } from '../../components/CategoryIcon';
 import * as Haptics from 'expo-haptics';
 import * as ImagePicker from 'expo-image-picker';
 
@@ -20,7 +20,7 @@ interface LinkedProfile {
 export default function FriendDetailsScreen() {
     const { id } = useLocalSearchParams<{ id: string }>();
     const router = useRouter();
-    const { friends, expenses, groups, appearance, colors, formatCurrency, deleteExpense, deleteFriend } = useSplittyStore();
+    const { friends, expenses, groups, appearance, colors, formatCurrency, deleteExpense, deleteFriend, getCategoryById } = useSplittyStore();
     const isDark = appearance === 'dark';
 
     const friend = friends.find(f => f.id === id);
@@ -280,10 +280,7 @@ export default function FriendDetailsScreen() {
                                         {expense.isSettlement ? (
                                             <Banknote size={20} color={colors.success} />
                                         ) : (
-                                            (() => {
-                                                const CategoryIcon = getCategoryById(expense.category).icon;
-                                                return <CategoryIcon size={20} color={getCategoryById(expense.category).color} />;
-                                            })()
+                                            <CategoryIcon name={getCategoryById(expense.category).icon} size={20} color={getCategoryById(expense.category).color} />
                                         )}
                                     </View>
                                     <View style={{ flex: 1, marginLeft: 12 }}>

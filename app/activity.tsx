@@ -4,13 +4,14 @@ import { useRouter, Stack } from 'expo-router';
 import { useSplittyStore } from '../store/useSplittyStore';
 import { Themes, ThemeName, Colors } from '../constants/Colors';
 import { GlassCard } from '../components/GlassCard';
+import { CategoryIcon } from '../components/CategoryIcon';
 import { ArrowLeft, Search, Trash2, Banknote, Users } from 'lucide-react-native';
 import { getCategoryById } from '../constants/Categories';
 import * as Haptics from 'expo-haptics';
 
 export default function ActivityScreen() {
     const router = useRouter();
-    const { expenses, friends, groups, appearance, colors, formatCurrency, deleteExpense, fetchData } = useSplittyStore();
+    const { expenses, friends, groups, appearance, colors, formatCurrency, deleteExpense, fetchData, unknownFriendNames } = useSplittyStore();
     const [searchQuery, setSearchQuery] = useState('');
     const [refreshing, setRefreshing] = useState(false);
     const isDark = appearance === 'dark';
@@ -36,7 +37,7 @@ export default function ActivityScreen() {
 
     const getPayerName = (id: string) => {
         if (id === 'self') return 'You';
-        return friends.find(f => f.id === id)?.name || 'Unknown';
+        return friends.find(f => f.id === id)?.name || unknownFriendNames[id] || 'Unknown';
     };
 
     const handleDelete = (id: string) => {
@@ -112,12 +113,9 @@ export default function ActivityScreen() {
                                 { backgroundColor: item.isSettlement ? colors.success + '20' : getCategoryById(item.category).color + '20' }
                             ]}>
                                 {item.isSettlement ? (
-                                    <Banknote size={20} color={colors.success} />
+                                    <Banknote size={20} color={colors.primary} />
                                 ) : (
-                                    (() => {
-                                        const CategoryIcon = getCategoryById(item.category).icon;
-                                        return <CategoryIcon size={20} color={getCategoryById(item.category).color} />;
-                                    })()
+                                    <CategoryIcon name={getCategoryById(item.category).icon} size={20} color={getCategoryById(item.category).color} />
                                 )}
                             </View>
                             <View style={{ flex: 1, marginLeft: 12 }}>

@@ -7,16 +7,16 @@ import { VibrantButton } from '../components/VibrantButton';
 import { useSplittyStore } from '../store/useSplittyStore';
 import { ChevronRight, Users, Landmark, Check, Plus, Minus, Repeat, X, Edit2 } from 'lucide-react-native';
 import { useRouter, useLocalSearchParams, Stack } from 'expo-router';
-import { CATEGORIES, CategoryKey } from '../constants/Categories';
 import { Frequency } from '../store/useSplittyStore';
 
 import { FriendSelector } from '../components/FriendSelector';
 import { SplitDetails } from '../components/SplitDetails';
+import { CategoryIcon } from '../components/CategoryIcon';
 
 export default function AddExpenseScreen() {
     const router = useRouter();
     const { id } = useLocalSearchParams<{ id: string }>();
-    const { friends, groups, addExpense, editExpense, expenses, appearance, colors, formatCurrency } = useSplittyStore();
+    const { friends, groups, addExpense, editExpense, expenses, appearance, colors, formatCurrency, categories, unknownFriendNames } = useSplittyStore();
     const isDark = appearance === 'dark';
 
     // Edit Mode State
@@ -25,7 +25,7 @@ export default function AddExpenseScreen() {
 
     const [description, setDescription] = useState('');
     const [amount, setAmount] = useState('');
-    const [category, setCategory] = useState<CategoryKey>('general');
+    const [category, setCategory] = useState<string>('general');
     const [type, setType] = useState<'individual' | 'group'>('individual');
 
     // Changed to Array for Multi-Select
@@ -57,7 +57,7 @@ export default function AddExpenseScreen() {
 
     const getName = (userId: string) => {
         if (userId === 'self') return 'You';
-        return friends.find(f => f.id === userId)?.name || 'Unknown';
+        return friends.find(f => f.id === userId)?.name || unknownFriendNames[userId] || 'Unknown';
     };
 
     // Memoized toggle
@@ -78,7 +78,9 @@ export default function AddExpenseScreen() {
                 setDescription(expense.description);
                 setAmount(expense.amount.toString());
                 setPayerId(expense.payerId);
-                setCategory((expense.category as CategoryKey) || 'general');
+                // Also validate category exists, if not fall back to 'general'
+                const validCategory = categories.find(c => c.id === expense.category) ? expense.category : 'general';
+                setCategory(validCategory);
                 setSplitType(expense.splitType || 'equal');
 
                 if (expense.groupId) {
@@ -102,7 +104,7 @@ export default function AddExpenseScreen() {
         } else {
             setIsEditing(true); // Default to editing if adding new
         }
-    }, [id, expenses]);
+    }, [id, expenses, categories]);
 
     // Reset logic when switching tabs
     const handleTypeChange = (newType: 'individual' | 'group') => {
@@ -265,7 +267,7 @@ export default function AddExpenseScreen() {
                 <Text style={[styles.sectionTitle, { color: colors.text }]}>Category</Text>
                 <View style={{ marginBottom: 24 }}>
                     <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.chipScroll}>
-                        {CATEGORIES.map(cat => (
+                        {categories.map(cat => (
                             <TouchableOpacity
                                 key={cat.id}
                                 style={[
@@ -277,7 +279,7 @@ export default function AddExpenseScreen() {
                                 onPress={() => setCategory(cat.id)}
                                 disabled={!isEditing}
                             >
-                                <cat.icon size={16} color={category === cat.id ? 'white' : colors.textSecondary} />
+                                <CategoryIcon name={cat.icon} size={16} color={category === cat.id ? 'white' : colors.textSecondary} />
                                 <Text style={[
                                     styles.chipText,
                                     { color: colors.textSecondary },

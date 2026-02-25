@@ -10,7 +10,7 @@ import { getCategoryById } from '../constants/Categories';
 
 export default function AnalyticsScreen() {
     const router = useRouter();
-    const { expenses, friends, groups, appearance, colors, formatCurrency } = useSplittyStore();
+    const { expenses, categories, getCategoryById, friends, groups, appearance, colors, formatCurrency, userProfile, unknownFriendNames } = useSplittyStore();
     const isDark = appearance === 'dark';
     const { width } = Dimensions.get('window');
 
@@ -87,7 +87,7 @@ export default function AnalyticsScreen() {
     const friendSpendData = Object.entries(friendSpending).map(([id, amount]) => {
         const friend = friends.find(f => f.id === id);
         return {
-            name: friend?.name || 'Unknown',
+            name: friend?.name || unknownFriendNames[id] || 'Unknown',
             amount: amount,
             percentage: totalSpent > 0 ? (amount / totalSpent) * 100 : 0
         };

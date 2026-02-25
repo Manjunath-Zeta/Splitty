@@ -5,9 +5,8 @@ import { AccentPalettes, AccentName, AppearanceMode } from '../../constants/Colo
 import { supabase } from '../../lib/supabase';
 import { GlassCard } from '../../components/GlassCard';
 import { useSplittyStore } from '../../store/useSplittyStore';
-import { User, Bell, Trash2, LogOut, ChevronRight, CreditCard, DollarSign, Activity, Palette, X } from 'lucide-react-native';
+import { User, Bell, Trash2, LogOut, ChevronRight, CreditCard, DollarSign, Activity, Palette, X, Tag } from 'lucide-react-native';
 import { useRouter } from 'expo-router';
-
 export default function SettingsScreen() {
     const {
         clearData,
@@ -211,6 +210,12 @@ export default function SettingsScreen() {
                             handleCurrencyChange
                         )}
                         <View style={[styles.separator, { backgroundColor: colors.border }]} />
+                        {renderSettingItem(
+                            <Tag size={20} color={colors.textSecondary} />,
+                            "Manage Categories",
+                            <ChevronRight size={20} color={colors.textSecondary} />,
+                            () => router.push('/manage-categories')
+                        )}
                         {renderSettingItem(
                             <Bell size={20} color={colors.textSecondary} />,
                             "Notifications",

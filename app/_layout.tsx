@@ -1,6 +1,7 @@
 import { useEffect } from 'react';
 import { Alert, View, Text } from 'react-native';
-import { Stack, useRouter, useSegments } from 'expo-router';
+import { Stack, useRouter, useSegments, useRootNavigationState } from 'expo-router';
+import { useState } from 'react';
 import { Colors } from '../constants/Colors';
 import { StatusBar } from 'expo-status-bar';
 import { useSplittyStore } from '../store/useSplittyStore';
@@ -12,6 +13,9 @@ export default function RootLayout() {
     const segments = useSegments();
     const { setSession, fetchData, subscribeToChanges, initNotifications } = useSplittyStore();
     const session = useSplittyStore(state => state.session);
+
+    const rootNavigationState = useRootNavigationState();
+    const [isReady, setIsReady] = useState(false);
 
     useEffect(() => {
         initNotifications();
@@ -27,30 +31,34 @@ export default function RootLayout() {
         supabase.auth.getSession().then(({ data: { session } }) => {
             console.log('RootLayout: Session fetched', !!session);
             setSession(session);
-            if (session) {
-                fetchData();
-                console.log('RootLayout: Redirecting to Tabs');
-                router.replace('/(tabs)');
-            } else {
-                console.log('RootLayout: Redirecting to Auth');
-                router.replace('/auth');
-            }
+            setIsReady(true);
         });
 
         // Auth Listener
         const { data: { subscription: authSubscription } } = supabase.auth.onAuthStateChange((event, session) => {
             console.log('RootLayout: Auth event', event, !!session);
             setSession(session);
-            if (session) {
-                fetchData();
-                router.replace('/(tabs)');
-            } else {
-                router.replace('/auth');
-            }
         });
 
         return () => authSubscription.unsubscribe();
     }, []);
+
+    // Handle Auth Routing
+    useEffect(() => {
+        if (!isReady || !rootNavigationState?.key) return;
+
+        const inAuthGroup = segments[0] === 'auth';
+
+        if (session && inAuthGroup) {
+            // First time they are authenticated, ensure we get their profile/data
+            fetchData();
+            console.log('RootLayout: Redirecting to Tabs. Session Active.');
+            router.replace('/(tabs)');
+        } else if (!session && !inAuthGroup) {
+            console.log('RootLayout: Redirecting to Auth. No session.');
+            router.replace('/auth');
+        }
+    }, [session, segments, rootNavigationState, isReady]);
 
     // Real-time Sync Subscription
     useEffect(() => {
@@ -100,6 +108,27 @@ export default function RootLayout() {
                     <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
                     <Stack.Screen
                         name="add-expense"
+                        options={{
+                            presentation: 'modal',
+                            headerShown: false,
+                        }}
+                    />
+                    <Stack.Screen
+                        name="set-budget"
+                        options={{
+                            presentation: 'modal',
+                            headerShown: false,
+                        }}
+                    />
+                    <Stack.Screen
+                        name="budget-category/[month]/[categoryId]"
+                        options={{
+                            presentation: 'modal',
+                            headerShown: false,
+                        }}
+                    />
+                    <Stack.Screen
+                        name="manage-categories"
                         options={{
                             presentation: 'modal',
                             headerShown: false,

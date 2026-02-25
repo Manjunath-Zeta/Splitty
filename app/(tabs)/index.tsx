@@ -5,14 +5,15 @@ import { VibrantButton } from '../../components/VibrantButton';
 import { useRouter } from 'expo-router';
 import { useSplittyStore } from '../../store/useSplittyStore';
 import { Trash2, Banknote } from 'lucide-react-native';
-import { getCategoryById } from '../../constants/Categories';
+import { supabase } from '../../lib/supabase';
 import { DebtTree } from '../../components/DebtTree';
+import { CategoryIcon } from '../../components/CategoryIcon';
 import * as Haptics from 'expo-haptics';
 import { useState } from 'react';
 
 export default function DashboardScreen() {
     const router = useRouter();
-    const { friends, expenses, deleteExpense, appearance, colors, formatCurrency, userProfile, fetchData, dashboardViewPreference } = useSplittyStore();
+    const { friends, groups, expenses, deleteExpense, appearance, colors, formatCurrency, userProfile, fetchData, dashboardViewPreference, getCategoryById } = useSplittyStore();
     const isDark = appearance === 'dark';
     const [refreshing, setRefreshing] = useState(false);
 
@@ -188,12 +189,9 @@ export default function DashboardScreen() {
                                         { backgroundColor: expense.isSettlement ? colors.success + '20' : getCategoryById(expense.category).color + '20' }
                                     ]}>
                                         {expense.isSettlement ? (
-                                            <Banknote size={20} color={colors.success} />
+                                            <Banknote size={20} color={colors.primary} />
                                         ) : (
-                                            (() => {
-                                                const CategoryIcon = getCategoryById(expense.category).icon;
-                                                return <CategoryIcon size={20} color={getCategoryById(expense.category).color} />;
-                                            })()
+                                            <CategoryIcon name={getCategoryById(expense.category).icon} size={20} color={getCategoryById(expense.category).color} />
                                         )}
                                     </View>
                                     <View style={{ flex: 1, marginLeft: 12 }}>

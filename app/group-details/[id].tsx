@@ -5,13 +5,13 @@ import { useSplittyStore } from '../../store/useSplittyStore';
 import { Themes, ThemeName, Colors } from '../../constants/Colors';
 import { GlassCard } from '../../components/GlassCard';
 import { ArrowLeft, Users, Receipt, Banknote, Trash2 } from 'lucide-react-native';
-import { getCategoryById } from '../../constants/Categories';
 import { InitialsAvatar } from '../../components/InitialsAvatar';
+import { CategoryIcon } from '../../components/CategoryIcon';
 
 export default function GroupDetailsScreen() {
     const { id } = useLocalSearchParams<{ id: string }>();
     const router = useRouter();
-    const { groups, expenses, friends, appearance, colors, formatCurrency, deleteExpense, userProfile } = useSplittyStore();
+    const { groups, expenses, friends, appearance, colors, formatCurrency, deleteExpense, userProfile, unknownFriendNames, getCategoryById } = useSplittyStore();
     const isDark = appearance === 'dark';
 
     const group = groups.find(g => g.id === id);
@@ -49,7 +49,7 @@ export default function GroupDetailsScreen() {
 
     const getMemberName = (id: string) => {
         if (id === 'self') return 'You';
-        return friends.find(f => f.id === id)?.name || 'Unknown';
+        return friends.find(f => f.id === id)?.name || unknownFriendNames[id] || 'Unknown';
     };
 
     const handleDeleteExpense = (expenseId: string) => {
@@ -178,17 +178,11 @@ export default function GroupDetailsScreen() {
                             onPress={() => router.push({ pathname: '/add-expense', params: { id: expense.id } })}
                         >
                             <GlassCard style={[styles.activityItem, { backgroundColor: colors.surface }]}>
-                                <View style={[
-                                    styles.categoryIcon,
-                                    { backgroundColor: expense.isSettlement ? colors.success + '20' : getCategoryById(expense.category).color + '20' }
-                                ]}>
+                                <View style={[styles.categoryIcon, { backgroundColor: expense.isSettlement ? colors.primary + '20' : getCategoryById(expense.category).color + '20' }]}>
                                     {expense.isSettlement ? (
-                                        <Banknote size={20} color={colors.success} />
+                                        <Banknote size={20} color={colors.primary} />
                                     ) : (
-                                        (() => {
-                                            const CategoryIcon = getCategoryById(expense.category).icon;
-                                            return <CategoryIcon size={20} color={getCategoryById(expense.category).color} />;
-                                        })()
+                                        <CategoryIcon name={getCategoryById(expense.category).icon} size={20} color={getCategoryById(expense.category).color} />
                                     )}
                                 </View>
                                 <View style={{ flex: 1, marginLeft: 12 }}>

@@ -1,5 +1,5 @@
 import { Tabs } from 'expo-router';
-import { Home, Users, LayoutGrid, Settings } from 'lucide-react-native';
+import { Home, Users, LayoutGrid, Settings, Wallet } from 'lucide-react-native';
 import { Platform } from 'react-native';
 import { useSplittyStore } from '../../store/useSplittyStore';
 
@@ -47,6 +47,13 @@ export default function TabsLayout() {
                 options={{
                     title: 'Groups',
                     tabBarIcon: ({ color, size }) => <Home color={color} size={size} />,
+                }}
+            />
+            <Tabs.Screen
+                name="budgets"
+                options={{
+                    title: 'Budgets',
+                    tabBarIcon: ({ color, size }) => <Wallet color={color} size={size} />,
                 }}
             />
             <Tabs.Screen
