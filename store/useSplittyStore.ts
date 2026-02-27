@@ -130,6 +130,8 @@ interface SplittyState {
     activities: ActivityLog[];
     budgets: MonthlyBudget[];
     categories: Category[];
+    categoryOrder: string[]; // Order of category IDs for the budgets page
+    setCategoryOrder: (order: string[]) => void;
     addCategory: (category: Omit<Category, 'id'>) => void;
     deleteCategory: (categoryId: string) => void;
     getCategoryById: (categoryId: string) => Category;
@@ -552,7 +554,9 @@ export const useSplittyStore = create<SplittyState>()(
             activities: [],
             budgets: [],
             categories: CATEGORIES,
+            categoryOrder: [],
             unknownFriendNames: {},
+            setCategoryOrder: (order) => set({ categoryOrder: order }),
             addCategory: (category) => set((state) => ({
                 categories: [...state.categories, { ...category, id: Crypto.randomUUID() }]
             })),

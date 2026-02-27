@@ -6,12 +6,23 @@ import { useSplittyStore } from '../store/useSplittyStore';
 import { GlassCard } from '../components/GlassCard';
 import { VibrantButton } from '../components/VibrantButton';
 import { CategoryIcon } from '../components/CategoryIcon';
+import { DraggableCategoryList } from '../components/DraggableCategoryList';
 import * as Haptics from 'expo-haptics';
 
 export default function SetBudgetScreen() {
     const router = useRouter();
     const { month } = useLocalSearchParams<{ month: string }>();
-    const { colors, budgets, setCategoryBudget, autoFillBudget, formatCurrency, getCurrencySymbol, categories } = useSplittyStore();
+    const {
+        colors,
+        budgets,
+        setCategoryBudget,
+        autoFillBudget,
+        formatCurrency,
+        getCurrencySymbol,
+        categories,
+        categoryOrder,
+        setCategoryOrder
+    } = useSplittyStore();
 
     // Fallback to current month if navigating here without params
     const monthKey = typeof month === 'string' ? month : `${new Date().getFullYear()}-${String(new Date().getMonth() + 1).padStart(2, '0')}`;
@@ -24,6 +35,20 @@ export default function SetBudgetScreen() {
 
     // We maintain a local editing state of all categories
     const [localBudgets, setLocalBudgets] = useState<Record<string, string>>({});
+
+    const orderedCategories = React.useMemo(() => {
+        const editableCategories = categories.filter(c => c.id !== 'general');
+        if (!categoryOrder || categoryOrder.length === 0) return editableCategories;
+
+        return [...editableCategories].sort((a, b) => {
+            const indexA = categoryOrder.indexOf(a.id);
+            const indexB = categoryOrder.indexOf(b.id);
+            if (indexA === -1 && indexB === -1) return 0;
+            if (indexA === -1) return 1;
+            if (indexB === -1) return -1;
+            return indexA - indexB;
+        });
+    }, [categories, categoryOrder]);
 
     useEffect(() => {
         // Initialize local input values based on store budget
@@ -104,17 +129,17 @@ export default function SetBudgetScreen() {
                         />
                     </GlassCard>
 
-                    <View style={styles.categoriesList}>
-                        {categories.map(category => {
-                            // Skip general category usually used for settlements
-                            if (category.id === 'general') return null;
-
-                            // Check if currentStore has value for suggested hint?
-                            // For true auto-fill hints next to the field, we could pre-calculate here, but auto-fill btn is enough.
+                    <DraggableCategoryList
+                        categoryIds={orderedCategories.map(c => c.id)}
+                        onOrderChange={(newOrder) => setCategoryOrder(newOrder)}
+                        itemHeight={136}
+                        renderItemContent={(categoryId) => {
+                            const category = categories.find(c => c.id === categoryId);
+                            if (!category) return null;
                             const value = localBudgets[category.id] || '';
 
                             return (
-                                <View key={category.id} style={styles.categoryItem}>
+                                <View style={styles.categoryContent}>
                                     <View style={styles.catHeader}>
                                         <View style={[styles.iconWrapper, { backgroundColor: category.color + '20' }]}>
                                             <CategoryIcon name={category.icon} color={category.color} size={24} />
@@ -134,8 +159,8 @@ export default function SetBudgetScreen() {
                                     </View>
                                 </View>
                             );
-                        })}
-                    </View>
+                        }}
+                    />
 
                     <View style={{ height: 140 }} />
                 </ScrollView>
@@ -177,6 +202,7 @@ const styles = StyleSheet.create({
     autoFillTitle: { fontSize: 18, fontWeight: '700' },
     autoFillDesc: { fontSize: 14, lineHeight: 22, marginBottom: 16 },
     categoriesList: { gap: 24 },
+    categoryContent: { gap: 12 },
     categoryItem: { gap: 12 },
     catHeader: { flexDirection: 'row', alignItems: 'center', gap: 12 },
     iconWrapper: { padding: 10, borderRadius: 12 },

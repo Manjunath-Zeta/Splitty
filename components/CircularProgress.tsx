@@ -30,6 +30,10 @@ export const CircularProgress = ({
     const percentage = budget > 0 ? Math.min(spent / budget, 1) : 0;
     const strokeDashoffset = circumference - percentage * circumference;
 
+    const isOver = budget > 0 && spent >= budget;
+    const isWarning = budget > 0 && spent >= budget * 0.85 && !isOver;
+    const strokeColor = isOver ? colors.error : isWarning ? '#F59E0B' : defaultColor;
+
     const animatedOffset = useSharedValue(circumference);
 
     React.useEffect(() => {
@@ -59,7 +63,7 @@ export const CircularProgress = ({
                 />
                 {/* Progress Circle */}
                 <AnimatedCircle
-                    stroke={defaultColor}
+                    stroke={strokeColor}
                     fill="none"
                     cx={size / 2}
                     cy={size / 2}

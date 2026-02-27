@@ -15,7 +15,8 @@ const CategoryRow = ({ item, index }: { item: any; index: number }) => {
     const router = useRouter();
     const { colors, formatCurrency, getCategoryById } = useSplittyStore();
     const catData = getCategoryById(item.categoryId);
-    const isOver = item.spent > item.budget && item.budget > 0;
+    const isOver = item.spent >= item.budget && item.budget > 0;
+    const isWarning = item.spent >= item.budget * 0.85 && item.budget > 0 && !isOver;
 
     const animatedWidth = useSharedValue(0);
 
@@ -51,7 +52,7 @@ const CategoryRow = ({ item, index }: { item: any; index: number }) => {
                         </Text>
                     </View>
                 </View>
-                <Text style={[styles.categoryPercent, { color: isOver ? colors.error : colors.text }]}>
+                <Text style={[styles.categoryPercent, { color: isOver ? colors.error : isWarning ? '#F59E0B' : colors.text }]}>
                     {item.percentage}%
                 </Text>
             </View>
@@ -61,7 +62,7 @@ const CategoryRow = ({ item, index }: { item: any; index: number }) => {
                 <Animated.View
                     style={[
                         styles.progressBarFill,
-                        { backgroundColor: isOver ? colors.error : catData.color },
+                        { backgroundColor: isOver ? colors.error : isWarning ? '#F59E0B' : catData.color },
                         animatedStyle
                     ]}
                 />
@@ -72,7 +73,7 @@ const CategoryRow = ({ item, index }: { item: any; index: number }) => {
 
 export default function BudgetsScreen() {
     const router = useRouter();
-    const { colors, budgets, expenses, setCategoryBudget, formatCurrency, categories, getCategoryById } = useSplittyStore();
+    const { colors, budgets, expenses, setCategoryBudget, formatCurrency, categories, getCategoryById, categoryOrder } = useSplittyStore();
     const [currentDate, setCurrentDate] = useState(new Date());
 
     const monthKey = `${currentDate.getFullYear()}-${String(currentDate.getMonth() + 1).padStart(2, '0')}`;
@@ -154,8 +155,20 @@ export default function BudgetsScreen() {
                 percentage: Math.round(percentage),
                 monthKey // Pass monthKey down for drill-down routing
             };
-        }).sort((a, b) => b.spent - a.spent); // Sort by highest spend first
-    }, [categorySpend, currentBudget]);
+        }).sort((a, b) => {
+            // 1. If we have a custom order, respect it first
+            if (categoryOrder && categoryOrder.length > 0) {
+                const indexA = categoryOrder.indexOf(a.categoryId);
+                const indexB = categoryOrder.indexOf(b.categoryId);
+                if (indexA !== -1 && indexB !== -1) return indexA - indexB;
+                if (indexA !== -1) return -1;
+                if (indexB !== -1) return 1;
+            }
+
+            // 2. Fall back to highest spend first for unordered/new categories
+            return b.spent - a.spent;
+        });
+    }, [categorySpend, currentBudget, categoryOrder]);
 
     return (
         <SafeAreaView style={[styles.safeArea, { backgroundColor: colors.background }]}>
