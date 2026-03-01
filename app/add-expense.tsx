@@ -25,6 +25,7 @@ export default function AddExpenseScreen() {
 
     const [description, setDescription] = useState('');
     const [amount, setAmount] = useState('');
+    const [tagsInput, setTagsInput] = useState('');
     const [category, setCategory] = useState<string>('general');
     const [type, setType] = useState<'individual' | 'group' | 'personal'>('individual');
 
@@ -83,6 +84,9 @@ export default function AddExpenseScreen() {
                 const validCategory = categories.find(c => c.id === expense.category) ? expense.category : 'general';
                 setCategory(validCategory);
                 setSplitType(expense.splitType || 'equal');
+                if (expense.tags && expense.tags.length > 0) {
+                    setTagsInput(expense.tags.join(', '));
+                }
 
                 if (expense.isPersonal) {
                     setType('personal');
@@ -155,6 +159,11 @@ export default function AddExpenseScreen() {
             }
         }
 
+        const tagsArray = tagsInput
+            .split(',')
+            .map(t => t.trim().toLowerCase())
+            .filter(t => t.length > 0);
+
         const expenseData = {
             description,
             amount: numericAmount,
@@ -164,7 +173,8 @@ export default function AddExpenseScreen() {
             splitWith: type === 'individual' ? selectedIds : [],
             splitType,
             splitDetails: splitType === 'unequal' ? splitDetails : undefined,
-            isPersonal: type === 'personal'
+            isPersonal: type === 'personal',
+            tags: tagsArray
         };
 
         if (id) {
@@ -238,7 +248,16 @@ export default function AddExpenseScreen() {
                             editable={isEditing}
                         />
                     </View>
-
+                    <View style={{ marginTop: 16 }}>
+                        <StyledInput
+                            label="Tags (Optional)"
+                            placeholder="e.g. food, trip, birthday"
+                            value={tagsInput}
+                            onChangeText={setTagsInput}
+                            containerStyle={{ marginBottom: 0 }}
+                            editable={isEditing}
+                        />
+                    </View>
                 </GlassCard>
 
                 <Text style={[styles.sectionTitle, { color: colors.text }]}>Split with</Text>

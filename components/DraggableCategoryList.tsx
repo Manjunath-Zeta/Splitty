@@ -74,6 +74,7 @@ function DraggableItem({
     const isDragging = useSharedValue(false);
     const top = useSharedValue(initialPosition * itemHeight);
     const zIndex = useSharedValue(0);
+    const startY = useSharedValue(0);
 
     useAnimatedReaction(
         () => positions.value[id],
@@ -95,14 +96,15 @@ function DraggableItem({
         .onStart(() => {
             isDragging.value = true;
             zIndex.value = 100;
-            top.value = positions.value[id] * itemHeight;
+            startY.value = positions.value[id] * itemHeight;
+            top.value = startY.value;
             runOnJS(dismissKeyboard)();
         })
         .onUpdate((e) => {
             // Restrict dragging bounds
             const maxDragOffset = totalItems * itemHeight - itemHeight;
             const newTop = clamp(
-                positions.value[id] * itemHeight + e.translationY,
+                startY.value + e.translationY,
                 0,
                 maxDragOffset
             );

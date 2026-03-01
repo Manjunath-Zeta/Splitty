@@ -96,6 +96,23 @@ class NotificationService {
         const body = `${userName} settled $${amount} with you.`;
         await this.showLocalNotification(title, body);
     }
+
+    /**
+     * Smart Notify for Budget Alerts
+     */
+    public async notifyBudgetAlert(categoryName: string, percentage: number, remainingDays: number) {
+        let title = '⚠️ Budget Alert';
+        let body = '';
+
+        if (percentage >= 100) {
+            title = '🚫 Budget Exceeded';
+            body = `You've exceeded your ${categoryName} budget for the month.`;
+        } else {
+            body = `Heads up! You've used ${percentage}% of your ${categoryName} budget and have ${remainingDays} days left.`;
+        }
+
+        await this.showLocalNotification(title, body);
+    }
 }
 
 export const notificationService = NotificationService.getInstance();

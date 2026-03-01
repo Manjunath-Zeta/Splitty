@@ -20,8 +20,8 @@ export default function SettingsScreen() {
         userProfile,
         notificationsEnabled,
         setNotificationsEnabled,
-        dashboardViewPreference,
-        setDashboardViewPreference,
+        isRolloverEnabled,
+        setRolloverEnabled,
         signOut
     } = useSplittyStore();
     const router = useRouter();
@@ -190,17 +190,6 @@ export default function SettingsScreen() {
                         )}
                         <View style={[styles.separator, { backgroundColor: colors.border }]} />
                         {renderSettingItem(
-                            <View style={{ width: 20, height: 20, borderRadius: 10, borderWidth: 2, borderColor: colors.textSecondary }} />,
-                            "Use Debt Flow Tree",
-                            <Switch
-                                value={dashboardViewPreference === 'tree'}
-                                onValueChange={(val) => setDashboardViewPreference(val ? 'tree' : 'list')}
-                                trackColor={{ false: colors.border, true: colors.primary }}
-                                thumbColor={'white'}
-                            />
-                        )}
-                        <View style={[styles.separator, { backgroundColor: colors.border }]} />
-                        {renderSettingItem(
                             <DollarSign size={20} color={colors.textSecondary} />,
                             "Currency",
                             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
@@ -222,6 +211,17 @@ export default function SettingsScreen() {
                             <Switch
                                 value={notificationsEnabled}
                                 onValueChange={setNotificationsEnabled}
+                                trackColor={{ false: colors.border, true: colors.primary }}
+                                thumbColor={'white'}
+                            />
+                        )}
+                        <View style={[styles.separator, { backgroundColor: colors.border }]} />
+                        {renderSettingItem(
+                            <Activity size={20} color={colors.textSecondary} />,
+                            "Budget Rollover",
+                            <Switch
+                                value={isRolloverEnabled}
+                                onValueChange={setRolloverEnabled}
                                 trackColor={{ false: colors.border, true: colors.primary }}
                                 thumbColor={'white'}
                             />

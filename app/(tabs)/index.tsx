@@ -1,32 +1,42 @@
 import { View, Text, StyleSheet, ScrollView, SafeAreaView, TouchableOpacity, Alert, RefreshControl } from 'react-native';
-import { Themes, ThemeName } from '../../constants/Colors';
 import { GlassCard } from '../../components/GlassCard';
 import { VibrantButton } from '../../components/VibrantButton';
 import { useRouter } from 'expo-router';
 import { useSplittyStore } from '../../store/useSplittyStore';
 import { Trash2, Banknote } from 'lucide-react-native';
-import { supabase } from '../../lib/supabase';
-import { DebtTree } from '../../components/DebtTree';
 import { CategoryIcon } from '../../components/CategoryIcon';
 import * as Haptics from 'expo-haptics';
-import { useState } from 'react';
+import { useState, useMemo, useCallback } from 'react';
+import { getCategoryById } from '../../constants/Categories';
 
 export default function DashboardScreen() {
     const router = useRouter();
-    const { friends, groups, expenses, deleteExpense, appearance, colors, formatCurrency, userProfile, fetchData, dashboardViewPreference, getCategoryById } = useSplittyStore();
-    const isDark = appearance === 'dark';
+
+    // Granular selectors — component only re-renders when these specific slices change
+    const friends = useSplittyStore(s => s.friends);
+    const expenses = useSplittyStore(s => s.expenses);
+    const deleteExpense = useSplittyStore(s => s.deleteExpense);
+    const colors = useSplittyStore(s => s.colors);
+    const formatCurrency = useSplittyStore(s => s.formatCurrency);
+    const userProfile = useSplittyStore(s => s.userProfile);
+    const fetchData = useSplittyStore(s => s.fetchData);
+
     const [refreshing, setRefreshing] = useState(false);
 
-    const owed = friends.reduce((acc, f) => f.balance > 0 ? acc + f.balance : acc, 0);
-    const owe = friends.reduce((acc, f) => f.balance < 0 ? acc + Math.abs(f.balance) : acc, 0);
+    // Memoized balance summaries
+    const owed = useMemo(() => friends.reduce((acc, f) => f.balance > 0 ? acc + f.balance : acc, 0), [friends]);
+    const owe = useMemo(() => friends.reduce((acc, f) => f.balance < 0 ? acc + Math.abs(f.balance) : acc, 0), [friends]);
 
-    // Filter and Sort Expenses for Recent Activity
-    const recentExpenses = [...expenses]
-        .filter(e => !e.isPersonal)
-        .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
-        .slice(0, 5);
+    // Memoized recent expense list with pre-computed category to avoid getCategoryById in render
+    const recentExpenses = useMemo(() => {
+        return [...expenses]
+            .filter(e => !e.isPersonal)
+            .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
+            .slice(0, 5)
+            .map(e => ({ ...e, _category: getCategoryById(e.category) }));
+    }, [expenses]);
 
-    const handleDelete = (id: string) => {
+    const handleDelete = useCallback((id: string) => {
         Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
         Alert.alert(
             "Delete Expense",
@@ -40,18 +50,18 @@ export default function DashboardScreen() {
                 }
             ]
         );
-    };
+    }, [deleteExpense]);
 
-    const getPayerName = (id: string) => {
+    const getPayerName = useCallback((id: string) => {
         if (id === 'self') return 'You';
         return friends.find(f => f.id === id)?.name || 'Someone';
-    };
+    }, [friends]);
 
-    const handleRefresh = async () => {
+    const handleRefresh = useCallback(async () => {
         setRefreshing(true);
         await fetchData();
         setRefreshing(false);
-    };
+    }, [fetchData]);
 
     return (
         <SafeAreaView style={[styles.safeArea, { backgroundColor: colors.background }]}>
@@ -84,69 +94,54 @@ export default function DashboardScreen() {
                     </GlassCard>
                 </View>
 
-                {dashboardViewPreference === 'tree' ? (
-                    /* Entry Button to Full Screen Debt Tree */
-                    <GlassCard style={[styles.activityCard, { backgroundColor: colors.surface, marginBottom: 30, alignItems: 'center', padding: 24 }]}>
-                        <Text style={{ color: colors.text, fontSize: 16, fontWeight: '600', marginBottom: 16, textAlign: 'center' }}>
-                            Visualize your social circle's debts
-                        </Text>
-                        <VibrantButton
-                            title="View Debt Flow Map"
-                            onPress={() => router.push('/debt-tree')}
-                            style={{ width: '100%' }}
-                        />
-                    </GlassCard>
-                ) : (
-                    /* Old Balance Breakdown */
-                    (owed > 0 || owe > 0) && (
-                        <View style={styles.breakdownSection}>
-                            {owed > 0 && (
-                                <GlassCard style={[styles.breakdownCard, { backgroundColor: colors.surface, marginBottom: owe > 0 ? 16 : 0 }]}>
-                                    <Text style={[styles.breakdownTitle, { color: colors.textSecondary }]}>People who owe you</Text>
-                                    {friends
-                                        .filter(f => f.balance > 0)
-                                        .sort((a, b) => b.balance - a.balance)
-                                        .slice(0, 3)
-                                        .map(friend => (
-                                            <TouchableOpacity
-                                                key={friend.id}
-                                                style={styles.breakdownItem}
-                                                onPress={() => router.push({ pathname: '/friend-details/[id]', params: { id: friend.id } })}
-                                                activeOpacity={0.7}
-                                            >
-                                                <Text style={[styles.breakdownName, { color: colors.text }]}>{friend.name}</Text>
-                                                <Text style={[styles.breakdownAmount, { color: colors.success }]}>
-                                                    {formatCurrency(friend.balance)}
-                                                </Text>
-                                            </TouchableOpacity>
-                                        ))}
-                                </GlassCard>
-                            )}
+                {(owed > 0 || owe > 0) && (
+                    <View style={styles.breakdownSection}>
+                        {owed > 0 && (
+                            <GlassCard style={[styles.breakdownCard, { backgroundColor: colors.surface, marginBottom: owe > 0 ? 16 : 0 }]}>
+                                <Text style={[styles.breakdownTitle, { color: colors.textSecondary }]}>People who owe you</Text>
+                                {friends
+                                    .filter(f => f.balance > 0)
+                                    .sort((a, b) => b.balance - a.balance)
+                                    .slice(0, 3)
+                                    .map(friend => (
+                                        <TouchableOpacity
+                                            key={friend.id}
+                                            style={styles.breakdownItem}
+                                            onPress={() => router.push({ pathname: '/friend-details/[id]', params: { id: friend.id } })}
+                                            activeOpacity={0.7}
+                                        >
+                                            <Text style={[styles.breakdownName, { color: colors.text }]}>{friend.name}</Text>
+                                            <Text style={[styles.breakdownAmount, { color: colors.success }]}>
+                                                {formatCurrency(friend.balance)}
+                                            </Text>
+                                        </TouchableOpacity>
+                                    ))}
+                            </GlassCard>
+                        )}
 
-                            {owe > 0 && (
-                                <GlassCard style={[styles.breakdownCard, { backgroundColor: colors.surface }]}>
-                                    <Text style={[styles.breakdownTitle, { color: colors.textSecondary }]}>People you owe</Text>
-                                    {friends
-                                        .filter(f => f.balance < 0)
-                                        .sort((a, b) => Math.abs(a.balance) - Math.abs(b.balance))
-                                        .slice(0, 3)
-                                        .map(friend => (
-                                            <TouchableOpacity
-                                                key={friend.id}
-                                                style={styles.breakdownItem}
-                                                onPress={() => router.push({ pathname: '/friend-details/[id]', params: { id: friend.id } })}
-                                                activeOpacity={0.7}
-                                            >
-                                                <Text style={[styles.breakdownName, { color: colors.text }]}>{friend.name}</Text>
-                                                <Text style={[styles.breakdownAmount, { color: colors.accent }]}>
-                                                    {formatCurrency(Math.abs(friend.balance))}
-                                                </Text>
-                                            </TouchableOpacity>
-                                        ))}
-                                </GlassCard>
-                            )}
-                        </View>
-                    )
+                        {owe > 0 && (
+                            <GlassCard style={[styles.breakdownCard, { backgroundColor: colors.surface }]}>
+                                <Text style={[styles.breakdownTitle, { color: colors.textSecondary }]}>People you owe</Text>
+                                {friends
+                                    .filter(f => f.balance < 0)
+                                    .sort((a, b) => Math.abs(a.balance) - Math.abs(b.balance))
+                                    .slice(0, 3)
+                                    .map(friend => (
+                                        <TouchableOpacity
+                                            key={friend.id}
+                                            style={styles.breakdownItem}
+                                            onPress={() => router.push({ pathname: '/friend-details/[id]', params: { id: friend.id } })}
+                                            activeOpacity={0.7}
+                                        >
+                                            <Text style={[styles.breakdownName, { color: colors.text }]}>{friend.name}</Text>
+                                            <Text style={[styles.breakdownAmount, { color: colors.accent }]}>
+                                                {formatCurrency(Math.abs(friend.balance))}
+                                            </Text>
+                                        </TouchableOpacity>
+                                    ))}
+                            </GlassCard>
+                        )}
+                    </View>
                 )}
 
                 <VibrantButton
@@ -183,16 +178,16 @@ export default function DashboardScreen() {
                                 <GlassCard style={[
                                     styles.activityItem,
                                     { backgroundColor: colors.surface },
-                                    { borderLeftWidth: 3, borderLeftColor: expense.isSettlement ? colors.success : getCategoryById(expense.category).color }
+                                    { borderLeftWidth: 3, borderLeftColor: expense.isSettlement ? colors.success : expense._category.color }
                                 ]}>
                                     <View style={[
                                         styles.categoryIcon,
-                                        { backgroundColor: expense.isSettlement ? colors.success + '20' : getCategoryById(expense.category).color + '20' }
+                                        { backgroundColor: expense.isSettlement ? colors.success + '20' : expense._category.color + '20' }
                                     ]}>
                                         {expense.isSettlement ? (
                                             <Banknote size={20} color={colors.primary} />
                                         ) : (
-                                            <CategoryIcon name={getCategoryById(expense.category).icon} size={20} color={getCategoryById(expense.category).color} />
+                                            <CategoryIcon name={expense._category.icon} size={20} color={expense._category.color} />
                                         )}
                                     </View>
                                     <View style={{ flex: 1, marginLeft: 12 }}>

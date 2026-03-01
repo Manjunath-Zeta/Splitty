@@ -67,6 +67,7 @@ export interface Expense {
     isSettlement?: boolean;
     createdBy?: string;
     isPersonal?: boolean;
+    tags?: string[];
 }
 
 export interface MonthlyBudget {
@@ -132,6 +133,8 @@ interface SplittyState {
     categories: Category[];
     categoryOrder: string[]; // Order of category IDs for the budgets page
     setCategoryOrder: (order: string[]) => void;
+    hiddenBudgetCategories: string[]; // Category IDs hidden from budget view
+    toggleCategoryBudgetVisibility: (categoryId: string) => void;
     addCategory: (category: Omit<Category, 'id'>) => void;
     deleteCategory: (categoryId: string) => void;
     getCategoryById: (categoryId: string) => Category;
@@ -176,6 +179,9 @@ interface SplittyState {
     dashboardViewPreference: 'tree' | 'list';
     setDashboardViewPreference: (pref: 'tree' | 'list') => void;
     unknownFriendNames: Record<string, string>;
+    isRolloverEnabled: boolean;
+    setRolloverEnabled: (enabled: boolean) => void;
+    budgetAlertsSent: Record<string, boolean>;
 }
 
 const calculateBalances = (expenses: Expense[], friends: Friend[], groups: Group[]) => {
@@ -555,8 +561,17 @@ export const useSplittyStore = create<SplittyState>()(
             budgets: [],
             categories: CATEGORIES,
             categoryOrder: [],
+            hiddenBudgetCategories: [],
             unknownFriendNames: {},
             setCategoryOrder: (order) => set({ categoryOrder: order }),
+            toggleCategoryBudgetVisibility: (categoryId) => set((state) => {
+                const isHidden = state.hiddenBudgetCategories.includes(categoryId);
+                return {
+                    hiddenBudgetCategories: isHidden
+                        ? state.hiddenBudgetCategories.filter(id => id !== categoryId)
+                        : [...state.hiddenBudgetCategories, categoryId]
+                };
+            }),
             addCategory: (category) => set((state) => ({
                 categories: [...state.categories, { ...category, id: Crypto.randomUUID() }]
             })),
@@ -749,20 +764,18 @@ export const useSplittyStore = create<SplittyState>()(
                 session: null,
                 userProfile: { name: 'Guest', email: '' }
             })),
-            editExpense: (id, updatedExpense) => {
-                console.log('📝 editExpense called:', updatedExpense.description);
+            editExpense: (id, updates) => {
+                console.log('📝 editExpense called:', updates.description);
                 set((state) => {
                     const { session, friends, userProfile, fetchData } = get();
-                    const oldExpense = state.expenses.find(e => e.id === id);
-                    if (!oldExpense) return state;
+                    const existingExpense = state.expenses.find(e => e.id === id);
+                    if (!existingExpense) return state;
 
-                    const newExpenseFull = {
-                        ...updatedExpense,
-                        id,
-                        date: oldExpense.date,
-                        splitType: updatedExpense.splitType || 'equal',
-                        splitDetails: updatedExpense.splitDetails || {},
-                        isPersonal: updatedExpense.isPersonal
+                    const updatedExpense = {
+                        ...existingExpense,
+                        ...updates,
+                        // Ensure tags is not undefined
+                        tags: updates.tags !== undefined ? updates.tags : existingExpense.tags
                     };
 
                     if (session?.user) {
@@ -771,21 +784,21 @@ export const useSplittyStore = create<SplittyState>()(
 
                         // Map IDs to Real UUIDs for Supabase
                         const realPayerId = mapToRealId(updatedExpense.payerId, friends, session.user.id);
-                        const realSplitWith = mapIdsToReal(newExpenseFull.splitWith, friends, session.user.id);
-                        const realSplitDetails = newExpenseFull.splitDetails ? mapSplitDetailsToReal(newExpenseFull.splitDetails, friends, session.user.id) : {};
+                        const realSplitWith = mapIdsToReal(updatedExpense.splitWith, friends, session.user.id);
+                        const realSplitDetails = updatedExpense.splitDetails ? mapSplitDetailsToReal(updatedExpense.splitDetails, friends, session.user.id) : {};
 
                         // 1. Update main expenses table
                         supabase.from('expenses').update({
-                            description: newExpenseFull.description,
-                            amount: newExpenseFull.amount,
+                            description: updatedExpense.description,
+                            amount: updatedExpense.amount,
                             payer_id: realPayerId === session.user.id ? session.user.id : (realPayerId || null),
                             payer_name: payerName,
-                            group_id: newExpenseFull.groupId,
-                            category: newExpenseFull.category,
-                            split_type: newExpenseFull.splitType,
+                            group_id: updatedExpense.groupId,
+                            category: updatedExpense.category,
+                            split_type: updatedExpense.splitType,
                             split_details: realSplitDetails,
                             split_with: realSplitWith,
-                            is_personal: newExpenseFull.isPersonal
+                            is_personal: updatedExpense.isPersonal
                         })
                             .eq('id', id)
                             .then(async ({ error }) => {
@@ -806,11 +819,11 @@ export const useSplittyStore = create<SplittyState>()(
 
                                         for (const realId of allParticipants) {
                                             let amount = 0;
-                                            if (newExpenseFull.splitType === 'unequal') {
+                                            if (updatedExpense.splitType === 'unequal') {
                                                 amount = realSplitDetails[realId] || 0;
                                             } else {
-                                                const count = (newExpenseFull.splitWith?.length || 0) + 1;
-                                                amount = Number((newExpenseFull.amount / count).toFixed(2));
+                                                const count = (updatedExpense.splitWith?.length || 0) + 1;
+                                                amount = Number((updatedExpense.amount / count).toFixed(2));
                                             }
 
                                             let pId = null;
@@ -848,7 +861,7 @@ export const useSplittyStore = create<SplittyState>()(
                             });
                     }
 
-                    const updatedExpenses = state.expenses.map(e => e.id === id ? newExpenseFull : e);
+                    const updatedExpenses = state.expenses.map(e => e.id === id ? updatedExpense : e);
                     const { friends: newFriends, groups: newGroups } = calculateBalances(updatedExpenses, state.friends, state.groups);
 
                     return {
@@ -910,6 +923,9 @@ export const useSplittyStore = create<SplittyState>()(
                     colors: getThemeColors(nextMode, state.accent)
                 };
             }),
+            isRolloverEnabled: false,
+            setRolloverEnabled: (enabled: boolean) => set({ isRolloverEnabled: enabled }),
+            budgetAlertsSent: {},
             signOut: async () => {
                 await supabase.auth.signOut();
                 get().clearData();
@@ -969,6 +985,7 @@ export const useSplittyStore = create<SplittyState>()(
                         splitType: expense.splitType || 'equal',
                         splitDetails: expense.splitDetails || {},
                         isPersonal: expense.isPersonal,
+                        tags: expense.tags || [],
                         payerName: 'Someone' // Placeholder, will update below
                     };
 
@@ -1105,10 +1122,87 @@ export const useSplittyStore = create<SplittyState>()(
                     const updatedExpenses = [{ ...newExpense, createdBy: session?.user?.id }, ...state.expenses];
                     const { friends: newFriends, groups: newGroups } = calculateBalances(updatedExpenses, state.friends, state.groups);
 
+                    // --- PROACTIVE BUDGET ALERTS LOGIC ---
+                    const d = new Date();
+                    const monthKey = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+                    const currentBudget = get().budgets.find(b => b.month === monthKey);
+
+                    let newAlertsSent = { ...state.budgetAlertsSent };
+                    let alertsUpdated = false;
+
+                    if (currentBudget && currentBudget.categories[newExpense.category]) {
+                        // Calculate budget including rollover if enabled
+                        let totalCategoryBudget = currentBudget.categories[newExpense.category];
+                        if (get().isRolloverEnabled) {
+                            // Quick rollover approx: count all past budget - past spend for this category
+                            const currentMonthStart = new Date(d.getFullYear(), d.getMonth(), 1);
+                            let unspent = 0;
+
+                            get().budgets.forEach(b => {
+                                const budgetDate = new Date(`${b.month}-01T00:00:00Z`);
+                                if (budgetDate < currentMonthStart) {
+                                    const pastBudgetAmt = b.categories[newExpense.category] || 0;
+
+                                    const startOfThatMonth = new Date(budgetDate.getFullYear(), budgetDate.getMonth(), 1);
+                                    const endOfThatMonth = new Date(budgetDate.getFullYear(), budgetDate.getMonth() + 1, 0, 23, 59, 59);
+
+                                    const pastSpend = state.expenses.filter(e => {
+                                        if (e.isSettlement || e.category !== newExpense.category) return false;
+                                        const eDate = new Date(e.date);
+                                        return eDate >= startOfThatMonth && eDate <= endOfThatMonth;
+                                    }).reduce((sum, e) => {
+                                        let myShare = e.amount;
+                                        if (e.splitType === 'unequal' && e.splitDetails) myShare = e.splitDetails['self'] || 0;
+                                        else myShare = e.amount / ((e.splitWith?.length || 0) + 1);
+                                        return sum + myShare;
+                                    }, 0);
+
+                                    unspent += (pastBudgetAmt - pastSpend);
+                                }
+                            });
+                            totalCategoryBudget += unspent;
+                        }
+
+                        if (totalCategoryBudget > 0) {
+                            // Calculate current spend for this month
+                            const currentMonthStart = new Date(d.getFullYear(), d.getMonth(), 1);
+                            const currentMonthSpend = updatedExpenses.filter(e => {
+                                if (e.isSettlement || e.category !== newExpense.category) return false;
+                                const eDate = new Date(e.date);
+                                return eDate >= currentMonthStart;
+                            }).reduce((sum, e) => {
+                                let myShare = e.amount;
+                                if (e.splitType === 'unequal' && e.splitDetails) myShare = e.splitDetails['self'] || 0;
+                                else myShare = e.amount / ((e.splitWith?.length || 0) + 1);
+                                return sum + myShare;
+                            }, 0);
+
+                            const percentage = (currentMonthSpend / totalCategoryBudget) * 100;
+                            const catName = get().getCategoryById(newExpense.category).label;
+
+                            const numDaysInMonth = new Date(d.getFullYear(), d.getMonth() + 1, 0).getDate();
+                            const remainingDays = numDaysInMonth - d.getDate();
+
+                            const alertKey100 = `${monthKey}-${newExpense.category}-100`;
+                            const alertKey80 = `${monthKey}-${newExpense.category}-80`;
+
+                            if (percentage >= 100 && !state.budgetAlertsSent[alertKey100]) {
+                                notificationService.notifyBudgetAlert(catName, Math.round(percentage), remainingDays);
+                                newAlertsSent[alertKey100] = true;
+                                alertsUpdated = true;
+                            } else if (percentage >= 80 && percentage < 100 && !state.budgetAlertsSent[alertKey80] && !state.budgetAlertsSent[alertKey100]) {
+                                notificationService.notifyBudgetAlert(catName, Math.round(percentage), remainingDays);
+                                newAlertsSent[alertKey80] = true;
+                                alertsUpdated = true;
+                            }
+                        }
+                    }
+
                     return {
                         expenses: updatedExpenses,
                         friends: newFriends,
-                        groups: newGroups
+                        groups: newGroups,
+                        ...(alertsUpdated ? { budgetAlertsSent: newAlertsSent } : {})
                     };
                 });
             },

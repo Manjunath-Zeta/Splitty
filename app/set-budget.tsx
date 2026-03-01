@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, ScrollView, SafeAreaView, TouchableOpacity, TextInput, KeyboardAvoidingView, Platform, Alert } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
-import { X, Sparkles, CheckCircle2 } from 'lucide-react-native';
+import { X, Sparkles, CheckCircle2, Eye, EyeOff } from 'lucide-react-native';
 import { useSplittyStore } from '../store/useSplittyStore';
 import { GlassCard } from '../components/GlassCard';
 import { VibrantButton } from '../components/VibrantButton';
@@ -21,7 +21,9 @@ export default function SetBudgetScreen() {
         getCurrencySymbol,
         categories,
         categoryOrder,
-        setCategoryOrder
+        setCategoryOrder,
+        hiddenBudgetCategories,
+        toggleCategoryBudgetVisibility
     } = useSplittyStore();
 
     // Fallback to current month if navigating here without params
@@ -89,7 +91,10 @@ export default function SetBudgetScreen() {
         setLocalBudgets(prev => ({ ...prev, [categoryId]: cleaned }));
     };
 
-    const totalProjected = Object.values(localBudgets).reduce((sum, val) => sum + (parseFloat(val) || 0), 0);
+    const totalProjected = Object.entries(localBudgets).reduce((sum, [catId, val]) => {
+        if (hiddenBudgetCategories.includes(catId)) return sum;
+        return sum + (parseFloat(val) || 0);
+    }, 0);
     const currency = getCurrencySymbol();
 
     return (
@@ -145,8 +150,25 @@ export default function SetBudgetScreen() {
                                             <CategoryIcon name={category.icon} color={category.color} size={24} />
                                         </View>
                                         <Text style={[styles.catName, { color: colors.text }]}>{category.label}</Text>
+                                        <TouchableOpacity
+                                            style={styles.visibilityToggle}
+                                            onPress={() => {
+                                                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                                                toggleCategoryBudgetVisibility(category.id);
+                                            }}
+                                        >
+                                            {hiddenBudgetCategories.includes(category.id) ? (
+                                                <EyeOff color={colors.textSecondary} size={20} />
+                                            ) : (
+                                                <Eye color={colors.textSecondary} size={20} />
+                                            )}
+                                        </TouchableOpacity>
                                     </View>
-                                    <View style={[styles.inputWrapper, { borderColor: colors.border, backgroundColor: colors.surface }]}>
+                                    <View style={[
+                                        styles.inputWrapper,
+                                        { borderColor: colors.border, backgroundColor: colors.surface },
+                                        hiddenBudgetCategories.includes(category.id) && { opacity: 0.5 }
+                                    ]}>
                                         <Text style={[styles.currencyPrefix, { color: colors.textSecondary }]}>{currency}</Text>
                                         <TextInput
                                             style={[styles.input, { color: colors.text }]}
@@ -154,6 +176,7 @@ export default function SetBudgetScreen() {
                                             placeholder="0.00"
                                             placeholderTextColor={colors.textSecondary + '80'}
                                             value={value}
+                                            editable={!hiddenBudgetCategories.includes(category.id)}
                                             onChangeText={(text) => handleAmountChange(text, category.id)}
                                         />
                                     </View>
@@ -206,7 +229,8 @@ const styles = StyleSheet.create({
     categoryItem: { gap: 12 },
     catHeader: { flexDirection: 'row', alignItems: 'center', gap: 12 },
     iconWrapper: { padding: 10, borderRadius: 12 },
-    catName: { fontSize: 18, fontWeight: '600' },
+    catName: { fontSize: 18, fontWeight: '600', flex: 1 },
+    visibilityToggle: { padding: 8, marginRight: -8 },
     inputWrapper: {
         flexDirection: 'row',
         alignItems: 'center',
