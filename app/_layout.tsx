@@ -1,5 +1,5 @@
-import { useEffect } from 'react';
-import { Alert, View, Text } from 'react-native';
+import { useEffect, useRef } from 'react';
+import { Alert, View, Text, AppState, AppStateStatus } from 'react-native';
 import { Stack, useRouter, useSegments, useRootNavigationState } from 'expo-router';
 import { useState } from 'react';
 import { Colors } from '../constants/Colors';
@@ -71,6 +71,36 @@ export default function RootLayout() {
         return () => {
             if (unsubscribe) unsubscribe();
         };
+    }, [session]);
+
+    // AppState listener — refresh when app comes back to foreground
+    // This catches any real-time events that were missed while backgrounded
+    const appState = useRef<AppStateStatus>(AppState.currentState);
+    useEffect(() => {
+        if (!session) return;
+
+        const handleAppStateChange = (nextState: AppStateStatus) => {
+            if (appState.current.match(/inactive|background/) && nextState === 'active') {
+                console.log('📲 App came to foreground — refreshing data...');
+                fetchData();
+            }
+            appState.current = nextState;
+        };
+
+        const subscription = AppState.addEventListener('change', handleAppStateChange);
+        return () => subscription.remove();
+    }, [session]);
+
+    // Periodic polling fallback — every 60s while app is active
+    // Catches any WebSocket events silently dropped by the OS
+    useEffect(() => {
+        if (!session) return;
+        const interval = setInterval(() => {
+            if (AppState.currentState === 'active') {
+                fetchData();
+            }
+        }, 60_000);
+        return () => clearInterval(interval);
     }, [session]);
 
     const appearance = useSplittyStore(state => state.appearance);

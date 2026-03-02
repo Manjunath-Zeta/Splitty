@@ -96,9 +96,18 @@ export default function FriendDetailsScreen() {
 
     const handleDeleteFriend = () => {
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
+        const expenseCount = friendExpenses.length;
+        const hasBalance = friend.balance !== 0;
+        const balanceMsg = hasBalance
+            ? `\n\n⚠️ You still have an outstanding balance of ${formatCurrency(Math.abs(friend.balance))} with them.`
+            : '';
+        const expenseMsg = expenseCount > 0
+            ? `This will also remove ${expenseCount} shared expense${expenseCount > 1 ? 's' : ''} from your activity.`
+            : 'They have no shared expenses with you.';
+
         Alert.alert(
             "Remove Friend",
-            `Are you sure you want to remove ${friend.name}? Their shared expenses will also be removed from your activity.`,
+            `Remove ${friend.name}?\n\n${expenseMsg}${balanceMsg}`,
             [
                 { text: "Cancel", style: "cancel" },
                 {

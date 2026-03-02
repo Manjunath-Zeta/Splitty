@@ -146,7 +146,7 @@ interface SplittyState {
     addRecurringExpense: (expense: Omit<RecurringExpense, 'id' | 'nextDueDate' | 'active'>) => void;
     deleteRecurringExpense: (id: string) => void;
     checkRecurringExpenses: () => number; // Returns number of created expenses
-    addFriend: (name: string, linkedUserId?: string) => void;
+    addFriend: (name: string, linkedUserId?: string) => Promise<void>;
     editFriend: (id: string, name: string, avatarUrl?: string) => Promise<void>;
     addGroup: (name: string, members: string[]) => void;
     deleteFriend: (id: string) => void;
@@ -510,10 +510,14 @@ export const useSplittyStore = create<SplittyState>()(
                             // 4. Build the mapping
                             missingFriendsData.forEach((f: any) => {
                                 const creatorName = creatorMap.get(f.user_id);
-                                if (creatorName) {
-                                    newUnknownFriendNames[f.id] = `Local user of ${creatorName}`;
+                                // Show the friend's real name if available
+                                // Append "(via CreatorName)" only when the name alone might be ambiguous
+                                if (f.name && creatorName) {
+                                    newUnknownFriendNames[f.id] = `${f.name} (via ${creatorName})`;
+                                } else if (f.name) {
+                                    newUnknownFriendNames[f.id] = f.name;
                                 } else {
-                                    newUnknownFriendNames[f.id] = f.name ? `${f.name} (Local user)` : 'Unknown';
+                                    newUnknownFriendNames[f.id] = 'Unknown';
                                 }
                             });
                         }
@@ -534,10 +538,18 @@ export const useSplittyStore = create<SplittyState>()(
                 });
 
                 // 6. Set Final State
+                // Merge strategy: preserve any local friends that Supabase didn't return
+                // (e.g. whose insert failed silently) so they aren't wiped on every sync.
+                const supabaseFriendIds = new Set(loadedFriends.map(f => f.id));
+                const currentFriends = get().friends;
+                const localOnlyFriends = currentFriends.filter(f => !supabaseFriendIds.has(f.id));
+                const mergedFriends = [...balancedFriends, ...localOnlyFriends.map(f => ({ ...f, balance: 0 }))];
+                const { friends: finalFriends, groups: finalGroups } = calculateBalances(loadedExpenses, mergedFriends, balancedGroups);
+
                 const finalStateToSet: Partial<SplittyState> = {
                     userProfile,
-                    friends: balancedFriends,
-                    groups: balancedGroups,
+                    friends: finalFriends,
+                    groups: finalGroups,
                     expenses: loadedExpenses,
                     activities: (activitiesRes as any)?.data || [],
                     unknownFriendNames: newUnknownFriendNames
@@ -665,7 +677,7 @@ export const useSplittyStore = create<SplittyState>()(
             updateUserProfile: (profile) => set((state) => ({
                 userProfile: { ...state.userProfile, ...profile }
             })),
-            addFriend: (name: string, linkedUserId?: string) => {
+            addFriend: async (name: string, linkedUserId?: string) => {
                 const newFriend = { id: Crypto.randomUUID(), name, balance: 0, linkedUserId };
                 set((state) => ({
                     friends: [...state.friends, newFriend]
@@ -673,14 +685,22 @@ export const useSplittyStore = create<SplittyState>()(
 
                 const { session } = get();
                 if (session?.user) {
-                    supabase.from('friends').insert({
+                    const insertPayload = {
                         id: newFriend.id,
                         name: newFriend.name,
                         user_id: session.user.id,
                         linked_user_id: linkedUserId
-                    }).then(({ error }) => {
-                        if (error) console.error("Friend sync error:", error);
-                    });
+                    };
+                    const { error } = await supabase.from('friends').insert(insertPayload);
+                    if (error) {
+                        console.warn('Friend sync failed, retrying...', error.message);
+                        setTimeout(async () => {
+                            const { error: retryError } = await supabase.from('friends').insert(insertPayload);
+                            if (retryError) {
+                                console.error('Friend sync retry also failed:', retryError.message);
+                            }
+                        }, 3000);
+                    }
                 }
             },
             editFriend: async (id: string, name: string, avatarUrl?: string) => {
@@ -963,6 +983,19 @@ export const useSplittyStore = create<SplittyState>()(
                     splitWith = [payerId];
                     splitDetails = { 'self': amount, [payerId]: 0 };
                 }
+
+                // Optimistic balance update — reflect immediately, don't wait for fetchData
+                set((state) => ({
+                    friends: state.friends.map(f => {
+                        if (payerId === 'self' && f.id === receiverId) {
+                            return { ...f, balance: f.balance - amount };
+                        }
+                        if (receiverId === 'self' && f.id === payerId) {
+                            return { ...f, balance: f.balance + amount };
+                        }
+                        return f;
+                    })
+                }));
 
                 addExpense({
                     description,
@@ -1479,6 +1512,14 @@ export const useSplittyStore = create<SplittyState>()(
                     )
                     .subscribe((status) => {
                         console.log('📡 Real-time Subscription Status:', status);
+                        if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
+                            console.warn('⚠️ Real-time channel dropped, reconnecting in 3s...');
+                            supabase.removeChannel(channel);
+                            setTimeout(() => {
+                                get().fetchData();
+                                get().subscribeToChanges();
+                            }, 3000);
+                        }
                     });
 
                 const activityChannel = supabase

@@ -63,11 +63,13 @@ export default function AuthScreen() {
         setLoading(true);
         try {
             const isWeb = Platform.OS === 'web';
+
+            // Use a fixed stable redirect URI based on the app bundle scheme.
+            // This is registered ONCE in Google Console + Supabase and works
+            // on every device without per-device IP registration.
             const redirectUri = isWeb
                 ? window.location.origin
-                : Linking.createURL('/');
-
-            console.log('Redirect URI:', redirectUri);
+                : 'com.manjunath.splitty://';
 
             const { data, error } = await supabase.auth.signInWithOAuth({
                 provider: 'google',
@@ -83,10 +85,17 @@ export default function AuthScreen() {
                 const res = await WebBrowser.openAuthSessionAsync(data.url, redirectUri);
 
                 if (res.type === 'success' && res.url) {
-                    const part = res.url.split('#')[1];
-                    if (part) {
+                    // Tokens may be in the fragment (#) or query string (?)
+                    const fragment = res.url.split('#')[1] ?? '';
+                    const query = res.url.split('?')[1]?.split('#')[0] ?? '';
+                    const raw = fragment || query;
+
+                    if (raw) {
                         const params = Object.fromEntries(
-                            part.split('&').map(p => p.split('='))
+                            raw.split('&').map(p => {
+                                const [key, ...rest] = p.split('=');
+                                return [key, decodeURIComponent(rest.join('='))];
+                            })
                         );
 
                         const { access_token, refresh_token } = params;
@@ -99,6 +108,8 @@ export default function AuthScreen() {
                             if (sessionError) throw sessionError;
                         }
                     }
+                } else if (res.type === 'cancel') {
+                    // User closed the browser — not an error
                 }
             }
         } catch (error: any) {
