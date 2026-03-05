@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, SafeAreaView, TouchableOpacity, Alert, TextInput, Modal, KeyboardAvoidingView, Platform } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, SafeAreaView, TouchableOpacity, Alert, TextInput, Modal, KeyboardAvoidingView, Platform, Switch } from 'react-native';
 import { useRouter } from 'expo-router';
-import { ChevronLeft, Plus, Trash2, Tag, X } from 'lucide-react-native';
+import { ChevronLeft, Plus, Trash2, Tag, X, DollarSign, RefreshCw } from 'lucide-react-native';
 import { useSplittyStore } from '../store/useSplittyStore';
 import { GlassCard } from '../components/GlassCard';
 import * as IconComponents from 'lucide-react-native';
@@ -27,12 +27,35 @@ const PRESET_ICONS = [
 
 export default function ManageCategoriesScreen() {
     const router = useRouter();
-    const { colors, categories, deleteCategory, addCategory } = useSplittyStore();
+    const { colors, categories, deleteCategory, addCategory, updateCategory, getCurrencySymbol } = useSplittyStore();
+    const currency = getCurrencySymbol();
 
     const [addModalVisible, setAddModalVisible] = useState(false);
+    const [editingId, setEditingId] = useState<string | null>(null);
     const [newLabel, setNewLabel] = useState('');
     const [newColor, setNewColor] = useState(PRESET_COLORS[0]);
     const [newIconName, setNewIconName] = useState(PRESET_ICONS[0]);
+    const [newDefaultBudget, setNewDefaultBudget] = useState('');
+    const [applyToAll, setApplyToAll] = useState(false);
+
+    const openModal = (category?: any) => {
+        if (category) {
+            setEditingId(category.id);
+            setNewLabel(category.label);
+            setNewColor(category.color);
+            setNewIconName(category.icon);
+            setNewDefaultBudget(category.defaultBudget ? category.defaultBudget.toString() : '');
+            setApplyToAll(false);
+        } else {
+            setEditingId(null);
+            setNewLabel('');
+            setNewColor(PRESET_COLORS[0]);
+            setNewIconName(PRESET_ICONS[0]);
+            setNewDefaultBudget('');
+            setApplyToAll(false);
+        }
+        setAddModalVisible(true);
+    };
 
     const handleDelete = (id: string, label: string) => {
         if (id === 'general') {
@@ -54,21 +77,27 @@ export default function ManageCategoriesScreen() {
         );
     };
 
-    const handleSaveNewCategory = () => {
+    const handleSaveCategory = () => {
         if (!newLabel.trim()) {
             Alert.alert("Error", "Please provide a name for the category.");
             return;
         }
 
-        addCategory({
-            label: newLabel.trim(),
-            color: newColor,
-            icon: newIconName,
-        });
+        const budgetAmt = newDefaultBudget.trim() ? parseFloat(newDefaultBudget.trim()) : undefined;
 
-        setNewLabel('');
-        setNewColor(PRESET_COLORS[0]);
-        setNewIconName(PRESET_ICONS[0]);
+        if (editingId) {
+            updateCategory(
+                editingId,
+                { label: newLabel.trim(), color: newColor, icon: newIconName, defaultBudget: budgetAmt },
+                applyToAll
+            );
+        } else {
+            addCategory(
+                { label: newLabel.trim(), color: newColor, icon: newIconName, defaultBudget: budgetAmt },
+                applyToAll
+            );
+        }
+
         setAddModalVisible(false);
     };
 
@@ -90,23 +119,36 @@ export default function ManageCategoriesScreen() {
                         const isGeneral = cat.id === 'general';
 
                         return (
-                            <GlassCard key={cat.id} style={[styles.categoryCard, { backgroundColor: colors.surface }]}>
-                                <View style={styles.categoryLeft}>
-                                    <View style={[styles.iconWrapper, { backgroundColor: cat.color + '20' }]}>
-                                        <CategoryIcon name={cat.icon} color={cat.color} size={20} />
+                            <TouchableOpacity
+                                key={cat.id}
+                                onPress={() => openModal(cat)}
+                                activeOpacity={0.7}
+                            >
+                                <GlassCard style={[styles.categoryCard, { backgroundColor: colors.surface }]}>
+                                    <View style={styles.categoryLeft}>
+                                        <View style={[styles.iconWrapper, { backgroundColor: cat.color + '20' }]}>
+                                            <CategoryIcon name={cat.icon} color={cat.color} size={20} />
+                                        </View>
+                                        <View>
+                                            <Text style={[styles.categoryLabel, { color: colors.text }]}>{cat.label}</Text>
+                                            {cat.defaultBudget && cat.defaultBudget > 0 && (
+                                                <Text style={[styles.categorySubLabel, { color: colors.textSecondary }]}>
+                                                    Default Budget: {currency}{cat.defaultBudget}
+                                                </Text>
+                                            )}
+                                        </View>
                                     </View>
-                                    <Text style={[styles.categoryLabel, { color: colors.text }]}>{cat.label}</Text>
-                                </View>
 
-                                {!isGeneral && (
-                                    <TouchableOpacity
-                                        style={styles.deleteButton}
-                                        onPress={() => handleDelete(cat.id, cat.label)}
-                                    >
-                                        <Trash2 color={colors.error} size={20} />
-                                    </TouchableOpacity>
-                                )}
-                            </GlassCard>
+                                    {!isGeneral && (
+                                        <TouchableOpacity
+                                            style={styles.deleteButton}
+                                            onPress={() => handleDelete(cat.id, cat.label)}
+                                        >
+                                            <Trash2 color={colors.error} size={20} />
+                                        </TouchableOpacity>
+                                    )}
+                                </GlassCard>
+                            </TouchableOpacity>
                         );
                     })}
                 </View>
@@ -126,7 +168,9 @@ export default function ManageCategoriesScreen() {
                 >
                     <View style={[styles.modalContent, { backgroundColor: colors.background }]}>
                         <View style={styles.modalHeader}>
-                            <Text style={[styles.modalTitle, { color: colors.text }]}>New Category</Text>
+                            <Text style={[styles.modalTitle, { color: colors.text }]}>
+                                {editingId ? 'Edit Category' : 'New Category'}
+                            </Text>
                             <TouchableOpacity onPress={() => setAddModalVisible(false)} style={styles.modalCloseButton}>
                                 <X size={24} color={colors.textSecondary} />
                             </TouchableOpacity>
@@ -150,10 +194,44 @@ export default function ManageCategoriesScreen() {
                                         placeholderTextColor={colors.textSecondary}
                                         value={newLabel}
                                         onChangeText={setNewLabel}
-                                        autoFocus
+                                        autoFocus={!editingId}
                                     />
                                 </View>
                             </View>
+
+                            <View style={styles.inputGroup}>
+                                <Text style={[styles.inputLabel, { color: colors.textSecondary }]}>Default Budget (Optional)</Text>
+                                <View style={[styles.inputWrapper, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+                                    <Text style={{ color: colors.textSecondary, fontSize: 18, fontWeight: '600', marginLeft: 4, marginRight: 2 }}>{currency}</Text>
+                                    <TextInput
+                                        style={[styles.input, { color: colors.text }]}
+                                        placeholder="0.00"
+                                        placeholderTextColor={colors.textSecondary}
+                                        keyboardType="decimal-pad"
+                                        value={newDefaultBudget}
+                                        onChangeText={text => setNewDefaultBudget(text.replace(/[^0-9.]/g, ''))}
+                                    />
+                                </View>
+                            </View>
+
+                            {newDefaultBudget.trim() !== '' && (
+                                <View style={[styles.toggleGroup, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+                                    <View style={styles.toggleTextContainer}>
+                                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                                            <RefreshCw size={16} color={colors.primary} />
+                                            <Text style={[styles.toggleTitle, { color: colors.text }]}>Apply to existing months</Text>
+                                        </View>
+                                        <Text style={[styles.toggleDesc, { color: colors.textSecondary }]}>
+                                            This will aggressively backfill this budget amount to all past and present months.
+                                        </Text>
+                                    </View>
+                                    <Switch
+                                        value={applyToAll}
+                                        onValueChange={setApplyToAll}
+                                        trackColor={{ false: colors.border, true: colors.primary }}
+                                    />
+                                </View>
+                            )}
 
                             <View style={styles.inputGroup}>
                                 <Text style={[styles.inputLabel, { color: colors.textSecondary }]}>Color Theme</Text>
@@ -193,16 +271,16 @@ export default function ManageCategoriesScreen() {
 
                             <TouchableOpacity
                                 style={[styles.saveBtn, { backgroundColor: colors.primary }]}
-                                onPress={handleSaveNewCategory}
+                                onPress={handleSaveCategory}
                             >
-                                <Text style={styles.saveBtnText}>Save Category</Text>
+                                <Text style={styles.saveBtnText}>{editingId ? 'Save Changes' : 'Save Category'}</Text>
                             </TouchableOpacity>
                         </ScrollView>
                     </View>
                 </KeyboardAvoidingView>
-            </Modal>
+            </Modal >
 
-        </SafeAreaView>
+        </SafeAreaView >
     );
 }
 
@@ -335,5 +413,32 @@ const styles = StyleSheet.create({
         color: '#FFF',
         fontSize: 16,
         fontWeight: '700',
+    },
+    categorySubLabel: {
+        fontSize: 13,
+        fontWeight: '500',
+        marginTop: 4,
+    },
+    toggleGroup: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        padding: 16,
+        borderRadius: 16,
+        borderWidth: 1,
+        marginBottom: 24,
+    },
+    toggleTextContainer: {
+        flex: 1,
+        paddingRight: 16,
+    },
+    toggleTitle: {
+        fontSize: 15,
+        fontWeight: '600',
+        marginBottom: 4,
+    },
+    toggleDesc: {
+        fontSize: 13,
+        lineHeight: 18,
     }
 });

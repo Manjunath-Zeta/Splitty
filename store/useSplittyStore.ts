@@ -135,7 +135,8 @@ interface SplittyState {
     setCategoryOrder: (order: string[]) => void;
     hiddenBudgetCategories: string[]; // Category IDs hidden from budget view
     toggleCategoryBudgetVisibility: (categoryId: string) => void;
-    addCategory: (category: Omit<Category, 'id'>) => void;
+    addCategory: (category: Omit<Category, 'id'>, applyToAllMonths?: boolean) => void;
+    updateCategory: (id: string, updates: Partial<Category>, applyToAllMonths?: boolean) => void;
     deleteCategory: (categoryId: string) => void;
     getCategoryById: (categoryId: string) => Category;
     setCategoryBudget: (month: string, categoryId: string, amount: number) => void;
@@ -584,9 +585,47 @@ export const useSplittyStore = create<SplittyState>()(
                         : [...state.hiddenBudgetCategories, categoryId]
                 };
             }),
-            addCategory: (category) => set((state) => ({
-                categories: [...state.categories, { ...category, id: Crypto.randomUUID() }]
-            })),
+            addCategory: (category, applyToAllMonths) => set((state) => {
+                const newId = Crypto.randomUUID();
+                const newCategory = { ...category, id: newId };
+
+                let newBudgets = state.budgets;
+                if (applyToAllMonths && category.defaultBudget !== undefined) {
+                    newBudgets = state.budgets.map(b => ({
+                        ...b,
+                        categories: {
+                            ...b.categories,
+                            [newId]: category.defaultBudget!
+                        }
+                    }));
+                }
+
+                return {
+                    categories: [...state.categories, newCategory],
+                    ...(applyToAllMonths ? { budgets: newBudgets } : {})
+                };
+            }),
+            updateCategory: (id, updates, applyToAllMonths) => set((state) => {
+                const updatedCategories = state.categories.map(c =>
+                    c.id === id ? { ...c, ...updates } : c
+                );
+
+                let newBudgets = state.budgets;
+                if (applyToAllMonths && updates.defaultBudget !== undefined) {
+                    newBudgets = state.budgets.map(b => ({
+                        ...b,
+                        categories: {
+                            ...b.categories,
+                            [id]: updates.defaultBudget!
+                        }
+                    }));
+                }
+
+                return {
+                    categories: updatedCategories,
+                    ...(applyToAllMonths ? { budgets: newBudgets } : {})
+                };
+            }),
             deleteCategory: (categoryId) => set((state) => {
                 // Replace category of any expense using the deleted category with 'general'
                 const updatedExpenses = state.expenses.map(e =>

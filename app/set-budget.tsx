@@ -55,15 +55,27 @@ export default function SetBudgetScreen() {
     useEffect(() => {
         // Initialize local input values based on store budget
         const initialForm: Record<string, string> = {};
+
+        // Load default budgets first as fallback
+        categories.forEach(cat => {
+            if (cat.defaultBudget && cat.defaultBudget > 0) {
+                initialForm[cat.id] = cat.defaultBudget.toString();
+            }
+        });
+
+        // Override with explicit month budgets
         if (currentBudget) {
             Object.entries(currentBudget.categories).forEach(([cat, amt]) => {
                 if (amt > 0) {
                     initialForm[cat] = amt.toString();
+                } else if (amt === 0) {
+                    // User explicitly set to 0, which overrides default budget
+                    initialForm[cat] = '';
                 }
             });
         }
         setLocalBudgets(initialForm);
-    }, [currentBudget]);
+    }, [currentBudget, categories]);
 
     const handleAutoFill = () => {
         Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);

@@ -7,6 +7,7 @@ import { GlassCard } from '../components/GlassCard';
 import { ArrowLeft, ArrowUpRight, ArrowDownLeft } from 'lucide-react-native';
 import { PieChart, BarChart } from 'react-native-gifted-charts';
 import { getCategoryById } from '../constants/Categories';
+import { LinearGradient } from 'expo-linear-gradient';
 
 export default function AnalyticsScreen() {
     const router = useRouter();

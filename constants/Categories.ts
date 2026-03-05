@@ -16,6 +16,7 @@ export interface Category {
     label: string;
     icon: string;
     color: string;
+    defaultBudget?: number;
 }
 
 export const CATEGORIES: Category[] = [
