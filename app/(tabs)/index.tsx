@@ -3,7 +3,7 @@ import { GlassCard } from '../../components/GlassCard';
 import { VibrantButton } from '../../components/VibrantButton';
 import { useRouter } from 'expo-router';
 import { useSplittyStore } from '../../store/useSplittyStore';
-import { Trash2, Banknote } from 'lucide-react-native';
+import { Trash2, Banknote, Plus } from 'lucide-react-native';
 import { CategoryIcon } from '../../components/CategoryIcon';
 import * as Haptics from 'expo-haptics';
 import { useState, useMemo, useCallback } from 'react';
@@ -145,15 +145,6 @@ export default function DashboardScreen() {
                 )}
 
                 <VibrantButton
-                    title="Add New Expense"
-                    onPress={() => {
-                        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                        router.push('/add-expense');
-                    }}
-                    style={styles.addButton}
-                />
-
-                <VibrantButton
                     title="View Analytics"
                     onPress={() => router.push('/analytics')}
                     variant="outline"
@@ -223,6 +214,17 @@ export default function DashboardScreen() {
 
 
             </ScrollView>
+
+            <TouchableOpacity
+                style={[styles.fab, { backgroundColor: colors.primary }]}
+                activeOpacity={0.8}
+                onPress={() => {
+                    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                    router.push('/add-expense');
+                }}
+            >
+                <Plus size={32} color="white" />
+            </TouchableOpacity>
         </SafeAreaView >
     );
 }
@@ -368,5 +370,20 @@ const styles = StyleSheet.create({
     breakdownAmount: {
         fontSize: 16,
         fontWeight: '700',
+    },
+    fab: {
+        position: 'absolute',
+        bottom: 24,
+        right: 24,
+        width: 64,
+        height: 64,
+        borderRadius: 32,
+        justifyContent: 'center',
+        alignItems: 'center',
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.3,
+        shadowRadius: 8,
+        elevation: 8,
     },
 });
