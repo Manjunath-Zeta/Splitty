@@ -6,6 +6,8 @@ import {
 import { Check, Search, X, Users, ChevronRight } from 'lucide-react-native';
 import { Friend, Group, useSplittyStore } from '../store/useSplittyStore';
 import * as Haptics from 'expo-haptics';
+import { Skeuomorphic } from '../constants/Colors';
+import { LinearGradient } from 'expo-linear-gradient';
 
 interface FriendSelectorProps {
     type: 'individual' | 'group';
@@ -19,7 +21,10 @@ interface FriendSelectorProps {
 export const FriendSelector = memo(({ type, friends, groups, selectedIds, onToggle, disabled }: FriendSelectorProps) => {
     const colors = useSplittyStore(state => state.colors);
     const appearance = useSplittyStore(state => state.appearance);
+    const designPreference = useSplittyStore(state => state.designPreference);
+    const isSkeuomorphic = designPreference === 'skeuomorphic';
     const isDark = appearance === 'dark';
+    const skeuo = isDark ? Skeuomorphic.dark : Skeuomorphic.light;
 
     const [modalVisible, setModalVisible] = useState(false);
     const [searchQuery, setSearchQuery] = useState('');
@@ -48,45 +53,77 @@ export const FriendSelector = memo(({ type, friends, groups, selectedIds, onTogg
 
     return (
         <>
-            {/* Trigger Button */}
-            <TouchableOpacity
-                style={[
-                    styles.triggerButton,
-                    {
-                        backgroundColor: colors.surface,
-                        borderColor: selectedIds.length > 0 ? colors.primary : colors.border,
-                    },
-                    disabled && { opacity: 0.7 }
-                ]}
-                onPress={openModal}
-                disabled={disabled}
-                activeOpacity={0.7}
-            >
-                <View style={styles.triggerLeft}>
-                    <Users size={18} color={selectedIds.length > 0 ? colors.primary : colors.textSecondary} />
-                    <View style={{ marginLeft: 10, flex: 1 }}>
-                        {selectedIds.length === 0 ? (
-                            <Text style={[styles.triggerPlaceholder, { color: colors.textSecondary }]}>
-                                Tap to select {label}...
-                            </Text>
-                        ) : (
-                            <>
-                                <Text style={[styles.triggerCount, { color: colors.primary }]}>
-                                    {selectedIds.length} {label} selected
-                                </Text>
-                                <Text
-                                    style={[styles.triggerNames, { color: colors.textSecondary }]}
-                                    numberOfLines={1}
-                                    ellipsizeMode="tail"
-                                >
-                                    {selectedNames.join(', ')}
-                                </Text>
-                            </>
-                        )}
+            {isSkeuomorphic ? (
+                <View style={[styles.skeuoTriggerWrapper, skeuo.outset.light]}>
+                    <View style={[styles.skeuoTriggerInner, skeuo.outset.dark]}>
+                        <LinearGradient colors={skeuo.surfaceGradient} style={styles.triggerButton}>
+                            <View style={styles.triggerLeft}>
+                                <Users size={18} color={selectedIds.length > 0 ? colors.primary : colors.textSecondary} />
+                                <View style={{ marginLeft: 10, flex: 1 }}>
+                                    {selectedIds.length === 0 ? (
+                                        <Text style={[styles.triggerPlaceholder, { color: colors.textSecondary }]}>
+                                            Tap to select {label}...
+                                        </Text>
+                                    ) : (
+                                        <>
+                                            <Text style={[styles.triggerCount, { color: colors.primary }]}>
+                                                {selectedIds.length} {label} selected
+                                            </Text>
+                                            <Text
+                                                style={[styles.triggerNames, { color: colors.textSecondary }]}
+                                                numberOfLines={1}
+                                                ellipsizeMode="tail"
+                                            >
+                                                {selectedNames.join(', ')}
+                                            </Text>
+                                        </>
+                                    )}
+                                </View>
+                            </View>
+                            <ChevronRight size={18} color={colors.textSecondary} />
+                        </LinearGradient>
                     </View>
                 </View>
-                <ChevronRight size={18} color={colors.textSecondary} />
-            </TouchableOpacity>
+            ) : (
+                <TouchableOpacity
+                    style={[
+                        styles.triggerButton,
+                        {
+                            backgroundColor: colors.surface,
+                            borderColor: selectedIds.length > 0 ? colors.primary : colors.border,
+                        },
+                        disabled && { opacity: 0.7 }
+                    ]}
+                    onPress={openModal}
+                    disabled={disabled}
+                    activeOpacity={0.7}
+                >
+                    <View style={styles.triggerLeft}>
+                        <Users size={18} color={selectedIds.length > 0 ? colors.primary : colors.textSecondary} />
+                        <View style={{ marginLeft: 10, flex: 1 }}>
+                            {selectedIds.length === 0 ? (
+                                <Text style={[styles.triggerPlaceholder, { color: colors.textSecondary }]}>
+                                    Tap to select {label}...
+                                </Text>
+                            ) : (
+                                <>
+                                    <Text style={[styles.triggerCount, { color: colors.primary }]}>
+                                        {selectedIds.length} {label} selected
+                                    </Text>
+                                    <Text
+                                        style={[styles.triggerNames, { color: colors.textSecondary }]}
+                                        numberOfLines={1}
+                                        ellipsizeMode="tail"
+                                    >
+                                        {selectedNames.join(', ')}
+                                    </Text>
+                                </>
+                            )}
+                        </View>
+                    </View>
+                    <ChevronRight size={18} color={colors.textSecondary} />
+                </TouchableOpacity>
+            )}
 
             {/* Modal */}
             <Modal
@@ -115,22 +152,24 @@ export const FriendSelector = memo(({ type, friends, groups, selectedIds, onTogg
                     </View>
 
                     {/* Search Bar */}
-                    <View style={[styles.searchBar, { backgroundColor: colors.surface }]}>
-                        <Search size={18} color={colors.textSecondary} style={{ marginRight: 8 }} />
-                        <TextInput
-                            placeholder={`Search ${label}...`}
-                            placeholderTextColor={colors.textSecondary}
-                            style={[styles.searchInput, { color: colors.text }]}
-                            value={searchQuery}
-                            onChangeText={setSearchQuery}
-                            autoFocus
-                            clearButtonMode="while-editing"
-                        />
-                        {searchQuery.length > 0 && (
-                            <TouchableOpacity onPress={() => setSearchQuery('')}>
-                                <X size={16} color={colors.textSecondary} />
-                            </TouchableOpacity>
-                        )}
+                    <View style={isSkeuomorphic ? [styles.skeuoSearchWrapper, skeuo.inset.dark] : [styles.searchBar, { backgroundColor: colors.surface }]}>
+                        <View style={isSkeuomorphic ? [styles.skeuoSearchInner, skeuo.inset.light] : { flexDirection: 'row', alignItems: 'center', flex: 1 }}>
+                            <Search size={18} color={colors.textSecondary} style={{ marginRight: 8 }} />
+                            <TextInput
+                                placeholder={`Search ${label}...`}
+                                placeholderTextColor={colors.textSecondary}
+                                style={[styles.searchInput, { color: colors.text }]}
+                                value={searchQuery}
+                                onChangeText={setSearchQuery}
+                                autoFocus
+                                clearButtonMode="while-editing"
+                            />
+                            {searchQuery.length > 0 && (
+                                <TouchableOpacity onPress={() => setSearchQuery('')}>
+                                    <X size={16} color={colors.textSecondary} />
+                                </TouchableOpacity>
+                            )}
+                        </View>
                     </View>
 
                     {/* Selected count header */}
@@ -154,15 +193,17 @@ export const FriendSelector = memo(({ type, friends, groups, selectedIds, onTogg
                                 <TouchableOpacity
                                     style={[
                                         styles.listItem,
-                                        {
+                                        !isSkeuomorphic && {
                                             backgroundColor: colors.surface,
                                             borderColor: isSelected ? colors.primary : colors.border
                                         },
-                                        isSelected && {
+                                        !isSkeuomorphic && isSelected && {
                                             backgroundColor: isDark
                                                 ? 'rgba(99,102,241,0.15)'
                                                 : 'rgba(99,102,241,0.08)'
-                                        }
+                                        },
+                                        isSkeuomorphic && styles.skeuoListItem,
+                                        isSkeuomorphic && (isSelected ? skeuo.outset.light : skeuo.inset.dark)
                                     ]}
                                     onPress={() => {
                                         Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
@@ -170,34 +211,36 @@ export const FriendSelector = memo(({ type, friends, groups, selectedIds, onTogg
                                     }}
                                     activeOpacity={0.7}
                                 >
-                                    {/* Avatar */}
-                                    <View style={[
-                                        styles.avatar,
-                                        {
-                                            backgroundColor: isSelected
-                                                ? colors.primary
-                                                : colors.primary + '25'
-                                        }
-                                    ]}>
-                                        <Text style={[styles.avatarText, { color: isSelected ? 'white' : colors.primary }]}>
-                                            {item.name.charAt(0).toUpperCase()}
+                                    <View style={isSkeuomorphic ? (isSelected ? [styles.skeuoItemInner, skeuo.outset.dark] : [styles.skeuoItemInner, skeuo.inset.light]) : { flexDirection: 'row', alignItems: 'center', flex: 1, gap: 12 }}>
+                                        {/* Avatar */}
+                                        <View style={[
+                                            styles.avatar,
+                                            {
+                                                backgroundColor: isSelected
+                                                    ? colors.primary
+                                                    : colors.primary + '25'
+                                            }
+                                        ]}>
+                                            <Text style={[styles.avatarText, { color: isSelected ? 'white' : colors.primary }]}>
+                                                {item.name.charAt(0).toUpperCase()}
+                                            </Text>
+                                        </View>
+
+                                        <Text style={[
+                                            styles.itemText,
+                                            { color: colors.text, flex: 1 },
+                                            isSelected && { color: isSkeuomorphic ? colors.text : colors.primary, fontWeight: '600' }
+                                        ]}>
+                                            {item.name}
                                         </Text>
-                                    </View>
 
-                                    <Text style={[
-                                        styles.itemText,
-                                        { color: colors.text, flex: 1 },
-                                        isSelected && { color: colors.primary, fontWeight: '600' }
-                                    ]}>
-                                        {item.name}
-                                    </Text>
-
-                                    <View style={[
-                                        styles.checkbox,
-                                        { borderColor: isSelected ? colors.primary : colors.textSecondary },
-                                        isSelected && { backgroundColor: colors.primary }
-                                    ]}>
-                                        {isSelected && <Check size={12} color="white" strokeWidth={3} />}
+                                        <View style={[
+                                            styles.checkbox,
+                                            { borderColor: isSelected ? colors.primary : colors.textSecondary },
+                                            isSelected && { backgroundColor: colors.primary }
+                                        ]}>
+                                            {isSelected && <Check size={12} color="white" strokeWidth={3} />}
+                                        </View>
                                     </View>
                                 </TouchableOpacity>
                             );
@@ -329,4 +372,36 @@ const styles = StyleSheet.create({
         fontSize: 14,
         marginTop: 20,
     },
+    skeuoTriggerWrapper: {
+        marginBottom: 16,
+        borderRadius: 12,
+    },
+    skeuoTriggerInner: {
+        borderRadius: 12,
+    },
+    skeuoSearchWrapper: {
+        marginHorizontal: 16,
+        marginTop: 16,
+        marginBottom: 8,
+        borderRadius: 12,
+    },
+    skeuoSearchInner: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        paddingHorizontal: 14,
+        paddingVertical: 12,
+        borderRadius: 12,
+    },
+    skeuoListItem: {
+        borderWidth: 0,
+    },
+    skeuoItemInner: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        paddingVertical: 12,
+        paddingHorizontal: 16,
+        borderRadius: 12,
+        gap: 12,
+        flex: 1,
+    }
 });

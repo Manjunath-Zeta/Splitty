@@ -8,6 +8,8 @@ import { useSplittyStore } from '../store/useSplittyStore';
 import { ChevronRight, Users, Landmark, Check, Plus, Minus, Repeat, X, Edit2, User } from 'lucide-react-native';
 import { useRouter, useLocalSearchParams, Stack } from 'expo-router';
 import { Frequency } from '../store/useSplittyStore';
+import { Skeuomorphic } from '../constants/Colors';
+import { LinearGradient } from 'expo-linear-gradient';
 
 import { FriendSelector } from '../components/FriendSelector';
 import { SplitDetails } from '../components/SplitDetails';
@@ -16,8 +18,10 @@ import { CategoryIcon } from '../components/CategoryIcon';
 export default function AddExpenseScreen() {
     const router = useRouter();
     const { id } = useLocalSearchParams<{ id: string }>();
-    const { friends, groups, addExpense, editExpense, expenses, appearance, colors, formatCurrency, categories, unknownFriendNames } = useSplittyStore();
+    const { friends, groups, addExpense, editExpense, expenses, appearance, colors, formatCurrency, categories, unknownFriendNames, designPreference } = useSplittyStore();
+    const isSkeuomorphic = designPreference === 'skeuomorphic';
     const isDark = appearance === 'dark';
+    const skeuo = isDark ? Skeuomorphic.dark : Skeuomorphic.light;
 
     // Edit Mode State
     // If ID exists, default to VIEW ONLY (false). If ID is missing, we are adding new -> EDITING (true).
@@ -227,66 +231,99 @@ export default function AddExpenseScreen() {
                     )}
                 </View>
 
-                <GlassCard style={styles.card}>
-                    <View style={styles.inputRow}>
-                        <StyledInput
-                            label="Description"
-                            placeholder="What for?"
-                            value={description}
-                            onChangeText={setDescription}
-                            containerStyle={{ flex: 2, marginBottom: 0 }}
-                            editable={isEditing}
-                        />
-                        <View style={styles.gap} />
-                        <StyledInput
-                            label="Amount"
-                            placeholder="0.00"
-                            value={amount}
-                            onChangeText={setAmount}
-                            keyboardType="numeric"
-                            containerStyle={{ flex: 1, marginBottom: 0 }}
-                            editable={isEditing}
-                        />
+                <View style={isSkeuomorphic ? [styles.skeuoCardWrapper, skeuo.outset.light] : null}>
+                    <View style={isSkeuomorphic ? [styles.skeuoCardInner, skeuo.outset.dark] : null}>
+                        <LinearGradient
+                            colors={isSkeuomorphic ? skeuo.surfaceGradient : ['transparent', 'transparent']}
+                            style={[styles.card, !isSkeuomorphic && { backgroundColor: colors.surface }]}
+                        >
+                            <View style={styles.inputRow}>
+                                <StyledInput
+                                    label="Description"
+                                    placeholder="What for?"
+                                    value={description}
+                                    onChangeText={setDescription}
+                                    containerStyle={{ flex: 2, marginBottom: 0 }}
+                                    editable={isEditing}
+                                    style={isSkeuomorphic ? { backgroundColor: 'transparent' } : null}
+                                />
+                                <View style={styles.gap} />
+                                <StyledInput
+                                    label="Amount"
+                                    placeholder="0.00"
+                                    value={amount}
+                                    onChangeText={setAmount}
+                                    keyboardType="numeric"
+                                    containerStyle={{ flex: 1, marginBottom: 0 }}
+                                    editable={isEditing}
+                                    style={isSkeuomorphic ? { backgroundColor: 'transparent' } : null}
+                                />
+                            </View>
+                            <View style={{ marginTop: 16 }}>
+                                <StyledInput
+                                    label="Tags (Optional)"
+                                    placeholder="e.g. food, trip, birthday"
+                                    value={tagsInput}
+                                    onChangeText={setTagsInput}
+                                    containerStyle={{ marginBottom: 0 }}
+                                    editable={isEditing}
+                                    style={isSkeuomorphic ? { backgroundColor: 'transparent' } : null}
+                                />
+                            </View>
+                        </LinearGradient>
                     </View>
-                    <View style={{ marginTop: 16 }}>
-                        <StyledInput
-                            label="Tags (Optional)"
-                            placeholder="e.g. food, trip, birthday"
-                            value={tagsInput}
-                            onChangeText={setTagsInput}
-                            containerStyle={{ marginBottom: 0 }}
-                            editable={isEditing}
-                        />
-                    </View>
-                </GlassCard>
+                </View>
 
                 <Text style={[styles.sectionTitle, { color: colors.text }]}>Split with</Text>
 
-                <View style={[styles.tabContainer, { backgroundColor: colors.surface }]}>
-                    <TouchableOpacity
-                        style={[styles.tab, type === 'individual' && { backgroundColor: colors.primary }, !isEditing && { opacity: 0.7 }]}
-                        onPress={() => handleTypeChange('individual')}
-                        disabled={!isEditing}
-                    >
-                        <Landmark size={20} color={type === 'individual' ? 'white' : colors.textSecondary} />
-                        <Text style={[styles.tabText, { color: type === 'individual' ? 'white' : colors.textSecondary }]}>Friends</Text>
-                    </TouchableOpacity>
-                    <TouchableOpacity
-                        style={[styles.tab, type === 'group' && { backgroundColor: colors.primary }, !isEditing && { opacity: 0.7 }]}
-                        onPress={() => handleTypeChange('group')}
-                        disabled={!isEditing}
-                    >
-                        <Users size={20} color={type === 'group' ? 'white' : colors.textSecondary} />
-                        <Text style={[styles.tabText, { color: type === 'group' ? 'white' : colors.textSecondary }]}>Groups</Text>
-                    </TouchableOpacity>
-                    <TouchableOpacity
-                        style={[styles.tab, type === 'personal' && { backgroundColor: colors.primary }, !isEditing && { opacity: 0.7 }]}
-                        onPress={() => handleTypeChange('personal')}
-                        disabled={!isEditing}
-                    >
-                        <User size={20} color={type === 'personal' ? 'white' : colors.textSecondary} />
-                        <Text style={[styles.tabText, { color: type === 'personal' ? 'white' : colors.textSecondary }]}>Personal</Text>
-                    </TouchableOpacity>
+                <View style={isSkeuomorphic ? [styles.skeuoTabContainer, skeuo.inset.dark] : [styles.tabContainer, { backgroundColor: colors.surface }]}>
+                    <View style={isSkeuomorphic ? [styles.skeuoTabInner, skeuo.inset.light] : { flexDirection: 'row', flex: 1 }}>
+                        <TouchableOpacity
+                            style={[
+                                styles.tab,
+                                type === 'individual' && { backgroundColor: isSkeuomorphic ? 'transparent' : colors.primary },
+                                isSkeuomorphic && type === 'individual' && [styles.skeuoActiveTab, skeuo.outset.light],
+                                !isEditing && { opacity: 0.7 }
+                            ]}
+                            onPress={() => handleTypeChange('individual')}
+                            disabled={!isEditing}
+                        >
+                            <View style={isSkeuomorphic && type === 'individual' ? [styles.skeuoActiveTabInner, skeuo.outset.dark] : { flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                                <Landmark size={20} color={type === 'individual' ? (isSkeuomorphic ? colors.primary : 'white') : colors.textSecondary} />
+                                <Text style={[styles.tabText, { color: type === 'individual' ? (isSkeuomorphic ? colors.primary : 'white') : colors.textSecondary }]}>Friends</Text>
+                            </View>
+                        </TouchableOpacity>
+                        <TouchableOpacity
+                            style={[
+                                styles.tab,
+                                type === 'group' && { backgroundColor: isSkeuomorphic ? 'transparent' : colors.primary },
+                                isSkeuomorphic && type === 'group' && [styles.skeuoActiveTab, skeuo.outset.light],
+                                !isEditing && { opacity: 0.7 }
+                            ]}
+                            onPress={() => handleTypeChange('group')}
+                            disabled={!isEditing}
+                        >
+                            <View style={isSkeuomorphic && type === 'group' ? [styles.skeuoActiveTabInner, skeuo.outset.dark] : { flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                                <Users size={20} color={type === 'group' ? (isSkeuomorphic ? colors.primary : 'white') : colors.textSecondary} />
+                                <Text style={[styles.tabText, { color: type === 'group' ? (isSkeuomorphic ? colors.primary : 'white') : colors.textSecondary }]}>Groups</Text>
+                            </View>
+                        </TouchableOpacity>
+                        <TouchableOpacity
+                            style={[
+                                styles.tab,
+                                type === 'personal' && { backgroundColor: isSkeuomorphic ? 'transparent' : colors.primary },
+                                isSkeuomorphic && type === 'personal' && [styles.skeuoActiveTab, skeuo.outset.light],
+                                !isEditing && { opacity: 0.7 }
+                            ]}
+                            onPress={() => handleTypeChange('personal')}
+                            disabled={!isEditing}
+                        >
+                            <View style={isSkeuomorphic && type === 'personal' ? [styles.skeuoActiveTabInner, skeuo.outset.dark] : { flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                                <User size={20} color={type === 'personal' ? (isSkeuomorphic ? colors.primary : 'white') : colors.textSecondary} />
+                                <Text style={[styles.tabText, { color: type === 'personal' ? (isSkeuomorphic ? colors.primary : 'white') : colors.textSecondary }]}>Personal</Text>
+                            </View>
+                        </TouchableOpacity>
+                    </View>
                 </View>
 
                 {type !== 'personal' && (
@@ -310,22 +347,25 @@ export default function AddExpenseScreen() {
                                 key={cat.id}
                                 style={[
                                     styles.chip,
-                                    { backgroundColor: colors.background, borderColor: colors.border },
-                                    category === cat.id && { backgroundColor: cat.color, borderColor: cat.color },
+                                    !isSkeuomorphic && { backgroundColor: colors.background, borderColor: colors.border },
+                                    !isSkeuomorphic && category === cat.id && { backgroundColor: cat.color, borderColor: cat.color },
+                                    isSkeuomorphic && (category === cat.id ? skeuo.outset.light : skeuo.inset.dark),
                                     !isEditing && { opacity: 0.7 }
                                 ]}
                                 onPress={() => setCategory(cat.id)}
                                 disabled={!isEditing}
                             >
-                                <CategoryIcon name={cat.icon} size={16} color={category === cat.id ? 'white' : colors.textSecondary} />
-                                <Text style={[
-                                    styles.chipText,
-                                    { color: colors.textSecondary },
-                                    category === cat.id && { color: 'white', fontWeight: 'bold' },
-                                    { marginLeft: 6 }
-                                ]}>
-                                    {cat.label}
-                                </Text>
+                                <View style={isSkeuomorphic ? (category === cat.id ? [styles.skeuoChipInner, skeuo.outset.dark] : [styles.skeuoChipInner, skeuo.inset.light]) : { flexDirection: 'row', alignItems: 'center' }}>
+                                    <CategoryIcon name={cat.icon} size={16} color={category === cat.id ? (isSkeuomorphic ? cat.color : 'white') : colors.textSecondary} />
+                                    <Text style={[
+                                        styles.chipText,
+                                        { color: colors.textSecondary },
+                                        category === cat.id && { color: isSkeuomorphic ? colors.text : 'white', fontWeight: 'bold' },
+                                        { marginLeft: 6 }
+                                    ]}>
+                                        {cat.label}
+                                    </Text>
+                                </View>
                             </TouchableOpacity>
                         ))}
                     </ScrollView>
@@ -532,4 +572,39 @@ const styles = StyleSheet.create({
         fontSize: 16,
         fontWeight: '600',
     },
+    skeuoCardWrapper: {
+        marginBottom: 16,
+    },
+    skeuoCardInner: {
+        borderRadius: 16,
+    },
+    skeuoTabContainer: {
+        borderRadius: 12,
+        padding: 4,
+        marginBottom: 12,
+    },
+    skeuoTabInner: {
+        flexDirection: 'row',
+        flex: 1,
+        borderRadius: 12,
+    },
+    skeuoActiveTab: {
+        borderRadius: 8,
+    },
+    skeuoActiveTabInner: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        paddingVertical: 10,
+        gap: 6,
+        borderRadius: 8,
+        width: '100%',
+    },
+    skeuoChipInner: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        paddingHorizontal: 12,
+        paddingVertical: 6,
+        borderRadius: 18,
+    }
 });

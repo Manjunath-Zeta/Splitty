@@ -1,6 +1,6 @@
 import React from 'react';
 import { TextInput, StyleSheet, View, Text, TextInputProps, TextStyle, StyleProp, ViewStyle } from 'react-native';
-import { Themes, ThemeName } from '../constants/Colors';
+import { Skeuomorphic } from '../constants/Colors';
 import { useSplittyStore } from '../store/useSplittyStore';
 
 interface StyledInputProps extends TextInputProps {
@@ -10,7 +10,31 @@ interface StyledInputProps extends TextInputProps {
 }
 
 export const StyledInput: React.FC<StyledInputProps> = ({ label, style, labelStyle, containerStyle, ...props }) => {
-    const colors = useSplittyStore(state => state.colors);
+    const { colors, designPreference, appearance } = useSplittyStore();
+    const isSkeuomorphic = designPreference === 'skeuomorphic';
+    const isDark = appearance === 'dark';
+    const skeuo = isDark ? Skeuomorphic.dark : Skeuomorphic.light;
+
+    if (isSkeuomorphic) {
+        return (
+            <View style={[styles.container, containerStyle]}>
+                {label && <Text style={[styles.label, { color: colors.textSecondary }, labelStyle]}>{label}</Text>}
+                <View style={[styles.skeuoInsetWrapper, skeuo.inset.dark]}>
+                    <View style={[styles.skeuoInsetInner, skeuo.inset.light]}>
+                        <TextInput
+                            style={[styles.input, {
+                                color: colors.text,
+                                backgroundColor: 'transparent',
+                                borderWidth: 0,
+                            }, style]}
+                            placeholderTextColor={colors.textSecondary}
+                            {...props}
+                        />
+                    </View>
+                </View>
+            </View>
+        );
+    }
 
     return (
         <View style={[styles.container, containerStyle]}>
@@ -45,4 +69,12 @@ const styles = StyleSheet.create({
         fontSize: 16,
         borderWidth: 1,
     },
+    skeuoInsetWrapper: {
+        borderRadius: 16,
+        backgroundColor: 'transparent',
+    },
+    skeuoInsetInner: {
+        borderRadius: 16,
+        backgroundColor: 'transparent',
+    }
 });

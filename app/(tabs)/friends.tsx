@@ -10,14 +10,19 @@ import { UserPlus, Banknote } from 'lucide-react-native';
 import { supabase } from '../../lib/supabase';
 import { InitialsAvatar } from '../../components/InitialsAvatar';
 import * as Haptics from 'expo-haptics';
+import { Skeuomorphic } from '../../constants/Colors';
+import { LinearGradient } from 'expo-linear-gradient';
 
 export default function FriendsScreen() {
     const router = useRouter();
-    const { friends, addFriend, appearance, colors, formatCurrency, settleUp, fetchData } = useSplittyStore();
+    const { friends, addFriend, appearance, colors, formatCurrency, settleUp, fetchData, designPreference } = useSplittyStore();
     const [inputValue, setInputValue] = useState('');
     const [loading, setLoading] = useState(false);
     const [refreshing, setRefreshing] = useState(false);
+
+    const isSkeuomorphic = designPreference === 'skeuomorphic';
     const isDark = appearance === 'dark';
+    const skeuo = isDark ? Skeuomorphic.dark : Skeuomorphic.light;
 
     const handleRefresh = async () => {
         setRefreshing(true);
@@ -115,36 +120,43 @@ export default function FriendsScreen() {
     return (
         <SafeAreaView style={[styles.safeArea, { backgroundColor: colors.background }]}>
             <View style={styles.container}>
-                <GlassCard style={[styles.addCard, { backgroundColor: colors.surface }]}>
-                    <Text style={[styles.sectionTitle, { color: colors.text }]}>Add Friend</Text>
-                    <Text style={{ color: colors.textSecondary, marginBottom: 8, fontSize: 13 }}>
-                        Search by email or phone to link real users. If not found, they'll be added locally.
-                    </Text>
-                    <View style={styles.row}>
-                        <View style={{ flex: 1 }}>
-                            <StyledInput
-                                placeholder="Name, Email or Phone"
-                                value={inputValue}
-                                onChangeText={setInputValue}
-                                style={{ marginBottom: 0, backgroundColor: colors.inputBackground, color: colors.text }}
-                                placeholderTextColor={colors.textSecondary}
-                                autoCapitalize="none"
-                            />
-                        </View>
-                        <View style={styles.addButtonWrapper}>
-                            <VibrantButton
-                                title=""
-                                onPress={handleAddFriend}
-                                style={styles.smallAddButton}
-                                variant="primary"
-                                disabled={loading}
-                            />
-                            <View style={styles.plusIcon}>
-                                <UserPlus color="white" size={20} />
+                <View style={isSkeuomorphic ? [styles.skeuoAddWrapper, skeuo.outset.light] : null}>
+                    <View style={isSkeuomorphic ? [styles.skeuoAddInner, skeuo.outset.dark] : null}>
+                        <LinearGradient
+                            colors={isSkeuomorphic ? skeuo.surfaceGradient : ['transparent', 'transparent']}
+                            style={[styles.addCard, !isSkeuomorphic && { backgroundColor: colors.surface }]}
+                        >
+                            <Text style={[styles.sectionTitle, { color: colors.text }]}>Add Friend</Text>
+                            <Text style={{ color: colors.textSecondary, marginBottom: 8, fontSize: 13 }}>
+                                Search by email or phone to link real users. If not found, they'll be added locally.
+                            </Text>
+                            <View style={styles.row}>
+                                <View style={{ flex: 1 }}>
+                                    <StyledInput
+                                        placeholder="Name, Email or Phone"
+                                        value={inputValue}
+                                        onChangeText={setInputValue}
+                                        style={{ marginBottom: 0, backgroundColor: isSkeuomorphic ? 'transparent' : colors.inputBackground, color: colors.text }}
+                                        placeholderTextColor={colors.textSecondary}
+                                        autoCapitalize="none"
+                                    />
+                                </View>
+                                <View style={styles.addButtonWrapper}>
+                                    <VibrantButton
+                                        title=""
+                                        onPress={handleAddFriend}
+                                        style={styles.smallAddButton}
+                                        variant="primary"
+                                        disabled={loading}
+                                    />
+                                    <View style={styles.plusIcon}>
+                                        <UserPlus color="white" size={20} />
+                                    </View>
+                                </View>
                             </View>
-                        </View>
+                        </LinearGradient>
                     </View>
-                </GlassCard>
+                </View>
 
                 <View style={styles.listContainer}>
                     <Text style={[styles.sectionTitle, { color: colors.text }]}>Your Friends</Text>
@@ -153,44 +165,51 @@ export default function FriendsScreen() {
                         keyExtractor={(item) => item.id}
                         renderItem={({ item }) => (
                             <TouchableOpacity
-                                style={styles.cardWrapper}
+                                style={[styles.cardWrapper, isSkeuomorphic && styles.skeuoCardWrapper]}
                                 activeOpacity={0.8}
                                 onPress={() => router.push({ pathname: '/friend-details/[id]', params: { id: item.id } })}
                             >
-                                <GlassCard style={[styles.friendCard, { backgroundColor: colors.surface }]}>
-                                    <View style={{ marginRight: 16 }}>
-                                        <InitialsAvatar
-                                            name={item.name}
-                                            avatarUrl={item.avatarUrl}
-                                            size={44}
-                                            isLocal={!item.linkedUserId}
-                                        />
+                                <View style={isSkeuomorphic ? [styles.skeuoCardOuter, skeuo.outset.light] : null}>
+                                    <View style={isSkeuomorphic ? [styles.skeuoCardInner, skeuo.outset.dark] : null}>
+                                        <LinearGradient
+                                            colors={isSkeuomorphic ? skeuo.surfaceGradient : ['transparent', 'transparent']}
+                                            style={[styles.friendCard, !isSkeuomorphic && { backgroundColor: colors.surface }]}
+                                        >
+                                            <View style={{ marginRight: 16 }}>
+                                                <InitialsAvatar
+                                                    name={item.name}
+                                                    avatarUrl={item.avatarUrl}
+                                                    size={44}
+                                                    isLocal={!item.linkedUserId}
+                                                />
+                                            </View>
+                                            <View style={styles.friendInfo}>
+                                                <Text style={[styles.friendName, { color: colors.text }]}>{item.name}</Text>
+                                                <Text style={[
+                                                    styles.friendBalance,
+                                                    { color: item.balance >= 0 ? colors.success : colors.accent }
+                                                ]}>
+                                                    {item.balance >= 0 ? `Owes you ${formatCurrency(item.balance)}` : `You owe ${formatCurrency(Math.abs(item.balance))}`}
+                                                </Text>
+                                            </View>
+                                            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                                                {Math.abs(item.balance) > 0.01 && (
+                                                    <TouchableOpacity
+                                                        onPress={(e) => {
+                                                            e.stopPropagation();
+                                                            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                                                            handleSettleUp(item);
+                                                        }}
+                                                        style={styles.actionButton}
+                                                        hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                                                    >
+                                                        <Banknote size={20} color={colors.success} />
+                                                    </TouchableOpacity>
+                                                )}
+                                            </View>
+                                        </LinearGradient>
                                     </View>
-                                    <View style={styles.friendInfo}>
-                                        <Text style={[styles.friendName, { color: colors.text }]}>{item.name}</Text>
-                                        <Text style={[
-                                            styles.friendBalance,
-                                            { color: item.balance >= 0 ? colors.success : colors.accent }
-                                        ]}>
-                                            {item.balance >= 0 ? `Owes you ${formatCurrency(item.balance)}` : `You owe ${formatCurrency(Math.abs(item.balance))}`}
-                                        </Text>
-                                    </View>
-                                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-                                        {Math.abs(item.balance) > 0.01 && (
-                                            <TouchableOpacity
-                                                onPress={(e) => {
-                                                    e.stopPropagation();
-                                                    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                                                    handleSettleUp(item);
-                                                }}
-                                                style={styles.actionButton}
-                                                hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-                                            >
-                                                <Banknote size={20} color={colors.success} />
-                                            </TouchableOpacity>
-                                        )}
-                                    </View>
-                                </GlassCard>
+                                </View>
                             </TouchableOpacity>
                         )}
                         ListEmptyComponent={
@@ -299,4 +318,19 @@ const styles = StyleSheet.create({
         marginTop: 40,
         fontSize: 16,
     },
+    skeuoAddWrapper: {
+        marginBottom: 24,
+    },
+    skeuoAddInner: {
+        borderRadius: 16,
+    },
+    skeuoCardWrapper: {
+        marginBottom: 12,
+    },
+    skeuoCardOuter: {
+        borderRadius: 16,
+    },
+    skeuoCardInner: {
+        borderRadius: 16,
+    }
 });

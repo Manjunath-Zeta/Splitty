@@ -7,6 +7,8 @@ import { useRouter } from 'expo-router';
 import { ChevronLeft, ChevronRight, BarChart2 } from 'lucide-react-native';
 import { useSplittyStore } from '../../store/useSplittyStore';
 import { CategoryIcon } from '../../components/CategoryIcon';
+import { Skeuomorphic } from '../../constants/Colors';
+import { LinearGradient } from 'expo-linear-gradient';
 import * as Haptics from 'expo-haptics';
 import Animated, {
     useSharedValue, useAnimatedProps, withTiming, Easing, withDelay
@@ -62,12 +64,46 @@ const CategoryTile = ({
     item: any; index: number; monthKey: string; colors: any; isDarkMode: boolean;
 }) => {
     const router = useRouter();
-    const { getCategoryById } = useSplittyStore();
+    const { getCategoryById, designPreference } = useSplittyStore();
     const catData = getCategoryById(item.categoryId);
     const isOver = item.percentage >= 100;
     const isWarning = item.percentage >= 85 && !isOver;
     const ringColor = isOver ? colors.error : isWarning ? '#F59E0B' : catData.color;
     const ringBgColor = isDarkMode ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.05)';
+
+    const isSkeuomorphic = designPreference === 'skeuomorphic';
+    const skeuo = isDarkMode ? Skeuomorphic.dark : Skeuomorphic.light;
+
+    if (isSkeuomorphic) {
+        return (
+            <TouchableOpacity
+                style={[styles.skeuoTileWrapper, skeuo.outset.light]}
+                activeOpacity={0.75}
+                onPress={() => {
+                    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                    router.push(`/budget-category/${monthKey}/${item.categoryId}`);
+                }}
+            >
+                <View style={[styles.skeuoTileInner, skeuo.outset.dark]}>
+                    <LinearGradient
+                        colors={skeuo.surfaceGradient}
+                        style={styles.skeuoTileGradient}
+                        start={{ x: 0, y: 0 }}
+                        end={{ x: 1, y: 1 }}
+                    >
+                        <View style={styles.ringWrapper}>
+                            <RingChart percentage={item.percentage} color={ringColor} ringBgColor={ringBgColor} index={index} />
+                            <View style={styles.ringIconOverlay}>
+                                <CategoryIcon name={catData.icon} size={22} color={ringColor} />
+                            </View>
+                        </View>
+                        <Text style={[styles.tileName, { color: colors.text }]} numberOfLines={1}>{catData.label}</Text>
+                        <Text style={[styles.tilePercent, { color: ringColor }]}>{item.percentage}%</Text>
+                    </LinearGradient>
+                </View>
+            </TouchableOpacity>
+        );
+    }
 
     return (
         <TouchableOpacity
@@ -78,7 +114,6 @@ const CategoryTile = ({
                 router.push(`/budget-category/${monthKey}/${item.categoryId}`);
             }}
         >
-            {/* Ring + Icon stacked */}
             <View style={styles.ringWrapper}>
                 <RingChart percentage={item.percentage} color={ringColor} ringBgColor={ringBgColor} index={index} />
                 <View style={styles.ringIconOverlay}>
@@ -133,7 +168,7 @@ export default function BudgetsScreen() {
     const router = useRouter();
     const {
         colors, isDarkMode, budgets, expenses, categories, formatCurrency, getCategoryById,
-        categoryOrder, hiddenBudgetCategories, isRolloverEnabled
+        categoryOrder, hiddenBudgetCategories, isRolloverEnabled, designPreference
     } = useSplittyStore();
     const [currentDate, setCurrentDate] = useState(new Date());
 
@@ -307,37 +342,79 @@ export default function BudgetsScreen() {
                 showsVerticalScrollIndicator={false}
             >
                 {/* ── Hero Card ── */}
-                <View style={[styles.heroCard, { backgroundColor: isDarkMode ? '#1E40AF' : colors.primary }]}>
-                    <View style={styles.heroTop}>
-                        <Text style={styles.heroLabel}>Total Budget</Text>
-                        <View style={styles.heroIconCircle}>
-                            <BarChart2 color="#FFFFFF" size={18} />
+                {designPreference === 'skeuomorphic' ? (
+                    <View style={[styles.skeuoHeroWrapper, (isDarkMode ? Skeuomorphic.dark.outset.light : Skeuomorphic.light.outset.light)]}>
+                        <View style={[styles.skeuoHeroInner, (isDarkMode ? Skeuomorphic.dark.outset.dark : Skeuomorphic.light.outset.dark)]}>
+                            <LinearGradient
+                                colors={isDarkMode ? Skeuomorphic.dark.surfaceGradient : Skeuomorphic.light.surfaceGradient}
+                                style={styles.heroCard}
+                                start={{ x: 0, y: 0 }}
+                                end={{ x: 1, y: 1 }}
+                            >
+                                <View style={styles.heroTop}>
+                                    <Text style={[styles.heroLabel, { color: colors.textSecondary }]}>Total Budget</Text>
+                                    <View style={[styles.heroIconCircle, { backgroundColor: colors.primary + '20' }]}>
+                                        <BarChart2 color={colors.primary} size={18} />
+                                    </View>
+                                </View>
+                                <Text style={[styles.heroAmount, { color: colors.text }]}>{formatCurrency(totalBudget)}</Text>
+
+                                <View style={styles.heroSubRow}>
+                                    <View style={styles.heroSubCard}>
+                                        <Text style={[styles.heroSubLabel, { color: colors.textSecondary }]}>MONTHLY SPENDING</Text>
+                                        <View style={[styles.skeuoSubPill, (isDarkMode ? Skeuomorphic.dark.inset.dark : Skeuomorphic.light.inset.dark)]}>
+                                            <View style={[styles.skeuoSubPillInner, (isDarkMode ? Skeuomorphic.dark.inset.light : Skeuomorphic.light.inset.light)]}>
+                                                <Text style={[styles.heroSubValue, { color: colors.primary }]}>{formatCurrency(totalSpent)}</Text>
+                                            </View>
+                                        </View>
+                                    </View>
+                                    <View style={[styles.heroSubCard, { alignItems: 'flex-end' }]}>
+                                        <Text style={[styles.heroSubLabel, { color: colors.textSecondary }]}>SAVINGS</Text>
+                                        <View style={[styles.skeuoSubPill, (isDarkMode ? Skeuomorphic.dark.inset.dark : Skeuomorphic.light.inset.dark)]}>
+                                            <View style={[styles.skeuoSubPillInner, (isDarkMode ? Skeuomorphic.dark.inset.light : Skeuomorphic.light.inset.light)]}>
+                                                <Text style={[styles.heroSubValue, { color: colors.text }]}>
+                                                    {formatCurrency(remaining)}
+                                                </Text>
+                                            </View>
+                                        </View>
+                                    </View>
+                                </View>
+                            </LinearGradient>
                         </View>
                     </View>
-                    <Text style={styles.heroAmount}>{formatCurrency(totalBudget)}</Text>
-
-                    {/* Thin progress bar */}
-                    <View style={styles.heroProg}>
-                        <View style={[styles.heroProgFill, { width: `${spentPct}%` }]} />
-                    </View>
-
-                    <View style={styles.heroSubRow}>
-                        <View style={styles.heroSubCard}>
-                            <Text style={styles.heroSubLabel}>MONTHLY SPENDING</Text>
-                            <View style={styles.heroSubPill}>
-                                <Text style={styles.heroSubValue}>{formatCurrency(totalSpent)}</Text>
+                ) : (
+                    <View style={[styles.heroCard, { backgroundColor: isDarkMode ? '#1E40AF' : colors.primary }]}>
+                        <View style={styles.heroTop}>
+                            <Text style={styles.heroLabel}>Total Budget</Text>
+                            <View style={styles.heroIconCircle}>
+                                <BarChart2 color="#FFFFFF" size={18} />
                             </View>
                         </View>
-                        <View style={[styles.heroSubCard, { alignItems: 'flex-end' }]}>
-                            <Text style={styles.heroSubLabel}>SAVINGS</Text>
-                            <View style={[styles.heroSubPill, styles.heroSubPillRight]}>
-                                <Text style={styles.heroSubValue}>
-                                    {formatCurrency(remaining)}
-                                </Text>
+                        <Text style={styles.heroAmount}>{formatCurrency(totalBudget)}</Text>
+
+                        {/* Thin progress bar */}
+                        <View style={styles.heroProg}>
+                            <View style={[styles.heroProgFill, { width: `${spentPct}%` }]} />
+                        </View>
+
+                        <View style={styles.heroSubRow}>
+                            <View style={styles.heroSubCard}>
+                                <Text style={styles.heroSubLabel}>MONTHLY SPENDING</Text>
+                                <View style={styles.heroSubPill}>
+                                    <Text style={styles.heroSubValue}>{formatCurrency(totalSpent)}</Text>
+                                </View>
+                            </View>
+                            <View style={[styles.heroSubCard, { alignItems: 'flex-end' }]}>
+                                <Text style={styles.heroSubLabel}>SAVINGS</Text>
+                                <View style={[styles.heroSubPill, styles.heroSubPillRight]}>
+                                    <Text style={styles.heroSubValue}>
+                                        {formatCurrency(remaining)}
+                                    </Text>
+                                </View>
                             </View>
                         </View>
                     </View>
-                </View>
+                )}
 
                 {/* ── Budget Categories ── */}
                 <View style={styles.section}>
@@ -379,16 +456,33 @@ export default function BudgetsScreen() {
                             </TouchableOpacity>
                         </View>
 
-                        <View style={[styles.txCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-                            {recentTransactions.map((expense, idx) => (
-                                <React.Fragment key={expense.id}>
-                                    <TransactionRow expense={expense} colors={colors} isDarkMode={isDarkMode} />
-                                    {idx < recentTransactions.length - 1 && (
-                                        <View style={[styles.txDivider, { backgroundColor: colors.border }]} />
-                                    )}
-                                </React.Fragment>
-                            ))}
-                        </View>
+                        {designPreference === 'skeuomorphic' ? (
+                            <View style={[styles.skeuoHeroWrapper, (isDarkMode ? Skeuomorphic.dark.outset.light : Skeuomorphic.light.outset.light)]}>
+                                <View style={[styles.skeuoHeroInner, (isDarkMode ? Skeuomorphic.dark.outset.dark : Skeuomorphic.light.outset.dark)]}>
+                                    <View style={[styles.txCard, { backgroundColor: 'transparent', borderColor: 'transparent', borderWidth: 0 }]}>
+                                        {recentTransactions.map((expense, idx) => (
+                                            <React.Fragment key={expense.id}>
+                                                <TransactionRow expense={expense} colors={colors} isDarkMode={isDarkMode} />
+                                                {idx < recentTransactions.length - 1 && (
+                                                    <View style={[styles.txDivider, { backgroundColor: colors.border }]} />
+                                                )}
+                                            </React.Fragment>
+                                        ))}
+                                    </View>
+                                </View>
+                            </View>
+                        ) : (
+                            <View style={[styles.txCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+                                {recentTransactions.map((expense, idx) => (
+                                    <React.Fragment key={expense.id}>
+                                        <TransactionRow expense={expense} colors={colors} isDarkMode={isDarkMode} />
+                                        {idx < recentTransactions.length - 1 && (
+                                            <View style={[styles.txDivider, { backgroundColor: colors.border }]} />
+                                        )}
+                                    </React.Fragment>
+                                ))}
+                            </View>
+                        )}
                     </View>
                 )}
 
@@ -444,6 +538,38 @@ const styles = StyleSheet.create({
         alignItems: 'flex-end',
     },
     heroSubValue: { fontSize: 20, fontWeight: '800', color: '#FFFFFF' },
+
+    // Skeuomorphic
+    skeuoHeroWrapper: {
+        borderRadius: 24,
+        marginBottom: 28,
+    },
+    skeuoHeroInner: {
+        borderRadius: 24,
+    },
+    skeuoSubPill: {
+        borderRadius: 12,
+        backgroundColor: 'transparent',
+        alignSelf: 'flex-start',
+        minWidth: 120
+    },
+    skeuoSubPillInner: {
+        borderRadius: 12,
+        paddingVertical: 12,
+        paddingHorizontal: 16,
+    },
+    skeuoTileWrapper: {
+        width: 108,
+        borderRadius: 18,
+    },
+    skeuoTileInner: {
+        borderRadius: 18,
+    },
+    skeuoTileGradient: {
+        borderRadius: 18,
+        padding: 14,
+        alignItems: 'center',
+    },
 
     // Section
     section: { marginBottom: 24 },

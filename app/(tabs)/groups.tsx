@@ -7,17 +7,21 @@ import { StyledInput } from '../../components/StyledInput';
 import { VibrantButton } from '../../components/VibrantButton';
 import { useSplittyStore } from '../../store/useSplittyStore';
 import { Users, Plus, Pencil, Trash2 } from 'lucide-react-native';
+import { Skeuomorphic } from '../../constants/Colors';
+import { LinearGradient } from 'expo-linear-gradient';
 
 export default function GroupsScreen() {
     const router = useRouter();
-    const { groups, friends, addGroup, editGroup, deleteGroup, appearance, colors, formatCurrency, fetchData } = useSplittyStore();
+    const { groups, friends, addGroup, editGroup, deleteGroup, appearance, colors, formatCurrency, fetchData, designPreference } = useSplittyStore();
     const [groupName, setGroupName] = useState('');
     const [selectedMembers, setSelectedMembers] = useState<string[]>([]);
     const [showAdd, setShowAdd] = useState(false);
     const [editingId, setEditingId] = useState<string | null>(null);
     const [refreshing, setRefreshing] = useState(false);
 
+    const isSkeuomorphic = designPreference === 'skeuomorphic';
     const isDark = appearance === 'dark';
+    const skeuo = isDark ? Skeuomorphic.dark : Skeuomorphic.light;
 
     const handleRefresh = async () => {
         setRefreshing(true);
@@ -85,58 +89,69 @@ export default function GroupsScreen() {
                         style={{ marginBottom: 20 }}
                     />
                 ) : (
-                    <GlassCard style={[styles.addCard, { backgroundColor: colors.surface }]}>
-                        <Text style={[styles.sectionTitle, { color: colors.text }]}>{editingId ? 'Edit Group' : 'New Group'}</Text>
-                        <StyledInput
-                            label="Group Name"
-                            placeholder="e.g. Goa Trip"
-                            value={groupName}
-                            onChangeText={setGroupName}
-                            style={{ backgroundColor: colors.inputBackground, color: colors.text }}
-                            labelStyle={{ color: colors.text }}
-                            placeholderTextColor={colors.textSecondary}
-                        />
-                        <Text style={[styles.label, { color: colors.text }]}>Select Members</Text>
-                        <View style={styles.membersList}>
-                            {friends.map(friend => {
-                                const isSelected = selectedMembers.includes(friend.id);
-                                return (
-                                    <TouchableOpacity
-                                        key={friend.id}
-                                        style={[
-                                            styles.memberChip,
-                                            {
-                                                backgroundColor: isSelected ? colors.primary : colors.surface,
-                                                borderColor: isSelected ? colors.primary : colors.border
-                                            }
-                                        ]}
-                                        onPress={() => toggleMember(friend.id)}
-                                    >
-                                        <Text style={[
-                                            styles.memberText,
-                                            { color: isSelected ? 'white' : colors.textSecondary }
-                                        ]}>
-                                            {friend.name}
-                                        </Text>
-                                    </TouchableOpacity>
-                                );
-                            })}
+                    <View style={isSkeuomorphic ? [styles.skeuoAddWrapper, skeuo.outset.light] : null}>
+                        <View style={isSkeuomorphic ? [styles.skeuoAddInner, skeuo.outset.dark] : null}>
+                            <LinearGradient
+                                colors={isSkeuomorphic ? skeuo.surfaceGradient : ['transparent', 'transparent']}
+                                style={[styles.addCard, !isSkeuomorphic && { backgroundColor: colors.surface }]}
+                            >
+                                <Text style={[styles.sectionTitle, { color: colors.text }]}>{editingId ? 'Edit Group' : 'New Group'}</Text>
+                                <StyledInput
+                                    label="Group Name"
+                                    placeholder="e.g. Goa Trip"
+                                    value={groupName}
+                                    onChangeText={setGroupName}
+                                    style={{ backgroundColor: isSkeuomorphic ? 'transparent' : colors.inputBackground, color: colors.text }}
+                                    labelStyle={{ color: colors.textSecondary }}
+                                    placeholderTextColor={colors.textSecondary}
+                                />
+                                <Text style={[styles.label, { color: colors.text }]}>Select Members</Text>
+                                <View style={styles.membersList}>
+                                    {friends.map(friend => {
+                                        const isSelected = selectedMembers.includes(friend.id);
+                                        return (
+                                            <TouchableOpacity
+                                                key={friend.id}
+                                                style={[
+                                                    styles.memberChip,
+                                                    !isSkeuomorphic && {
+                                                        backgroundColor: isSelected ? colors.primary : colors.surface,
+                                                        borderColor: isSelected ? colors.primary : colors.border
+                                                    },
+                                                    isSkeuomorphic && (isSelected ? skeuo.outset.light : skeuo.inset.dark)
+                                                ]}
+                                                onPress={() => toggleMember(friend.id)}
+                                            >
+                                                <View style={isSkeuomorphic ? (isSelected ? [styles.skeuoChipInner, skeuo.outset.dark] : [styles.skeuoChipInner, skeuo.inset.light]) : null}>
+                                                    <Text style={[
+                                                        styles.memberText,
+                                                        { color: isSelected ? (isSkeuomorphic ? colors.primary : 'white') : colors.textSecondary },
+                                                        isSkeuomorphic && isSelected && { fontWeight: '700' }
+                                                    ]}>
+                                                        {friend.name}
+                                                    </Text>
+                                                </View>
+                                            </TouchableOpacity>
+                                        );
+                                    })}
+                                </View>
+                                <View style={styles.actions}>
+                                    <VibrantButton
+                                        title="Cancel"
+                                        onPress={resetForm}
+                                        variant="outline"
+                                        style={{ flex: 1 }}
+                                        textStyle={{ color: colors.text }}
+                                    />
+                                    <VibrantButton
+                                        title={editingId ? "Update" : "Create"}
+                                        onPress={handleSaveGroup}
+                                        style={{ flex: 1 }}
+                                    />
+                                </View>
+                            </LinearGradient>
                         </View>
-                        <View style={styles.actions}>
-                            <VibrantButton
-                                title="Cancel"
-                                onPress={resetForm}
-                                variant="outline"
-                                style={{ flex: 1, borderColor: colors.border }}
-                                textStyle={{ color: colors.text }}
-                            />
-                            <VibrantButton
-                                title={editingId ? "Update" : "Create"}
-                                onPress={handleSaveGroup}
-                                style={{ flex: 1 }}
-                            />
-                        </View>
-                    </GlassCard>
+                    </View>
                 )}
 
                 <View style={styles.listContainer}>
@@ -156,40 +171,48 @@ export default function GroupsScreen() {
                                 key={item.id}
                                 onPress={() => router.push({ pathname: '/group-details/[id]', params: { id: item.id } })}
                                 activeOpacity={0.8}
+                                style={isSkeuomorphic ? styles.skeuoGroupWrapper : null}
                             >
-                                <GlassCard style={[styles.groupCard, { backgroundColor: colors.surface }]}>
-                                    <View style={[styles.groupIcon, { backgroundColor: isDark ? 'rgba(255,255,255,0.1)' : colors.inputBackground }]}>
-                                        <Users color={colors.textSecondary} size={24} />
+                                <View style={isSkeuomorphic ? [styles.skeuoGroupOuter, skeuo.outset.light] : null}>
+                                    <View style={isSkeuomorphic ? [styles.skeuoGroupInner, skeuo.outset.dark] : null}>
+                                        <LinearGradient
+                                            colors={isSkeuomorphic ? skeuo.surfaceGradient : ['transparent', 'transparent']}
+                                            style={[styles.groupCard, !isSkeuomorphic && { backgroundColor: colors.surface }]}
+                                        >
+                                            <View style={[styles.groupIcon, { backgroundColor: isDark ? 'rgba(255,255,255,0.1)' : colors.inputBackground }]}>
+                                                <Users color={colors.textSecondary} size={24} />
+                                            </View>
+                                            <View style={styles.groupInfo}>
+                                                <Text style={[styles.groupName, { color: colors.text }]}>{item.name}</Text>
+                                                <Text style={[styles.groupMembers, { color: colors.textSecondary }]}>
+                                                    {item.members.length} members
+                                                </Text>
+                                            </View>
+                                            <View style={styles.rightActions}>
+                                                <Text style={[
+                                                    styles.groupBalance,
+                                                    { color: item.balance >= 0 ? colors.success : colors.accent, marginRight: 12 }
+                                                ]}>
+                                                    {item.balance >= 0 ? `+${formatCurrency(item.balance)}` : `-${formatCurrency(Math.abs(item.balance))}`}
+                                                </Text>
+                                                <View style={styles.iconRow}>
+                                                    <TouchableOpacity
+                                                        onPress={(e) => { e.stopPropagation(); handleEdit(item); }}
+                                                        style={styles.actionIcon}
+                                                    >
+                                                        <Pencil size={18} color={colors.primary} />
+                                                    </TouchableOpacity>
+                                                    <TouchableOpacity
+                                                        onPress={(e) => { e.stopPropagation(); handleDelete(item.id, item.name); }}
+                                                        style={styles.actionIcon}
+                                                    >
+                                                        <Trash2 size={18} color={colors.error} />
+                                                    </TouchableOpacity>
+                                                </View>
+                                            </View>
+                                        </LinearGradient>
                                     </View>
-                                    <View style={styles.groupInfo}>
-                                        <Text style={[styles.groupName, { color: colors.text }]}>{item.name}</Text>
-                                        <Text style={[styles.groupMembers, { color: colors.textSecondary }]}>
-                                            {item.members.length} members
-                                        </Text>
-                                    </View>
-                                    <View style={styles.rightActions}>
-                                        <Text style={[
-                                            styles.groupBalance,
-                                            { color: item.balance >= 0 ? colors.success : colors.accent, marginRight: 12 }
-                                        ]}>
-                                            {item.balance >= 0 ? `+${formatCurrency(item.balance)}` : `-${formatCurrency(Math.abs(item.balance))}`}
-                                        </Text>
-                                        <View style={styles.iconRow}>
-                                            <TouchableOpacity
-                                                onPress={(e) => { e.stopPropagation(); handleEdit(item); }}
-                                                style={styles.actionIcon}
-                                            >
-                                                <Pencil size={18} color={colors.primary} />
-                                            </TouchableOpacity>
-                                            <TouchableOpacity
-                                                onPress={(e) => { e.stopPropagation(); handleDelete(item.id, item.name); }}
-                                                style={styles.actionIcon}
-                                            >
-                                                <Trash2 size={18} color={colors.error} />
-                                            </TouchableOpacity>
-                                        </View>
-                                    </View>
-                                </GlassCard>
+                                </View>
                             </TouchableOpacity>
                         )}
                         ListEmptyComponent={
@@ -291,4 +314,24 @@ const styles = StyleSheet.create({
         marginTop: 40,
         fontSize: 16,
     },
+    skeuoGroupWrapper: {
+        marginBottom: 12,
+    },
+    skeuoGroupOuter: {
+        borderRadius: 16,
+    },
+    skeuoGroupInner: {
+        borderRadius: 16,
+    },
+    skeuoAddWrapper: {
+        marginBottom: 24,
+    },
+    skeuoAddInner: {
+        borderRadius: 16,
+    },
+    skeuoChipInner: {
+        paddingHorizontal: 12,
+        paddingVertical: 6,
+        borderRadius: 20,
+    }
 });

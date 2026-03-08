@@ -137,7 +137,88 @@ export const Themes: Record<ThemeName, ThemeColors> = {
 
 export const Colors = BasePalettes.light; // Base fallback
 export const GlassTheme = {
-  background: 'rgba(255, 255, 255, 0.8)',
+  background: 'rgba(255, 255, 255, 0.1)',
   border: 'rgba(255, 255, 255, 0.1)',
+};
+
+/**
+ * Skeuomorphic Design Tokens for depth and tactile feel.
+ * Uses dual shadows (light and dark) to create a physical protrusion or recession.
+ */
+export const Skeuomorphic = {
+  light: {
+    background: '#EFF3F9',
+    surface: '#F1F5F9',
+    // Protrusion: Light shadow top-left, Dark shadow bottom-right
+    outset: {
+      light: {
+        shadowColor: '#FFFFFF',
+        shadowOffset: { width: -6, height: -6 },
+        shadowOpacity: 1,
+        shadowRadius: 10,
+        elevation: 10,
+      },
+      dark: {
+        shadowColor: '#D1D9E6',
+        shadowOffset: { width: 6, height: 6 },
+        shadowOpacity: 0.8,
+        shadowRadius: 10,
+      }
+    },
+    // Recession: Dark shadow top-left, Light shadow bottom-right (simulated inner shadow)
+    inset: {
+      dark: {
+        shadowColor: '#D1D9E6',
+        shadowOffset: { width: -2, height: -2 },
+        shadowOpacity: 0.5,
+        shadowRadius: 4,
+      },
+      light: {
+        shadowColor: '#FFFFFF',
+        shadowOffset: { width: 2, height: 2 },
+        shadowOpacity: 1,
+        shadowRadius: 4,
+      }
+    },
+    bgGradient: ['#E6EBF5', '#F1F5F9'] as const,
+    surfaceGradient: ['#F1F5F9', '#E6EBF5'] as const,
+    bezel: '#E2E8F0',
+  },
+  dark: {
+    background: '#1A1D23',
+    surface: '#1E232B',
+    outset: {
+      light: {
+        shadowColor: '#2A303C',
+        shadowOffset: { width: -6, height: -6 },
+        shadowOpacity: 0.5,
+        shadowRadius: 10,
+        elevation: 10,
+      },
+      dark: {
+        shadowColor: '#0A0C10',
+        shadowOffset: { width: 6, height: 6 },
+        shadowOpacity: 1,
+        shadowRadius: 10,
+      }
+    },
+    inset: {
+      dark: {
+        shadowColor: '#0A0C10',
+        shadowOffset: { width: -2, height: -2 },
+        shadowOpacity: 0.7,
+        shadowRadius: 4,
+      },
+      light: {
+        shadowColor: '#2A303C',
+        shadowOffset: { width: 2, height: 2 },
+        shadowOpacity: 0.3,
+        shadowRadius: 4,
+      }
+    },
+    bgGradient: ['#121419', '#1A1D23'] as const,
+    surfaceGradient: ['#1E232B', '#121419'] as const,
+    bezel: '#2D343F',
+  }
 };
 

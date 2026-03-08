@@ -183,6 +183,8 @@ interface SplittyState {
     isRolloverEnabled: boolean;
     setRolloverEnabled: (enabled: boolean) => void;
     budgetAlertsSent: Record<string, boolean>;
+    designPreference: 'existing' | 'skeuomorphic';
+    setDesignPreference: (pref: 'existing' | 'skeuomorphic') => void;
 }
 
 const calculateBalances = (expenses: Expense[], friends: Friend[], groups: Group[]) => {
@@ -985,6 +987,8 @@ export const useSplittyStore = create<SplittyState>()(
             isRolloverEnabled: false,
             setRolloverEnabled: (enabled: boolean) => set({ isRolloverEnabled: enabled }),
             budgetAlertsSent: {},
+            designPreference: 'existing',
+            setDesignPreference: (pref) => set({ designPreference: pref }),
             signOut: async () => {
                 await supabase.auth.signOut();
                 get().clearData();

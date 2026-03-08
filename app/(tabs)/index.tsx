@@ -5,9 +5,11 @@ import { useRouter } from 'expo-router';
 import { useSplittyStore } from '../../store/useSplittyStore';
 import { Trash2, Banknote, Plus } from 'lucide-react-native';
 import { CategoryIcon } from '../../components/CategoryIcon';
+import { getCategoryById } from '../../constants/Categories';
+import { Skeuomorphic } from '../../constants/Colors';
+import { LinearGradient } from 'expo-linear-gradient';
 import * as Haptics from 'expo-haptics';
 import { useState, useMemo, useCallback } from 'react';
-import { getCategoryById } from '../../constants/Categories';
 
 export default function DashboardScreen() {
     const router = useRouter();
@@ -20,6 +22,12 @@ export default function DashboardScreen() {
     const formatCurrency = useSplittyStore(s => s.formatCurrency);
     const userProfile = useSplittyStore(s => s.userProfile);
     const fetchData = useSplittyStore(s => s.fetchData);
+    const designPreference = useSplittyStore(s => s.designPreference);
+    const appearance = useSplittyStore(s => s.appearance);
+
+    const isSkeuomorphic = designPreference === 'skeuomorphic';
+    const isDark = appearance === 'dark';
+    const skeuo = isDark ? Skeuomorphic.dark : Skeuomorphic.light;
 
     const [refreshing, setRefreshing] = useState(false);
 
@@ -83,15 +91,37 @@ export default function DashboardScreen() {
                 </View>
 
                 <View style={styles.summaryRow}>
-                    <GlassCard style={[styles.summaryCard, { backgroundColor: colors.surface }]}>
-                        <Text style={[styles.summaryLabel, { color: colors.textSecondary }]}>You are owed</Text>
-                        <Text style={[styles.summaryAmount, { color: colors.success }]}>{formatCurrency(owed)}</Text>
-                    </GlassCard>
+                    {isSkeuomorphic ? (
+                        <View style={[styles.skeuoSummaryWrapper, skeuo.outset.light]}>
+                            <View style={[styles.skeuoSummaryInner, skeuo.outset.dark]}>
+                                <LinearGradient colors={skeuo.surfaceGradient} style={styles.summaryCard}>
+                                    <Text style={[styles.summaryLabel, { color: colors.textSecondary }]}>You are owed</Text>
+                                    <Text style={[styles.summaryAmount, { color: colors.success }]}>{formatCurrency(owed)}</Text>
+                                </LinearGradient>
+                            </View>
+                        </View>
+                    ) : (
+                        <GlassCard style={[styles.summaryCard, { backgroundColor: colors.surface }]}>
+                            <Text style={[styles.summaryLabel, { color: colors.textSecondary }]}>You are owed</Text>
+                            <Text style={[styles.summaryAmount, { color: colors.success }]}>{formatCurrency(owed)}</Text>
+                        </GlassCard>
+                    )}
 
-                    <GlassCard style={[styles.summaryCard, { backgroundColor: colors.surface }]}>
-                        <Text style={[styles.summaryLabel, { color: colors.textSecondary }]}>You owe</Text>
-                        <Text style={[styles.summaryAmount, { color: colors.accent }]}>{formatCurrency(owe)}</Text>
-                    </GlassCard>
+                    {isSkeuomorphic ? (
+                        <View style={[styles.skeuoSummaryWrapper, skeuo.outset.light]}>
+                            <View style={[styles.skeuoSummaryInner, skeuo.outset.dark]}>
+                                <LinearGradient colors={skeuo.surfaceGradient} style={styles.summaryCard}>
+                                    <Text style={[styles.summaryLabel, { color: colors.textSecondary }]}>You owe</Text>
+                                    <Text style={[styles.summaryAmount, { color: colors.accent }]}>{formatCurrency(owe)}</Text>
+                                </LinearGradient>
+                            </View>
+                        </View>
+                    ) : (
+                        <GlassCard style={[styles.summaryCard, { backgroundColor: colors.surface }]}>
+                            <Text style={[styles.summaryLabel, { color: colors.textSecondary }]}>You owe</Text>
+                            <Text style={[styles.summaryAmount, { color: colors.accent }]}>{formatCurrency(owe)}</Text>
+                        </GlassCard>
+                    )}
                 </View>
 
                 {(owed > 0 || owe > 0) && (
@@ -160,49 +190,58 @@ export default function DashboardScreen() {
                     </View>
 
                     {recentExpenses.length > 0 ? (
-                        recentExpenses.map(expense => (
+                        recentExpenses.map((expense: any) => (
                             <TouchableOpacity
                                 key={expense.id}
                                 activeOpacity={0.7}
                                 onPress={() => router.push({ pathname: '/add-expense', params: { id: expense.id } })}
+                                style={isSkeuomorphic ? styles.skeuoActivityWrapper : null}
                             >
-                                <GlassCard style={[
-                                    styles.activityItem,
-                                    { backgroundColor: colors.surface },
-                                    { borderLeftWidth: 3, borderLeftColor: expense.isSettlement ? colors.success : expense._category.color }
-                                ]}>
-                                    <View style={[
-                                        styles.categoryIcon,
-                                        { backgroundColor: expense.isSettlement ? colors.success + '20' : expense._category.color + '20' }
-                                    ]}>
-                                        {expense.isSettlement ? (
-                                            <Banknote size={20} color={colors.primary} />
-                                        ) : (
-                                            <CategoryIcon name={expense._category.icon} size={20} color={expense._category.color} />
-                                        )}
-                                    </View>
-                                    <View style={{ flex: 1, marginLeft: 12 }}>
-                                        <Text style={[styles.activityDesc, { color: colors.text }]}>{expense.description}</Text>
-                                        <Text style={[styles.activityDate, { color: colors.textSecondary }]}>
-                                            {new Date(expense.date).toLocaleDateString()}
-                                        </Text>
-                                        <Text style={[styles.paidByText, { color: colors.textSecondary }]}>
-                                            {getPayerName(expense.payerId)} paid
-                                        </Text>
-                                    </View>
-                                    <View style={styles.activityRight}>
-                                        <Text style={[styles.activityAmount, { color: colors.text }]}>{formatCurrency(expense.amount)}</Text>
-                                        <TouchableOpacity
-                                            onPress={(e) => {
-                                                e.stopPropagation();
-                                                handleDelete(expense.id);
-                                            }}
-                                            hitSlop={10}
+                                <View style={isSkeuomorphic ? [styles.skeuoActivityOuter, skeuo.outset.light] : null}>
+                                    <View style={isSkeuomorphic ? [styles.skeuoActivityInner, skeuo.outset.dark] : null}>
+                                        <LinearGradient
+                                            colors={isSkeuomorphic ? skeuo.surfaceGradient : ['transparent', 'transparent']}
+                                            style={[
+                                                styles.activityItem,
+                                                !isSkeuomorphic && { backgroundColor: colors.surface },
+                                                !isSkeuomorphic && { borderLeftWidth: 3, borderLeftColor: expense.isSettlement ? colors.success : expense._category.color },
+                                                isSkeuomorphic && { borderRadius: 16 }
+                                            ]}
                                         >
-                                            <Trash2 size={20} color={colors.error} />
-                                        </TouchableOpacity>
+                                            <View style={[
+                                                styles.categoryIcon,
+                                                { backgroundColor: expense.isSettlement ? colors.success + '20' : expense._category.color + '20' }
+                                            ]}>
+                                                {expense.isSettlement ? (
+                                                    <Banknote size={20} color={colors.primary} />
+                                                ) : (
+                                                    <CategoryIcon name={expense._category.icon} size={20} color={expense._category.color} />
+                                                )}
+                                            </View>
+                                            <View style={{ flex: 1, marginLeft: 12 }}>
+                                                <Text style={[styles.activityDesc, { color: colors.text }]}>{expense.description}</Text>
+                                                <Text style={[styles.activityDate, { color: colors.textSecondary }]}>
+                                                    {new Date(expense.date).toLocaleDateString()}
+                                                </Text>
+                                                <Text style={[styles.paidByText, { color: colors.textSecondary }]}>
+                                                    {getPayerName(expense.payerId)} paid
+                                                </Text>
+                                            </View>
+                                            <View style={styles.activityRight}>
+                                                <Text style={[styles.activityAmount, { color: colors.text }]}>{formatCurrency(expense.amount)}</Text>
+                                                <TouchableOpacity
+                                                    onPress={(e) => {
+                                                        e.stopPropagation();
+                                                        handleDelete(expense.id);
+                                                    }}
+                                                    hitSlop={10}
+                                                >
+                                                    <Trash2 size={20} color={colors.error} />
+                                                </TouchableOpacity>
+                                            </View>
+                                        </LinearGradient>
                                     </View>
-                                </GlassCard>
+                                </View>
                             </TouchableOpacity>
                         ))
                     ) : (
@@ -386,4 +425,20 @@ const styles = StyleSheet.create({
         shadowRadius: 8,
         elevation: 8,
     },
+    skeuoSummaryWrapper: {
+        width: '48%',
+        borderRadius: 20,
+    },
+    skeuoSummaryInner: {
+        borderRadius: 20,
+    },
+    skeuoActivityWrapper: {
+        marginBottom: 12,
+    },
+    skeuoActivityOuter: {
+        borderRadius: 16,
+    },
+    skeuoActivityInner: {
+        borderRadius: 16,
+    }
 });

@@ -161,6 +161,28 @@ export default function SettingsScreen() {
                                 thumbColor={'white'}
                             />
                         )}
+                        <View style={[styles.separator, { backgroundColor: colors.border }]} />
+                        {renderSettingItem(
+                            <Palette size={20} color={colors.textSecondary} />,
+                            "UI Design",
+                            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                                <Text style={{ color: colors.textSecondary, fontSize: 16 }}>
+                                    {useSplittyStore.getState().designPreference === 'skeuomorphic' ? 'Skeuomorphic' : 'Existing'}
+                                </Text>
+                                <ChevronRight size={20} color={colors.textSecondary} />
+                            </View>,
+                            () => {
+                                Alert.alert(
+                                    "UI Design",
+                                    "Choose your preferred interface style",
+                                    [
+                                        { text: "Existing (Default)", onPress: () => useSplittyStore.getState().setDesignPreference('existing') },
+                                        { text: "Skeuomorphic", onPress: () => useSplittyStore.getState().setDesignPreference('skeuomorphic') },
+                                        { text: "Cancel", style: "cancel" }
+                                    ]
+                                );
+                            }
+                        )}
                     </GlassCard>
                 </View>
 

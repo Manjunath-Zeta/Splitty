@@ -9,12 +9,18 @@ import { useSplittyStore } from '../store/useSplittyStore';
 import { StyledInput } from '../components/StyledInput';
 import { VibrantButton } from '../components/VibrantButton';
 import { GoogleIcon } from '../components/GoogleIcon';
+import { Skeuomorphic } from '../constants/Colors';
+import { LinearGradient } from 'expo-linear-gradient';
 
 WebBrowser.maybeCompleteAuthSession();
 
 export default function AuthScreen() {
     const router = useRouter();
-    const { colors } = useSplittyStore();
+    const { colors, designPreference, appearance } = useSplittyStore();
+
+    const isSkeuomorphic = designPreference === 'skeuomorphic';
+    const isDark = appearance === 'dark';
+    const skeuo = isDark ? Skeuomorphic.dark : Skeuomorphic.light;
 
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
@@ -163,99 +169,130 @@ export default function AuthScreen() {
     };
 
     return (
-        <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
+        <SafeAreaView style={[styles.container, { backgroundColor: isSkeuomorphic ? skeuo.background : colors.background }]}>
+            {isSkeuomorphic && (
+                <LinearGradient
+                    colors={skeuo.bgGradient}
+                    style={StyleSheet.absoluteFill}
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 1, y: 1 }}
+                />
+            )}
             <View style={styles.content}>
-                <Text style={[styles.title, { color: colors.text }]}>
-                    {authMethod === 'phone'
-                        ? (showVerification ? 'Verify Phone' : 'Phone Sign In')
-                        : (isSignUp ? 'Create Account' : 'Welcome Back')}
-                </Text>
+                <View style={isSkeuomorphic ? [styles.skeuoCardWrapper, skeuo.outset.light] : null}>
+                    <View style={isSkeuomorphic ? [styles.skeuoCardInner, skeuo.outset.dark] : null}>
+                        <View style={isSkeuomorphic ? styles.skeuoCardContent : null}>
+                            <Text style={[styles.title, { color: colors.text }]}>
+                                {authMethod === 'phone'
+                                    ? (showVerification ? 'Verify Phone' : 'Phone Sign In')
+                                    : (isSignUp ? 'Create Account' : 'Welcome Back')}
+                            </Text>
 
-                <View style={styles.methodToggle}>
-                    <TouchableOpacity
-                        style={[styles.methodBtn, authMethod === 'email' && { backgroundColor: colors.primary }]}
-                        onPress={() => { setAuthMethod('email'); setShowVerification(false); }}
-                    >
-                        <Text style={{ color: authMethod === 'email' ? 'white' : colors.text }}>Email</Text>
-                    </TouchableOpacity>
-                    <TouchableOpacity
-                        style={[styles.methodBtn, authMethod === 'phone' && { backgroundColor: colors.primary }]}
-                        onPress={() => { setAuthMethod('phone'); setShowVerification(false); }}
-                    >
-                        <Text style={{ color: authMethod === 'phone' ? 'white' : colors.text }}>Phone</Text>
-                    </TouchableOpacity>
-                </View>
+                            <View style={[
+                                styles.methodToggle,
+                                isSkeuomorphic && { backgroundColor: 'transparent', padding: 0 },
+                                isSkeuomorphic && skeuo.inset.dark
+                            ]}>
+                                <View style={isSkeuomorphic ? [styles.skeuoToggleInner, skeuo.inset.light] : { flex: 1, flexDirection: 'row' }}>
+                                    <TouchableOpacity
+                                        style={[
+                                            styles.methodBtn,
+                                            authMethod === 'email' && { backgroundColor: isSkeuomorphic ? 'transparent' : colors.primary },
+                                            isSkeuomorphic && authMethod === 'email' && skeuo.outset.light
+                                        ]}
+                                        onPress={() => { setAuthMethod('email'); setShowVerification(false); }}
+                                    >
+                                        <View style={isSkeuomorphic && authMethod === 'email' ? [styles.skeuoActiveBtn, skeuo.outset.dark] : null}>
+                                            <Text style={{ color: (authMethod === 'email' && !isSkeuomorphic) ? 'white' : (authMethod === 'email' ? colors.primary : colors.textSecondary), fontWeight: authMethod === 'email' ? '700' : '400' }}>Email</Text>
+                                        </View>
+                                    </TouchableOpacity>
+                                    <TouchableOpacity
+                                        style={[
+                                            styles.methodBtn,
+                                            authMethod === 'phone' && { backgroundColor: isSkeuomorphic ? 'transparent' : colors.primary },
+                                            isSkeuomorphic && authMethod === 'phone' && skeuo.outset.light
+                                        ]}
+                                        onPress={() => { setAuthMethod('phone'); setShowVerification(false); }}
+                                    >
+                                        <View style={isSkeuomorphic && authMethod === 'phone' ? [styles.skeuoActiveBtn, skeuo.outset.dark] : null}>
+                                            <Text style={{ color: (authMethod === 'phone' && !isSkeuomorphic) ? 'white' : (authMethod === 'phone' ? colors.primary : colors.textSecondary), fontWeight: authMethod === 'phone' ? '700' : '400' }}>Phone</Text>
+                                        </View>
+                                    </TouchableOpacity>
+                                </View>
+                            </View>
 
-                {authMethod === 'email' ? (
-                    <>
-                        <StyledInput
-                            label="Email"
-                            value={email}
-                            onChangeText={setEmail}
-                            autoCapitalize="none"
-                            placeholder="Enter your email"
-                        />
-                        <StyledInput
-                            label="Password"
-                            value={password}
-                            onChangeText={setPassword}
-                            secureTextEntry
-                            placeholder="Enter your password"
-                        />
-                    </>
-                ) : (
-                    <>
-                        {!showVerification ? (
-                            <StyledInput
-                                label="Phone Number"
-                                value={phone}
-                                onChangeText={setPhone}
-                                placeholder="+1234567890"
-                                keyboardType="phone-pad"
+                            {authMethod === 'email' ? (
+                                <>
+                                    <StyledInput
+                                        label="Email"
+                                        value={email}
+                                        onChangeText={setEmail}
+                                        autoCapitalize="none"
+                                        placeholder="Enter your email"
+                                    />
+                                    <StyledInput
+                                        label="Password"
+                                        value={password}
+                                        onChangeText={setPassword}
+                                        secureTextEntry
+                                        placeholder="Enter your password"
+                                    />
+                                </>
+                            ) : (
+                                <>
+                                    {!showVerification ? (
+                                        <StyledInput
+                                            label="Phone Number"
+                                            value={phone}
+                                            onChangeText={setPhone}
+                                            placeholder="+1234567890"
+                                            keyboardType="phone-pad"
+                                        />
+                                    ) : (
+                                        <StyledInput
+                                            label="Verification Code"
+                                            value={verificationCode}
+                                            onChangeText={setVerificationCode}
+                                            placeholder="123456"
+                                            keyboardType="number-pad"
+                                        />
+                                    )}
+                                </>
+                            )}
+
+                            <VibrantButton
+                                title={loading ? 'Please wait...' : (authMethod === 'phone' ? (showVerification ? 'Verify' : 'Send Code') : (isSignUp ? 'Sign Up' : 'Sign In'))}
+                                onPress={handleAuth}
+                                disabled={loading}
+                                style={styles.button}
                             />
-                        ) : (
-                            <StyledInput
-                                label="Verification Code"
-                                value={verificationCode}
-                                onChangeText={setVerificationCode}
-                                placeholder="123456"
-                                keyboardType="number-pad"
+
+                            {authMethod === 'email' && (
+                                <TouchableOpacity onPress={() => setIsSignUp(!isSignUp)} style={styles.toggleButton}>
+                                    <Text style={{ color: colors.primary }}>
+                                        {isSignUp ? 'Already have an account? Sign In' : "Don't have an account? Sign Up"}
+                                    </Text>
+                                </TouchableOpacity>
+                            )}
+
+                            <View style={styles.divider}>
+                                <View style={[styles.line, { backgroundColor: colors.border }]} />
+                                <Text style={[styles.dividerText, { color: colors.textSecondary }]}>OR</Text>
+                                <View style={[styles.line, { backgroundColor: colors.border }]} />
+                            </View>
+
+                            <VibrantButton
+                                title="Continue with Google"
+                                onPress={handleGoogleSignIn}
+                                variant="outline"
+                                disabled={loading}
+                                leftIcon={<GoogleIcon />}
+                                style={styles.googleButton}
+                                textStyle={styles.googleButtonText}
                             />
-                        )}
-                    </>
-                )}
-
-                <VibrantButton
-                    title={loading ? 'Please wait...' : (authMethod === 'phone' ? (showVerification ? 'Verify' : 'Send Code') : (isSignUp ? 'Sign Up' : 'Sign In'))}
-                    onPress={handleAuth}
-                    disabled={loading}
-                    style={styles.button}
-                />
-
-                {authMethod === 'email' && (
-                    <TouchableOpacity onPress={() => setIsSignUp(!isSignUp)} style={styles.toggleButton}>
-                        <Text style={{ color: colors.primary }}>
-                            {isSignUp ? 'Already have an account? Sign In' : "Don't have an account? Sign Up"}
-                        </Text>
-                    </TouchableOpacity>
-                )}
-
-                <View style={styles.divider}>
-                    <View style={[styles.line, { backgroundColor: colors.border }]} />
-                    <Text style={[styles.dividerText, { color: colors.textSecondary }]}>OR</Text>
-                    <View style={[styles.line, { backgroundColor: colors.border }]} />
+                        </View>
+                    </View>
                 </View>
-
-
-                <VibrantButton
-                    title="Continue with Google"
-                    onPress={handleGoogleSignIn}
-                    variant="outline"
-                    disabled={loading}
-                    leftIcon={<GoogleIcon />}
-                    style={styles.googleButton}
-                    textStyle={styles.googleButtonText}
-                />
             </View>
         </SafeAreaView>
     );
@@ -318,4 +355,27 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         borderRadius: 8,
     },
+    skeuoCardWrapper: {
+        borderRadius: 32,
+    },
+    skeuoCardInner: {
+        borderRadius: 32,
+    },
+    skeuoCardContent: {
+        padding: 24,
+        borderRadius: 32,
+    },
+    skeuoToggleInner: {
+        flex: 1,
+        flexDirection: 'row',
+        padding: 4,
+        borderRadius: 12,
+    },
+    skeuoActiveBtn: {
+        width: '100%',
+        height: '100%',
+        alignItems: 'center',
+        justifyContent: 'center',
+        borderRadius: 8,
+    }
 });

@@ -8,6 +8,8 @@ import { VibrantButton } from '../components/VibrantButton';
 import { CategoryIcon } from '../components/CategoryIcon';
 import { DraggableCategoryList } from '../components/DraggableCategoryList';
 import * as Haptics from 'expo-haptics';
+import { Skeuomorphic } from '../constants/Colors';
+import { LinearGradient } from 'expo-linear-gradient';
 
 export default function SetBudgetScreen() {
     const router = useRouter();
@@ -23,8 +25,14 @@ export default function SetBudgetScreen() {
         categoryOrder,
         setCategoryOrder,
         hiddenBudgetCategories,
-        toggleCategoryBudgetVisibility
+        toggleCategoryBudgetVisibility,
+        designPreference,
+        appearance
     } = useSplittyStore();
+
+    const isSkeuomorphic = designPreference === 'skeuomorphic';
+    const isDark = appearance === 'dark';
+    const skeuo = isDark ? Skeuomorphic.dark : Skeuomorphic.light;
 
     // Fallback to current month if navigating here without params
     const monthKey = typeof month === 'string' ? month : `${new Date().getFullYear()}-${String(new Date().getMonth() + 1).padStart(2, '0')}`;
@@ -130,21 +138,43 @@ export default function SetBudgetScreen() {
                         Plan your spending for {monthName}
                     </Text>
 
-                    <GlassCard style={[styles.autoFillCard, { backgroundColor: colors.primary + '10', borderColor: colors.primary + '30' }]}>
-                        <View style={styles.autoFillHeader}>
-                            <Sparkles color={colors.primary} size={24} />
-                            <Text style={[styles.autoFillTitle, { color: colors.text }]}>Smart Auto-Fill</Text>
+                    {isSkeuomorphic ? (
+                        <View style={[styles.skeuoAutoFillWrapper, skeuo.outset.light]}>
+                            <View style={[styles.skeuoAutoFillInner, skeuo.outset.dark]}>
+                                <LinearGradient colors={skeuo.surfaceGradient} style={styles.autoFillCard}>
+                                    <View style={styles.autoFillHeader}>
+                                        <Sparkles color={colors.primary} size={24} />
+                                        <Text style={[styles.autoFillTitle, { color: colors.text }]}>Smart Auto-Fill</Text>
+                                    </View>
+                                    <Text style={[styles.autoFillDesc, { color: colors.textSecondary }]}>
+                                        Based on your average spending from the last 3 months.
+                                    </Text>
+                                    <VibrantButton
+                                        title="Apply All"
+                                        onPress={handleAutoFill}
+                                        style={{ alignSelf: 'flex-start', paddingHorizontal: 24, paddingVertical: 10, height: 40 }}
+                                        textStyle={{ fontSize: 14 }}
+                                    />
+                                </LinearGradient>
+                            </View>
                         </View>
-                        <Text style={[styles.autoFillDesc, { color: colors.textSecondary }]}>
-                            Based on your average spending from the last 3 months.
-                        </Text>
-                        <VibrantButton
-                            title="Apply All"
-                            onPress={handleAutoFill}
-                            style={{ alignSelf: 'flex-start', paddingHorizontal: 24, paddingVertical: 10, height: 40 }}
-                            textStyle={{ fontSize: 14 }}
-                        />
-                    </GlassCard>
+                    ) : (
+                        <GlassCard style={[styles.autoFillCard, { backgroundColor: colors.primary + '10', borderColor: colors.primary + '30' }]}>
+                            <View style={styles.autoFillHeader}>
+                                <Sparkles color={colors.primary} size={24} />
+                                <Text style={[styles.autoFillTitle, { color: colors.text }]}>Smart Auto-Fill</Text>
+                            </View>
+                            <Text style={[styles.autoFillDesc, { color: colors.textSecondary }]}>
+                                Based on your average spending from the last 3 months.
+                            </Text>
+                            <VibrantButton
+                                title="Apply All"
+                                onPress={handleAutoFill}
+                                style={{ alignSelf: 'flex-start', paddingHorizontal: 24, paddingVertical: 10, height: 40 }}
+                                textStyle={{ fontSize: 14 }}
+                            />
+                        </GlassCard>
+                    )}
 
                     <DraggableCategoryList
                         categoryIds={orderedCategories.map(c => c.id)}
@@ -155,7 +185,7 @@ export default function SetBudgetScreen() {
                             if (!category) return null;
                             const value = localBudgets[category.id] || '';
 
-                            return (
+                            const content = (
                                 <View style={styles.categoryContent}>
                                     <View style={styles.catHeader}>
                                         <View style={[styles.iconWrapper, { backgroundColor: category.color + '20' }]}>
@@ -177,23 +207,40 @@ export default function SetBudgetScreen() {
                                         </TouchableOpacity>
                                     </View>
                                     <View style={[
-                                        styles.inputWrapper,
-                                        { borderColor: colors.border, backgroundColor: colors.surface },
+                                        isSkeuomorphic ? styles.skeuoInputWrapper : styles.inputWrapper,
+                                        !isSkeuomorphic && { borderColor: colors.border, backgroundColor: colors.surface },
+                                        isSkeuomorphic && skeuo.inset.dark,
                                         hiddenBudgetCategories.includes(category.id) && { opacity: 0.5 }
                                     ]}>
-                                        <Text style={[styles.currencyPrefix, { color: colors.textSecondary }]}>{currency}</Text>
-                                        <TextInput
-                                            style={[styles.input, { color: colors.text }]}
-                                            keyboardType="decimal-pad"
-                                            placeholder="0.00"
-                                            placeholderTextColor={colors.textSecondary + '80'}
-                                            value={value}
-                                            editable={!hiddenBudgetCategories.includes(category.id)}
-                                            onChangeText={(text) => handleAmountChange(text, category.id)}
-                                        />
+                                        <View style={isSkeuomorphic ? [styles.skeuoInputInner, skeuo.inset.light] : { flexDirection: 'row', alignItems: 'center', flex: 1 }}>
+                                            <Text style={[styles.currencyPrefix, { color: colors.textSecondary }]}>{currency}</Text>
+                                            <TextInput
+                                                style={[styles.input, { color: colors.text }]}
+                                                keyboardType="decimal-pad"
+                                                placeholder="0.00"
+                                                placeholderTextColor={colors.textSecondary + '80'}
+                                                value={value}
+                                                editable={!hiddenBudgetCategories.includes(category.id)}
+                                                onChangeText={(text) => handleAmountChange(text, category.id)}
+                                            />
+                                        </View>
                                     </View>
                                 </View>
                             );
+
+                            if (isSkeuomorphic) {
+                                return (
+                                    <View style={[styles.skeuoCategoryWrapper, skeuo.outset.light]}>
+                                        <View style={[styles.skeuoCategoryInner, skeuo.outset.dark]}>
+                                            <LinearGradient colors={skeuo.surfaceGradient} style={styles.skeuoCategoryContent}>
+                                                {content}
+                                            </LinearGradient>
+                                        </View>
+                                    </View>
+                                );
+                            }
+
+                            return content;
                         }}
                     />
 
@@ -201,17 +248,35 @@ export default function SetBudgetScreen() {
                 </ScrollView>
 
                 {/* Fixed Total Bottom Bar */}
-                <View style={[styles.totalBar, { backgroundColor: colors.surface, borderTopColor: colors.border }]}>
-                    <View>
-                        <Text style={[styles.totalLabel, { color: colors.textSecondary }]}>PROJECTED BUDGET</Text>
-                        <Text style={[styles.totalAmount, { color: colors.text }]}>{formatCurrency(totalProjected)}</Text>
+                {isSkeuomorphic ? (
+                    <View style={[styles.skeuoTotalBarWrapper, skeuo.outset.light]}>
+                        <View style={[styles.skeuoTotalBarInner, skeuo.outset.dark]}>
+                            <LinearGradient colors={skeuo.surfaceGradient} style={styles.totalBar}>
+                                <View>
+                                    <Text style={[styles.totalLabel, { color: colors.textSecondary }]}>PROJECTED BUDGET</Text>
+                                    <Text style={[styles.totalAmount, { color: colors.text }]}>{formatCurrency(totalProjected)}</Text>
+                                </View>
+                                <VibrantButton
+                                    title="Save Budget"
+                                    onPress={handleSave}
+                                    style={{ paddingHorizontal: 24 }}
+                                />
+                            </LinearGradient>
+                        </View>
                     </View>
-                    <VibrantButton
-                        title="Save Budget"
-                        onPress={handleSave}
-                        style={{ paddingHorizontal: 24 }}
-                    />
-                </View>
+                ) : (
+                    <View style={[styles.totalBar, { backgroundColor: colors.surface, borderTopColor: colors.border }]}>
+                        <View>
+                            <Text style={[styles.totalLabel, { color: colors.textSecondary }]}>PROJECTED BUDGET</Text>
+                            <Text style={[styles.totalAmount, { color: colors.text }]}>{formatCurrency(totalProjected)}</Text>
+                        </View>
+                        <VibrantButton
+                            title="Save Budget"
+                            onPress={handleSave}
+                            style={{ paddingHorizontal: 24 }}
+                        />
+                    </View>
+                )}
             </KeyboardAvoidingView>
         </SafeAreaView>
     );
@@ -273,4 +338,40 @@ const styles = StyleSheet.create({
     },
     totalLabel: { fontSize: 12, fontWeight: '700', letterSpacing: 1, marginBottom: 4 },
     totalAmount: { fontSize: 28, fontWeight: '800' },
+    skeuoAutoFillWrapper: {
+        marginBottom: 30,
+        borderRadius: 20,
+    },
+    skeuoAutoFillInner: {
+        borderRadius: 20,
+    },
+    skeuoCategoryWrapper: {
+        marginBottom: 16, // Reduced slightly to account for shadows
+        borderRadius: 16,
+    },
+    skeuoCategoryInner: {
+        borderRadius: 16,
+    },
+    skeuoCategoryContent: {
+        padding: 16,
+        borderRadius: 16,
+    },
+    skeuoInputWrapper: {
+        borderRadius: 12,
+    },
+    skeuoInputInner: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        paddingHorizontal: 16,
+        height: 50,
+        borderRadius: 12,
+    },
+    skeuoTotalBarWrapper: {
+        position: 'absolute',
+        bottom: 0,
+        left: 0,
+        right: 0,
+    },
+    skeuoTotalBarInner: {
+    }
 });
