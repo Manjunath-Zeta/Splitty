@@ -54,36 +54,38 @@ export const FriendSelector = memo(({ type, friends, groups, selectedIds, onTogg
     return (
         <>
             {isSkeuomorphic ? (
-                <View style={[styles.skeuoTriggerWrapper, skeuo.outset.light]}>
-                    <View style={[styles.skeuoTriggerInner, skeuo.outset.dark]}>
-                        <LinearGradient colors={skeuo.surfaceGradient} style={styles.triggerButton}>
-                            <View style={styles.triggerLeft}>
-                                <Users size={18} color={selectedIds.length > 0 ? colors.primary : colors.textSecondary} />
-                                <View style={{ marginLeft: 10, flex: 1 }}>
-                                    {selectedIds.length === 0 ? (
-                                        <Text style={[styles.triggerPlaceholder, { color: colors.textSecondary }]}>
-                                            Tap to select {label}...
-                                        </Text>
-                                    ) : (
-                                        <>
-                                            <Text style={[styles.triggerCount, { color: colors.primary }]}>
-                                                {selectedIds.length} {label} selected
+                <TouchableOpacity onPress={openModal} disabled={disabled} activeOpacity={0.8}>
+                    <View style={[styles.skeuoTriggerWrapper, skeuo.outset.light]}>
+                        <View style={[styles.skeuoTriggerInner, skeuo.outset.dark]}>
+                            <LinearGradient colors={skeuo.surfaceGradient} style={styles.triggerButton}>
+                                <View style={styles.triggerLeft}>
+                                    <Users size={18} color={selectedIds.length > 0 ? colors.primary : colors.textSecondary} />
+                                    <View style={{ marginLeft: 10, flex: 1 }}>
+                                        {selectedIds.length === 0 ? (
+                                            <Text style={[styles.triggerPlaceholder, { color: colors.textSecondary }]}>
+                                                Tap to select {label}...
                                             </Text>
-                                            <Text
-                                                style={[styles.triggerNames, { color: colors.textSecondary }]}
-                                                numberOfLines={1}
-                                                ellipsizeMode="tail"
-                                            >
-                                                {selectedNames.join(', ')}
-                                            </Text>
-                                        </>
-                                    )}
+                                        ) : (
+                                            <>
+                                                <Text style={[styles.triggerCount, { color: colors.primary }]}>
+                                                    {selectedIds.length} {label} selected
+                                                </Text>
+                                                <Text
+                                                    style={[styles.triggerNames, { color: colors.textSecondary }]}
+                                                    numberOfLines={1}
+                                                    ellipsizeMode="tail"
+                                                >
+                                                    {selectedNames.join(', ')}
+                                                </Text>
+                                            </>
+                                        )}
+                                    </View>
                                 </View>
-                            </View>
-                            <ChevronRight size={18} color={colors.textSecondary} />
-                        </LinearGradient>
+                                <ChevronRight size={18} color={colors.textSecondary} />
+                            </LinearGradient>
+                        </View>
                     </View>
-                </View>
+                </TouchableOpacity>
             ) : (
                 <TouchableOpacity
                     style={[
