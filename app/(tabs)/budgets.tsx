@@ -57,9 +57,9 @@ const RingChart = ({
 
 // ─── Category Tile ────────────────────────────────────────────────────────────
 const CategoryTile = ({
-    item, index, monthKey, colors, isDarkMode
+    item, index, monthKey, colors, isDarkMode, formatCurrency
 }: {
-    item: any; index: number; monthKey: string; colors: any; isDarkMode: boolean;
+    item: any; index: number; monthKey: string; colors: any; isDarkMode: boolean; formatCurrency: (v: number) => string;
 }) => {
     const router = useRouter();
     const { getCategoryById } = useSplittyStore();
@@ -68,6 +68,7 @@ const CategoryTile = ({
     const isWarning = item.percentage >= 85 && !isOver;
     const ringColor = isOver ? colors.error : isWarning ? '#F59E0B' : catData.color;
     const ringBgColor = isDarkMode ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.05)';
+    const totalBudgetAmt = Math.max(0, item.budget + (item.rollover || 0));
 
     return (
         <TouchableOpacity
@@ -87,6 +88,13 @@ const CategoryTile = ({
             </View>
             <Text style={[styles.tileName, { color: colors.text }]} numberOfLines={1}>{catData.label}</Text>
             <Text style={[styles.tilePercent, { color: ringColor }]}>{item.percentage}% spent</Text>
+            {totalBudgetAmt > 0 ? (
+                <Text style={[styles.tileBudgetLimit, { color: colors.textSecondary }]} numberOfLines={1}>
+                    {formatCurrency(item.spent)} / {formatCurrency(totalBudgetAmt)}
+                </Text>
+            ) : (
+                <Text style={[styles.tileBudgetLimit, { color: colors.textSecondary }]}>No limit set</Text>
+            )}
         </TouchableOpacity>
     );
 };
@@ -356,7 +364,7 @@ export default function BudgetsScreen() {
                             keyExtractor={item => item.categoryId}
                             contentContainerStyle={styles.tilesRow}
                             renderItem={({ item, index }) => (
-                                <CategoryTile item={item} index={index} monthKey={monthKey} colors={colors} isDarkMode={isDarkMode} />
+                                <CategoryTile item={item} index={index} monthKey={monthKey} colors={colors} isDarkMode={isDarkMode} formatCurrency={formatCurrency} />
                             )}
                         />
                     ) : (
@@ -454,7 +462,7 @@ const styles = StyleSheet.create({
     // Category tiles
     tilesRow: { paddingRight: 8, gap: 12 },
     categoryTile: {
-        width: 108,
+        width: 120,
         borderRadius: 18, padding: 14, alignItems: 'center',
         borderWidth: 1,
     },
@@ -464,7 +472,8 @@ const styles = StyleSheet.create({
         width: '100%', height: '100%',
     },
     tileName: { fontSize: 13, fontWeight: '600', textAlign: 'center', marginBottom: 3 },
-    tilePercent: { fontSize: 11, fontWeight: '600' },
+    tilePercent: { fontSize: 11, fontWeight: '600', marginBottom: 4 },
+    tileBudgetLimit: { fontSize: 10, fontWeight: '500', textAlign: 'center', marginTop: 2 },
 
     emptyCategories: {
         borderRadius: 18, padding: 24,

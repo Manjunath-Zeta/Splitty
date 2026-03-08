@@ -32,12 +32,14 @@ export default function AuthScreen() {
         try {
             const isWeb = Platform.OS === 'web';
 
-            // Use a fixed stable redirect URI based on the app bundle scheme.
-            // This is registered ONCE in Google Console + Supabase and works
-            // on every device without per-device IP registration.
+            // Use a stable redirect URI based on the app bundle scheme.
+            // Linking.createURL('/') automatically uses the scheme from app.json ('splitty')
             const redirectUri = isWeb
                 ? window.location.origin
-                : 'com.manjunath.splitty://';
+                : Linking.createURL('/');
+
+            console.log('--- Google Sign In Debug ---');
+            console.log('Redirect URI:', redirectUri);
 
             const { data, error } = await supabase.auth.signInWithOAuth({
                 provider: 'google',
@@ -48,6 +50,10 @@ export default function AuthScreen() {
             });
 
             if (error) throw error;
+
+            if (data?.url) {
+                console.log('Supabase Auth URL:', data.url);
+            }
 
             if (!isWeb && data.url) {
                 const res = await WebBrowser.openAuthSessionAsync(data.url, redirectUri);
