@@ -325,7 +325,7 @@ export default function BudgetsScreen() {
     const spentPct = hasBudget ? Math.min((totalSpent / totalBudget) * 100, 100) : 0;
 
     return (
-        <SafeAreaView style={[styles.safe, { backgroundColor: colors.background }]}>
+        <SafeAreaView style={[styles.safe, { backgroundColor: designPreference === 'skeuomorphic' ? (isDarkMode ? Skeuomorphic.dark.background : Skeuomorphic.light.background) : colors.background }]}>
             {/* ── Month Navigator ── */}
             <View style={styles.header}>
                 <TouchableOpacity onPress={handlePrevMonth} style={styles.navBtn}>
@@ -581,7 +581,7 @@ const styles = StyleSheet.create({
     tilesRow: { paddingRight: 8, gap: 12 },
     categoryTile: {
         width: 108,
-        borderRadius: 18, padding: 14, alignItems: 'center',
+        borderRadius: 24, padding: 14, alignItems: 'center',
         borderWidth: 1,
     },
     ringWrapper: { width: 68, height: 68, justifyContent: 'center', alignItems: 'center', marginBottom: 10 },
@@ -600,7 +600,7 @@ const styles = StyleSheet.create({
 
     // Transaction card
     txCard: {
-        borderRadius: 18,
+        borderRadius: 24,
         borderWidth: 1,
         overflow: 'hidden',
     },

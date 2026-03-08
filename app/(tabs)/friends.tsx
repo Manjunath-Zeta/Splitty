@@ -118,7 +118,7 @@ export default function FriendsScreen() {
     };
 
     return (
-        <SafeAreaView style={[styles.safeArea, { backgroundColor: colors.background }]}>
+        <SafeAreaView style={[styles.safeArea, { backgroundColor: isSkeuomorphic ? skeuo.background : colors.background }]}>
             <View style={styles.container}>
                 <View style={isSkeuomorphic ? [styles.skeuoAddWrapper, skeuo.outset.light] : null}>
                     <View style={isSkeuomorphic ? [styles.skeuoAddInner, skeuo.outset.dark] : null}>
@@ -141,89 +141,142 @@ export default function FriendsScreen() {
                                         autoCapitalize="none"
                                     />
                                 </View>
-                                <View style={styles.addButtonWrapper}>
-                                    <VibrantButton
-                                        title=""
-                                        onPress={handleAddFriend}
-                                        style={styles.smallAddButton}
-                                        variant="primary"
-                                        disabled={loading}
-                                    />
-                                    <View style={styles.plusIcon}>
-                                        <UserPlus color="white" size={20} />
-                                    </View>
-                                </View>
+                                <VibrantButton
+                                    onPress={handleAddFriend}
+                                    style={styles.smallAddButton}
+                                    variant="primary"
+                                    disabled={loading}
+                                    leftIcon={<UserPlus color="white" size={20} />}
+                                />
                             </View>
                         </LinearGradient>
                     </View>
                 </View>
 
-                <View style={styles.listContainer}>
+                <View style={[styles.listContainer, { flex: 1 }]}>
                     <Text style={[styles.sectionTitle, { color: colors.text }]}>Your Friends</Text>
-                    <FlatList
-                        data={friends}
-                        keyExtractor={(item) => item.id}
-                        renderItem={({ item }) => (
-                            <TouchableOpacity
-                                style={[styles.cardWrapper, isSkeuomorphic && styles.skeuoCardWrapper]}
-                                activeOpacity={0.8}
-                                onPress={() => router.push({ pathname: '/friend-details/[id]', params: { id: item.id } })}
-                            >
-                                <View style={isSkeuomorphic ? [styles.skeuoCardOuter, skeuo.outset.light] : null}>
-                                    <View style={isSkeuomorphic ? [styles.skeuoCardInner, skeuo.outset.dark] : null}>
-                                        <LinearGradient
-                                            colors={isSkeuomorphic ? skeuo.surfaceGradient : ['transparent', 'transparent']}
-                                            style={[styles.friendCard, !isSkeuomorphic && { backgroundColor: colors.surface }]}
-                                        >
-                                            <View style={{ marginRight: 16 }}>
-                                                <InitialsAvatar
-                                                    name={item.name}
-                                                    avatarUrl={item.avatarUrl}
-                                                    size={44}
-                                                    isLocal={!item.linkedUserId}
-                                                />
-                                            </View>
-                                            <View style={styles.friendInfo}>
-                                                <Text style={[styles.friendName, { color: colors.text }]}>{item.name}</Text>
-                                                <Text style={[
-                                                    styles.friendBalance,
-                                                    { color: item.balance >= 0 ? colors.success : colors.accent }
-                                                ]}>
-                                                    {item.balance >= 0 ? `Owes you ${formatCurrency(item.balance)}` : `You owe ${formatCurrency(Math.abs(item.balance))}`}
-                                                </Text>
-                                            </View>
-                                            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-                                                {Math.abs(item.balance) > 0.01 && (
-                                                    <TouchableOpacity
-                                                        onPress={(e) => {
-                                                            e.stopPropagation();
-                                                            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                                                            handleSettleUp(item);
-                                                        }}
-                                                        style={styles.actionButton}
-                                                        hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-                                                    >
-                                                        <Banknote size={20} color={colors.success} />
-                                                    </TouchableOpacity>
+                    {isSkeuomorphic ? (
+                        <View style={[styles.skeuoListWrapper, skeuo.outset.light]}>
+                            <View style={[styles.skeuoListInner, skeuo.outset.dark]}>
+                                <View style={[styles.skeuoListContent, { backgroundColor: skeuo.background }]}>
+                                    <FlatList
+                                        data={friends}
+                                        keyExtractor={(item) => item.id}
+                                        renderItem={({ item, index }) => (
+                                            <React.Fragment key={item.id}>
+                                                <TouchableOpacity
+                                                    style={styles.friendCard}
+                                                    activeOpacity={0.8}
+                                                    onPress={() => router.push({ pathname: '/friend-details/[id]', params: { id: item.id } })}
+                                                >
+                                                    <View style={{ marginRight: 16 }}>
+                                                        <InitialsAvatar
+                                                            name={item.name}
+                                                            avatarUrl={item.avatarUrl}
+                                                            size={44}
+                                                            isLocal={!item.linkedUserId}
+                                                        />
+                                                    </View>
+                                                    <View style={styles.friendInfo}>
+                                                        <Text style={[styles.friendName, { color: colors.text }]}>{item.name}</Text>
+                                                        <Text style={[
+                                                            styles.friendBalance,
+                                                            { color: item.balance >= 0 ? colors.success : colors.accent }
+                                                        ]}>
+                                                            {item.balance >= 0 ? `Owes you ${formatCurrency(item.balance)}` : `You owe ${formatCurrency(Math.abs(item.balance))}`}
+                                                        </Text>
+                                                    </View>
+                                                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                                                        {Math.abs(item.balance) > 0.01 && (
+                                                            <VibrantButton
+                                                                onPress={() => {
+                                                                    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                                                                    handleSettleUp(item);
+                                                                }}
+                                                                variant="outline"
+                                                                style={styles.settleUpButton}
+                                                                leftIcon={<Banknote size={20} color={colors.success} />}
+                                                            />
+                                                        )}
+                                                    </View>
+                                                </TouchableOpacity>
+                                                {index < friends.length - 1 && (
+                                                    <View style={[styles.separator, { backgroundColor: colors.border + '20' }]} />
                                                 )}
-                                            </View>
-                                        </LinearGradient>
-                                    </View>
+                                            </React.Fragment>
+                                        )}
+                                        ListEmptyComponent={
+                                            <Text style={[styles.emptyText, { color: colors.textSecondary }]}>No friends added yet.</Text>
+                                        }
+                                        contentContainerStyle={{ paddingBottom: 20 }}
+                                        refreshControl={
+                                            <RefreshControl
+                                                refreshing={refreshing}
+                                                onRefresh={handleRefresh}
+                                                tintColor={colors.primary}
+                                            />
+                                        }
+                                    />
                                 </View>
-                            </TouchableOpacity>
-                        )}
-                        ListEmptyComponent={
-                            <Text style={[styles.emptyText, { color: colors.textSecondary }]}>No friends added yet.</Text>
-                        }
-                        contentContainerStyle={{ paddingBottom: 20 }}
-                        refreshControl={
-                            <RefreshControl
-                                refreshing={refreshing}
-                                onRefresh={handleRefresh}
-                                tintColor={colors.primary}
-                            />
-                        }
-                    />
+                            </View>
+                        </View>
+                    ) : (
+                        <FlatList
+                            data={friends}
+                            keyExtractor={(item) => item.id}
+                            renderItem={({ item }) => (
+                                <TouchableOpacity
+                                    style={[styles.cardWrapper, { backgroundColor: colors.surface }]}
+                                    activeOpacity={0.8}
+                                    onPress={() => router.push({ pathname: '/friend-details/[id]', params: { id: item.id } })}
+                                >
+                                    <View style={styles.friendCard}>
+                                        <View style={{ marginRight: 16 }}>
+                                            <InitialsAvatar
+                                                name={item.name}
+                                                avatarUrl={item.avatarUrl}
+                                                size={44}
+                                                isLocal={!item.linkedUserId}
+                                            />
+                                        </View>
+                                        <View style={styles.friendInfo}>
+                                            <Text style={[styles.friendName, { color: colors.text }]}>{item.name}</Text>
+                                            <Text style={[
+                                                styles.friendBalance,
+                                                { color: item.balance >= 0 ? colors.success : colors.accent }
+                                            ]}>
+                                                {item.balance >= 0 ? `Owes you ${formatCurrency(item.balance)}` : `You owe ${formatCurrency(Math.abs(item.balance))}`}
+                                            </Text>
+                                        </View>
+                                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                                            {Math.abs(item.balance) > 0.01 && (
+                                                <VibrantButton
+                                                    onPress={() => {
+                                                        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                                                        handleSettleUp(item);
+                                                    }}
+                                                    variant="outline"
+                                                    style={styles.settleUpButton}
+                                                    leftIcon={<Banknote size={20} color={colors.success} />}
+                                                />
+                                            )}
+                                        </View>
+                                    </View>
+                                </TouchableOpacity>
+                            )}
+                            ListEmptyComponent={
+                                <Text style={[styles.emptyText, { color: colors.textSecondary }]}>No friends added yet.</Text>
+                            }
+                            contentContainerStyle={{ paddingBottom: 20 }}
+                            refreshControl={
+                                <RefreshControl
+                                    refreshing={refreshing}
+                                    onRefresh={handleRefresh}
+                                    tintColor={colors.primary}
+                                />
+                            }
+                        />
+                    )}
                 </View>
             </View >
         </SafeAreaView >
@@ -241,6 +294,7 @@ const styles = StyleSheet.create({
     addCard: {
         marginBottom: 24,
         padding: 16,
+        borderRadius: 24,
     },
     sectionTitle: {
         fontSize: 18,
@@ -252,29 +306,12 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         gap: 12,
     },
-    addButtonWrapper: {
-        position: 'relative',
-        width: 50,
-        height: 50,
-    },
     smallAddButton: {
         width: 50,
         height: 50,
         paddingVertical: 0,
         paddingHorizontal: 0,
-        borderRadius: 12,
-        alignItems: 'center',
-        justifyContent: 'center',
-    },
-    plusIcon: {
-        position: 'absolute',
-        top: 0,
-        left: 0,
-        right: 0,
-        bottom: 0,
-        alignItems: 'center',
-        justifyContent: 'center',
-        pointerEvents: 'none',
+        borderRadius: 18,
     },
     listContainer: {
         flex: 1,
@@ -286,6 +323,7 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         alignItems: 'center',
         padding: 16,
+        borderRadius: 24,
     },
     avatar: {
         width: 48,
@@ -310,8 +348,10 @@ const styles = StyleSheet.create({
         fontSize: 14,
         marginTop: 4,
     },
-    actionButton: {
-        padding: 8,
+    settleUpButton: {
+        width: 44,
+        height: 44,
+        borderRadius: 18,
     },
     emptyText: {
         textAlign: 'center',
@@ -320,6 +360,7 @@ const styles = StyleSheet.create({
     },
     skeuoAddWrapper: {
         marginBottom: 24,
+        borderRadius: 24,
     },
     skeuoAddInner: {
         borderRadius: 24,
@@ -332,5 +373,23 @@ const styles = StyleSheet.create({
     },
     skeuoCardInner: {
         borderRadius: 24,
-    }
+    },
+    skeuoListWrapper: {
+        borderRadius: 24,
+        flex: 1,
+        marginBottom: 20,
+    },
+    skeuoListInner: {
+        borderRadius: 24,
+        flex: 1,
+    },
+    skeuoListContent: {
+        borderRadius: 24,
+        flex: 1,
+        overflow: 'hidden',
+    },
+    separator: {
+        height: 1,
+        marginHorizontal: 16,
+    },
 });

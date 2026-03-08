@@ -235,7 +235,7 @@ export default function AddExpenseScreen() {
                     <View style={isSkeuomorphic ? [styles.skeuoCardInner, skeuo.outset.dark] : null}>
                         <LinearGradient
                             colors={isSkeuomorphic ? skeuo.surfaceGradient : ['transparent', 'transparent']}
-                            style={[styles.card, !isSkeuomorphic && { backgroundColor: colors.surface }]}
+                            style={[styles.card, !isSkeuomorphic && { backgroundColor: colors.surface }, { borderRadius: 24 }]}
                         >
                             <View style={styles.inputRow}>
                                 <StyledInput
@@ -468,7 +468,7 @@ const styles = StyleSheet.create({
         justifyContent: 'center',
         paddingVertical: 10, // Reduced from 12
         gap: 6,
-        borderRadius: 8,
+        borderRadius: 18,
     },
     activeTab: {
     },
@@ -480,7 +480,7 @@ const styles = StyleSheet.create({
         color: 'white',
     },
     saveButton: {
-        marginBottom: 40,
+        marginBottom: 110,
     },
     label: {
         fontSize: 14,
@@ -538,8 +538,8 @@ const styles = StyleSheet.create({
     freqChip: {
         flex: 1,
         alignItems: 'center',
-        paddingVertical: 6, // Reduced
-        borderRadius: 8,
+        paddingVertical: 6,
+        borderRadius: 18,
         borderWidth: 1,
     },
     activeFreqChip: {
@@ -574,6 +574,7 @@ const styles = StyleSheet.create({
     },
     skeuoCardWrapper: {
         marginBottom: 16,
+        borderRadius: 24,
     },
     skeuoCardInner: {
         borderRadius: 24,
@@ -589,7 +590,7 @@ const styles = StyleSheet.create({
         borderRadius: 24,
     },
     skeuoActiveTab: {
-        borderRadius: 20,
+        borderRadius: 18,
     },
     skeuoActiveTabInner: {
         flexDirection: 'row',
@@ -597,7 +598,7 @@ const styles = StyleSheet.create({
         justifyContent: 'center',
         paddingVertical: 10,
         gap: 6,
-        borderRadius: 20,
+        borderRadius: 18,
         width: '100%',
     },
     skeuoChipInner: {
@@ -605,6 +606,6 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         paddingHorizontal: 12,
         paddingVertical: 6,
-        borderRadius: 24,
+        borderRadius: 18,
     }
 });

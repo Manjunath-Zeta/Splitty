@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo, useCallback } from 'react';
 import { View, Text, StyleSheet, FlatList, SafeAreaView, TouchableOpacity, Alert, RefreshControl } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Themes, ThemeName, Colors } from '../../constants/Colors';
@@ -80,7 +80,7 @@ export default function GroupsScreen() {
     };
 
     return (
-        <SafeAreaView style={[styles.safeArea, { backgroundColor: colors.background }]}>
+        <SafeAreaView style={[styles.safeArea, { backgroundColor: isSkeuomorphic ? skeuo.background : colors.background }]}>
             <View style={styles.container}>
                 {!showAdd ? (
                     <VibrantButton
@@ -154,71 +154,130 @@ export default function GroupsScreen() {
                     </View>
                 )}
 
-                <View style={styles.listContainer}>
+                <View style={[styles.listContainer, { flex: 1 }]}>
                     <Text style={[styles.sectionTitle, { color: colors.text }]}>Your Groups</Text>
-                    <FlatList
-                        data={groups}
-                        keyExtractor={(item) => item.id}
-                        refreshControl={
-                            <RefreshControl
-                                refreshing={refreshing}
-                                onRefresh={handleRefresh}
-                                tintColor={colors.primary}
-                            />
-                        }
-                        renderItem={({ item }) => (
-                            <TouchableOpacity
-                                key={item.id}
-                                onPress={() => router.push({ pathname: '/group-details/[id]', params: { id: item.id } })}
-                                activeOpacity={0.8}
-                                style={isSkeuomorphic ? styles.skeuoGroupWrapper : null}
-                            >
-                                <View style={isSkeuomorphic ? [styles.skeuoGroupOuter, skeuo.outset.light] : null}>
-                                    <View style={isSkeuomorphic ? [styles.skeuoGroupInner, skeuo.outset.dark] : null}>
-                                        <LinearGradient
-                                            colors={isSkeuomorphic ? skeuo.surfaceGradient : ['transparent', 'transparent']}
-                                            style={[styles.groupCard, !isSkeuomorphic && { backgroundColor: colors.surface }]}
-                                        >
-                                            <View style={[styles.groupIcon, { backgroundColor: isDark ? 'rgba(255,255,255,0.1)' : colors.inputBackground }]}>
-                                                <Users color={colors.textSecondary} size={24} />
-                                            </View>
-                                            <View style={styles.groupInfo}>
-                                                <Text style={[styles.groupName, { color: colors.text }]}>{item.name}</Text>
-                                                <Text style={[styles.groupMembers, { color: colors.textSecondary }]}>
-                                                    {item.members.length} members
-                                                </Text>
-                                            </View>
-                                            <View style={styles.rightActions}>
-                                                <Text style={[
-                                                    styles.groupBalance,
-                                                    { color: item.balance >= 0 ? colors.success : colors.accent, marginRight: 12 }
-                                                ]}>
-                                                    {item.balance >= 0 ? `+${formatCurrency(item.balance)}` : `-${formatCurrency(Math.abs(item.balance))}`}
-                                                </Text>
-                                                <View style={styles.iconRow}>
-                                                    <TouchableOpacity
-                                                        onPress={(e) => { e.stopPropagation(); handleEdit(item); }}
-                                                        style={styles.actionIcon}
-                                                    >
-                                                        <Pencil size={18} color={colors.primary} />
-                                                    </TouchableOpacity>
-                                                    <TouchableOpacity
-                                                        onPress={(e) => { e.stopPropagation(); handleDelete(item.id, item.name); }}
-                                                        style={styles.actionIcon}
-                                                    >
-                                                        <Trash2 size={18} color={colors.error} />
-                                                    </TouchableOpacity>
-                                                </View>
-                                            </View>
-                                        </LinearGradient>
-                                    </View>
+                    {isSkeuomorphic ? (
+                        <View style={[styles.skeuoListWrapper, skeuo.outset.light]}>
+                            <View style={[styles.skeuoListInner, skeuo.outset.dark]}>
+                                <View style={[styles.skeuoListContent, { backgroundColor: skeuo.background }]}>
+                                    <FlatList
+                                        data={groups}
+                                        keyExtractor={(item) => item.id}
+                                        refreshControl={
+                                            <RefreshControl
+                                                refreshing={refreshing}
+                                                onRefresh={handleRefresh}
+                                                tintColor={colors.primary}
+                                            />
+                                        }
+                                        renderItem={({ item, index }) => (
+                                            <React.Fragment key={item.id}>
+                                                <TouchableOpacity
+                                                    onPress={() => router.push({ pathname: '/group-details/[id]', params: { id: item.id } })}
+                                                    activeOpacity={0.8}
+                                                    style={styles.groupCard}
+                                                >
+                                                    <View style={[styles.groupIcon, { backgroundColor: isDark ? 'rgba(255,255,255,0.1)' : colors.inputBackground }]}>
+                                                        <Users color={colors.textSecondary} size={24} />
+                                                    </View>
+                                                    <View style={styles.groupInfo}>
+                                                        <Text style={[styles.groupName, { color: colors.text }]}>{item.name}</Text>
+                                                        <Text style={[styles.groupMembers, { color: colors.textSecondary }]}>
+                                                            {item.members.length} members
+                                                        </Text>
+                                                    </View>
+                                                    <View style={styles.rightActions}>
+                                                        <Text style={[
+                                                            styles.groupBalance,
+                                                            { color: item.balance >= 0 ? colors.success : colors.accent, marginRight: 12 }
+                                                        ]}>
+                                                            {item.balance >= 0 ? `+${formatCurrency(item.balance)}` : `-${formatCurrency(Math.abs(item.balance))}`}
+                                                        </Text>
+                                                        <View style={styles.iconRow}>
+                                                            <VibrantButton
+                                                                onPress={() => handleEdit(item)}
+                                                                variant="outline"
+                                                                style={styles.actionButton}
+                                                                leftIcon={<Pencil size={18} color={colors.primary} />}
+                                                            />
+                                                            <VibrantButton
+                                                                onPress={() => handleDelete(item.id, item.name)}
+                                                                variant="outline"
+                                                                style={styles.actionButton}
+                                                                leftIcon={<Trash2 size={18} color={colors.error} />}
+                                                            />
+                                                        </View>
+                                                    </View>
+                                                </TouchableOpacity>
+                                                {index < groups.length - 1 && (
+                                                    <View style={[styles.separator, { backgroundColor: colors.border + '20' }]} />
+                                                )}
+                                            </React.Fragment>
+                                        )}
+                                        ListEmptyComponent={
+                                            <Text style={[styles.emptyText, { color: colors.textSecondary }]}>No groups yet.</Text>
+                                        }
+                                    />
                                 </View>
-                            </TouchableOpacity>
-                        )}
-                        ListEmptyComponent={
-                            <Text style={[styles.emptyText, { color: colors.textSecondary }]}>No groups yet.</Text>
-                        }
-                    />
+                            </View>
+                        </View>
+                    ) : (
+                        <FlatList
+                            data={groups}
+                            keyExtractor={(item) => item.id}
+                            refreshControl={
+                                <RefreshControl
+                                    refreshing={refreshing}
+                                    onRefresh={handleRefresh}
+                                    tintColor={colors.primary}
+                                />
+                            }
+                            renderItem={({ item }) => (
+                                <TouchableOpacity
+                                    key={item.id}
+                                    onPress={() => router.push({ pathname: '/group-details/[id]', params: { id: item.id } })}
+                                    activeOpacity={0.8}
+                                >
+                                    <View style={[styles.groupCard, { backgroundColor: colors.surface, marginBottom: 12, borderRadius: 16, padding: 12 }]}>
+                                        <View style={[styles.groupIcon, { backgroundColor: isDark ? 'rgba(255,255,255,0.1)' : colors.inputBackground }]}>
+                                            <Users color={colors.textSecondary} size={24} />
+                                        </View>
+                                        <View style={styles.groupInfo}>
+                                            <Text style={[styles.groupName, { color: colors.text }]}>{item.name}</Text>
+                                            <Text style={[styles.groupMembers, { color: colors.textSecondary }]}>
+                                                {item.members.length} members
+                                            </Text>
+                                        </View>
+                                        <View style={styles.rightActions}>
+                                            <Text style={[
+                                                styles.groupBalance,
+                                                { color: item.balance >= 0 ? colors.success : colors.accent, marginRight: 12 }
+                                            ]}>
+                                                {item.balance >= 0 ? `+${formatCurrency(item.balance)}` : `-${formatCurrency(Math.abs(item.balance))}`}
+                                            </Text>
+                                            <View style={styles.iconRow}>
+                                                <VibrantButton
+                                                    onPress={() => handleEdit(item)}
+                                                    variant="outline"
+                                                    style={styles.actionButton}
+                                                    leftIcon={<Pencil size={18} color={colors.primary} />}
+                                                />
+                                                <VibrantButton
+                                                    onPress={() => handleDelete(item.id, item.name)}
+                                                    variant="outline"
+                                                    style={styles.actionButton}
+                                                    leftIcon={<Trash2 size={18} color={colors.error} />}
+                                                />
+                                            </View>
+                                        </View>
+                                    </View>
+                                </TouchableOpacity>
+                            )}
+                            ListEmptyComponent={
+                                <Text style={[styles.emptyText, { color: colors.textSecondary }]}>No groups yet.</Text>
+                            }
+                        />
+                    )}
                 </View>
             </View>
         </SafeAreaView>
@@ -236,6 +295,7 @@ const styles = StyleSheet.create({
     addCard: {
         marginBottom: 24,
         padding: 16,
+        borderRadius: 24,
     },
     sectionTitle: {
         fontSize: 18,
@@ -274,6 +334,7 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         marginBottom: 12,
         padding: 16,
+        borderRadius: 24,
     },
     groupIcon: {
         width: 48,
@@ -306,8 +367,10 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         gap: 12,
     },
-    actionIcon: {
-        padding: 4,
+    actionButton: {
+        width: 40,
+        height: 40,
+        borderRadius: 18,
     },
     emptyText: {
         textAlign: 'center',
@@ -323,8 +386,27 @@ const styles = StyleSheet.create({
     skeuoGroupInner: {
         borderRadius: 24,
     },
+    skeuoListWrapper: {
+        borderRadius: 24,
+        flex: 1,
+        marginBottom: 20,
+    },
+    skeuoListInner: {
+        borderRadius: 24,
+        flex: 1,
+    },
+    skeuoListContent: {
+        borderRadius: 24,
+        flex: 1,
+        overflow: 'hidden',
+    },
+    separator: {
+        height: 1,
+        marginHorizontal: 16,
+    },
     skeuoAddWrapper: {
         marginBottom: 24,
+        borderRadius: 24,
     },
     skeuoAddInner: {
         borderRadius: 24,

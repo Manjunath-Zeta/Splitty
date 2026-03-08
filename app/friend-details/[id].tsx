@@ -3,12 +3,15 @@ import { View, Text, StyleSheet, SafeAreaView, TouchableOpacity, Alert, ScrollVi
 import { useLocalSearchParams, useRouter, Stack } from 'expo-router';
 import { useSplittyStore } from '../../store/useSplittyStore';
 import { GlassCard } from '../../components/GlassCard';
-import { ArrowLeft, Banknote, Trash2, Users, Mail, Phone, ChevronRight, Edit2, X, Camera } from 'lucide-react-native';
+import { ArrowLeft, Banknote, Trash2, Users, Mail, Phone, ChevronRight, Edit2, X, Camera, Plus } from 'lucide-react-native';
 import { supabase } from '../../lib/supabase';
 import { InitialsAvatar } from '../../components/InitialsAvatar';
 import { CategoryIcon } from '../../components/CategoryIcon';
 import * as Haptics from 'expo-haptics';
 import * as ImagePicker from 'expo-image-picker';
+import { Skeuomorphic } from '../../constants/Colors';
+import { LinearGradient } from 'expo-linear-gradient';
+import { VibrantButton } from '../../components/VibrantButton';
 
 interface LinkedProfile {
     email?: string;
@@ -20,8 +23,10 @@ interface LinkedProfile {
 export default function FriendDetailsScreen() {
     const { id } = useLocalSearchParams<{ id: string }>();
     const router = useRouter();
-    const { friends, expenses, groups, appearance, colors, formatCurrency, deleteExpense, deleteFriend, getCategoryById } = useSplittyStore();
+    const { friends, expenses, groups, appearance, colors, formatCurrency, deleteExpense, deleteFriend, getCategoryById, designPreference } = useSplittyStore();
     const isDark = appearance === 'dark';
+    const isSkeuomorphic = designPreference === 'skeuomorphic';
+    const skeuo = isDark ? Skeuomorphic.dark : Skeuomorphic.light;
 
     const friend = friends.find(f => f.id === id);
     const [linkedProfile, setLinkedProfile] = useState<LinkedProfile | null>(null);
@@ -175,22 +180,110 @@ export default function FriendDetailsScreen() {
         }
     };
 
-    return (
-        <SafeAreaView style={[styles.safeArea, { backgroundColor: colors.background }]}>
-            <Stack.Screen options={{ headerShown: false }} />
-
+    const Content = () => (
+        <ScrollView contentContainerStyle={styles.container}>
             {/* Header */}
             <View style={styles.header}>
-                <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
-                    <ArrowLeft size={24} color={colors.text} />
-                </TouchableOpacity>
+                {isSkeuomorphic ? (
+                    <View style={[styles.skeuoIconWrapper, skeuo.outset.light]}>
+                        <View style={[styles.skeuoIconInner, skeuo.outset.dark]}>
+                            <TouchableOpacity onPress={() => router.back()} style={[styles.backButtonSkeuo, { backgroundColor: skeuo.background }]}>
+                                <ArrowLeft size={24} color={colors.text} />
+                            </TouchableOpacity>
+                        </View>
+                    </View>
+                ) : (
+                    <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
+                        <ArrowLeft size={24} color={colors.text} />
+                    </TouchableOpacity>
+                )}
                 <Text style={[styles.headerTitle, { color: colors.text }]}>Friend Details</Text>
-                <View style={{ width: 24 }} />
+                <View style={{ width: 44 }} />
             </View>
 
-            <ScrollView contentContainerStyle={styles.container}>
+            {/* Profile Card */}
+            {isSkeuomorphic ? (
+                <View style={[styles.skeuoCardOuter, skeuo.outset.light]}>
+                    <View style={[styles.skeuoCardInner, skeuo.outset.dark]}>
+                        <LinearGradient colors={skeuo.surfaceGradient} style={styles.skeuoSummaryCard}>
+                            <View style={styles.avatarEditContainer}>
+                                <InitialsAvatar
+                                    name={friend.name}
+                                    avatarUrl={friend.avatarUrl}
+                                    size={72}
+                                    isLocal={!isLinked}
+                                />
+                            </View>
+                            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                                <Text style={[styles.friendName, { color: colors.text, marginBottom: 0 }]}>{friend.name}</Text>
+                                {!isLinked && (
+                                    <VibrantButton
+                                        onPress={openEditModal}
+                                        variant="outline"
+                                        style={styles.editButtonSmall}
+                                        leftIcon={<Edit2 size={16} color={colors.primary} />}
+                                    />
+                                )}
+                            </View>
+                            <View style={{ height: 8 }} />
 
-                {/* Profile Card */}
+                            {isLinked && (
+                                <View style={[styles.linkedBadge, { backgroundColor: colors.primary + '20' }]}>
+                                    <Text style={[styles.linkedBadgeText, { color: colors.primary }]}>✓ Splitty User</Text>
+                                </View>
+                            )}
+
+                            {/* Contact Info */}
+                            {(displayEmail || displayPhone) && (
+                                <View style={[styles.contactSection, { borderTopColor: colors.border }]}>
+                                    {displayEmail && (
+                                        <TouchableOpacity
+                                            style={styles.contactRow}
+                                            onPress={() => Linking.openURL(`mailto:${displayEmail}`)}
+                                            activeOpacity={0.7}
+                                        >
+                                            <View style={[styles.contactIcon, { backgroundColor: colors.primary + '15' }]}>
+                                                <Mail size={16} color={colors.primary} />
+                                            </View>
+                                            <View style={{ flex: 1 }}>
+                                                <Text style={[styles.contactLabel, { color: colors.textSecondary }]}>Email</Text>
+                                                <Text style={[styles.contactValue, { color: colors.text }]}>{displayEmail}</Text>
+                                            </View>
+                                            <ChevronRight size={16} color={colors.textSecondary} />
+                                        </TouchableOpacity>
+                                    )}
+                                    {displayPhone && (
+                                        <TouchableOpacity
+                                            style={[styles.contactRow, displayEmail && { borderTopWidth: 1, borderTopColor: colors.border }]}
+                                            onPress={() => Linking.openURL(`tel:${displayPhone}`)}
+                                            activeOpacity={0.7}
+                                        >
+                                            <View style={[styles.contactIcon, { backgroundColor: colors.success + '15' }]}>
+                                                <Phone size={16} color={colors.success} />
+                                            </View>
+                                            <View style={{ flex: 1 }}>
+                                                <Text style={[styles.contactLabel, { color: colors.textSecondary }]}>Phone</Text>
+                                                <Text style={[styles.contactValue, { color: colors.text }]}>{displayPhone}</Text>
+                                            </View>
+                                            <ChevronRight size={16} color={colors.textSecondary} />
+                                        </TouchableOpacity>
+                                    )}
+                                </View>
+                            )}
+
+                            {/* Balance */}
+                            <View style={[styles.balanceContainer, { borderTopColor: colors.border }]}>
+                                <Text style={[styles.balanceLabel, { color: colors.textSecondary }]}>
+                                    {friend.balance >= 0 ? "Owes you" : "You owe"}
+                                </Text>
+                                <Text style={[styles.balanceAmount, { color: friend.balance >= 0 ? colors.success : colors.accent }]}>
+                                    {formatCurrency(Math.abs(friend.balance))}
+                                </Text>
+                            </View>
+                        </LinearGradient>
+                    </View>
+                </View>
+            ) : (
                 <GlassCard style={[styles.summaryCard, { backgroundColor: colors.surface }]}>
                     <View style={styles.avatarEditContainer}>
                         <InitialsAvatar
@@ -264,19 +357,61 @@ export default function FriendDetailsScreen() {
                         </Text>
                     </View>
                 </GlassCard>
+            )}
 
-                {/* Activity History */}
-                <Text style={[styles.sectionTitle, { color: colors.text }]}>Activity History</Text>
+            {/* Activity History */}
+            <Text style={[styles.sectionTitle, { color: colors.text }]}>Activity History</Text>
 
-                {sortedExpenses.length > 0 ? (
-                    sortedExpenses.map(expense => {
-                        const groupName = getGroupName(expense.groupId);
-                        return (
-                            <TouchableOpacity
-                                key={expense.id}
-                                activeOpacity={0.7}
-                                onPress={() => router.push({ pathname: '/add-expense', params: { id: expense.id } })}
-                            >
+            {sortedExpenses.length > 0 ? (
+                sortedExpenses.map(expense => {
+                    const groupName = getGroupName(expense.groupId);
+                    return (
+                        <TouchableOpacity
+                            key={expense.id}
+                            activeOpacity={0.7}
+                            onPress={() => router.push({ pathname: '/add-expense', params: { id: expense.id } })}
+                        >
+                            {isSkeuomorphic ? (
+                                <View style={[styles.skeuoCardOuter, skeuo.outset.light]}>
+                                    <View style={[styles.skeuoCardInner, skeuo.outset.dark]}>
+                                        <LinearGradient colors={skeuo.surfaceGradient} style={styles.skeuoActivityItem}>
+                                            <View style={[
+                                                styles.categoryIcon,
+                                                { backgroundColor: expense.isSettlement ? colors.success + '20' : getCategoryById(expense.category).color + '20' }
+                                            ]}>
+                                                {expense.isSettlement ? (
+                                                    <Banknote size={20} color={colors.success} />
+                                                ) : (
+                                                    <CategoryIcon name={getCategoryById(expense.category).icon} size={20} color={getCategoryById(expense.category).color} />
+                                                )}
+                                            </View>
+                                            <View style={{ flex: 1, marginLeft: 12 }}>
+                                                <Text style={[styles.activityDesc, { color: colors.text }]}>{expense.description}</Text>
+                                                <View style={styles.metaRow}>
+                                                    <Text style={[styles.activityDate, { color: colors.textSecondary }]}>
+                                                        {new Date(expense.date).toLocaleDateString()}
+                                                    </Text>
+                                                    {groupName && (
+                                                        <View style={[styles.groupTag, { backgroundColor: isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)' }]}>
+                                                            <Users size={10} color={colors.textSecondary} style={{ marginRight: 4 }} />
+                                                            <Text style={[styles.groupTagText, { color: colors.textSecondary }]}>{groupName}</Text>
+                                                        </View>
+                                                    )}
+                                                </View>
+                                            </View>
+                                            <View style={styles.activityRight}>
+                                                <Text style={[styles.activityAmount, { color: colors.text }]}>{formatCurrency(expense.amount)}</Text>
+                                                <VibrantButton
+                                                    onPress={() => handleDeleteExpense(expense.id)}
+                                                    variant="outline"
+                                                    style={styles.listDeleteButton}
+                                                    leftIcon={<Trash2 size={18} color={colors.error} />}
+                                                />
+                                            </View>
+                                        </LinearGradient>
+                                    </View>
+                                </View>
+                            ) : (
                                 <GlassCard style={[
                                     styles.activityItem,
                                     { backgroundColor: colors.surface },
@@ -305,44 +440,47 @@ export default function FriendDetailsScreen() {
                                                 </View>
                                             )}
                                         </View>
-                                        <Text style={[styles.paidByText, { color: colors.textSecondary }]}>
-                                            {expense.payerId === 'self' ? 'You paid' : `${expense.payerName || (expense.payerId === friend.id ? friend.name : 'Someone')} paid`}
-                                        </Text>
                                     </View>
                                     <View style={styles.activityRight}>
                                         <Text style={[styles.activityAmount, { color: colors.text }]}>{formatCurrency(expense.amount)}</Text>
-                                        <TouchableOpacity
-                                            onPress={(e) => { e.stopPropagation(); handleDeleteExpense(expense.id); }}
-                                            hitSlop={10}
-                                        >
-                                            <Trash2 size={18} color={colors.error} />
-                                        </TouchableOpacity>
+                                        <VibrantButton
+                                            onPress={() => handleDeleteExpense(expense.id)}
+                                            variant="outline"
+                                            style={styles.listDeleteButton}
+                                            leftIcon={<Trash2 size={18} color={colors.error} />}
+                                        />
                                     </View>
                                 </GlassCard>
-                            </TouchableOpacity>
-                        );
-                    })
-                ) : (
-                    <GlassCard style={[styles.emptyCard, { backgroundColor: colors.surface }]}>
-                        <Text style={[styles.emptyText, { color: colors.textSecondary }]}>No shared activity yet.</Text>
-                    </GlassCard>
-                )}
+                            )}
+                        </TouchableOpacity>
+                    );
+                })
+            ) : (
+                <GlassCard style={[styles.emptyCard, { backgroundColor: colors.surface }]}>
+                    <Text style={[styles.emptyText, { color: colors.textSecondary }]}>No shared activity yet.</Text>
+                </GlassCard>
+            )}
 
-                {/* Danger Zone */}
-                <View style={[styles.dangerZone, { borderColor: colors.error + '40' }]}>
-                    <Text style={[styles.dangerTitle, { color: colors.error }]}>Danger Zone</Text>
-                    <TouchableOpacity
-                        style={[styles.deleteButton, { backgroundColor: colors.error + '15', borderColor: colors.error + '40' }]}
-                        onPress={handleDeleteFriend}
-                        activeOpacity={0.7}
-                    >
-                        <Trash2 size={18} color={colors.error} />
-                        <Text style={[styles.deleteButtonText, { color: colors.error }]}>Remove {friend.name}</Text>
-                    </TouchableOpacity>
-                </View>
+            {/* Danger Zone */}
+            <View style={[styles.dangerZone, { borderColor: colors.error + '40' }]}>
+                <Text style={[styles.dangerTitle, { color: colors.error }]}>Danger Zone</Text>
+                <VibrantButton
+                    onPress={handleDeleteFriend}
+                    style={styles.dangerButton}
+                    leftIcon={<Trash2 size={18} color={colors.error} />}
+                    title={`Remove ${friend.name}`}
+                    variant="outline"
+                />
+            </View>
 
-                <View style={{ height: 40 }} />
-            </ScrollView>
+            <View style={{ height: 40 }} />
+        </ScrollView>
+    );
+
+    return (
+        <SafeAreaView style={[styles.safeArea, { backgroundColor: isSkeuomorphic ? skeuo.background : colors.background }]}>
+            <Stack.Screen options={{ headerShown: false }} />
+            <Content />
 
             {/* Edit Profile Modal */}
             <Modal
@@ -401,6 +539,12 @@ export default function FriendDetailsScreen() {
                     </View>
                 </KeyboardAvoidingView>
             </Modal>
+            <VibrantButton
+                style={styles.fab}
+                onPress={() => router.push({ pathname: '/add-expense', params: { friendId: id } })}
+                leftIcon={<Plus size={32} color="#FFF" />}
+                variant="primary"
+            />
         </SafeAreaView>
     );
 }
@@ -415,20 +559,25 @@ const styles = StyleSheet.create({
         paddingVertical: 16,
     },
     backButton: { padding: 4 },
+    backButtonSkeuo: {
+        width: 44,
+        height: 44,
+        borderRadius: 22,
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
     headerTitle: { fontSize: 18, fontWeight: '700' },
     container: { padding: 20, paddingTop: 0 },
     summaryCard: {
         alignItems: 'center',
         padding: 24,
         marginBottom: 24,
+        borderRadius: 24,
     },
-    avatar: {
-        width: 72,
-        height: 72,
-        borderRadius: 36,
+    skeuoSummaryCard: {
         alignItems: 'center',
-        justifyContent: 'center',
-        marginBottom: 16,
+        padding: 24,
+        borderRadius: 24,
     },
     avatarEditContainer: {
         marginBottom: 16,
@@ -437,7 +586,6 @@ const styles = StyleSheet.create({
     editIconBtn: {
         padding: 4,
     },
-    avatarImage: { width: '100%', height: '100%' },
     friendName: {
         fontSize: 24,
         fontWeight: 'bold',
@@ -446,7 +594,7 @@ const styles = StyleSheet.create({
     linkedBadge: {
         paddingHorizontal: 12,
         paddingVertical: 4,
-        borderRadius: 20,
+        borderRadius: 24,
         marginBottom: 16,
     },
     linkedBadgeText: {
@@ -469,7 +617,7 @@ const styles = StyleSheet.create({
     contactIcon: {
         width: 36,
         height: 36,
-        borderRadius: 18,
+        borderRadius: 20,
         alignItems: 'center',
         justifyContent: 'center',
     },
@@ -501,6 +649,13 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         padding: 16,
         marginBottom: 12,
+        borderRadius: 24,
+    },
+    skeuoActivityItem: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        padding: 16,
+        borderRadius: 24,
     },
     categoryIcon: {
         width: 40,
@@ -523,22 +678,22 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         paddingHorizontal: 6,
         paddingVertical: 2,
-        borderRadius: 4,
+        borderRadius: 12,
     },
     groupTagText: { fontSize: 10, fontWeight: '500' },
     paidByText: { fontSize: 12, marginTop: 4, fontStyle: 'italic' },
-    activityRight: { alignItems: 'flex-end', gap: 8 },
     activityAmount: { fontSize: 16, fontWeight: '700' },
     emptyCard: {
         alignItems: 'center',
         justifyContent: 'center',
         padding: 40,
+        borderRadius: 24,
     },
     emptyText: { fontSize: 14 },
     dangerZone: {
         marginTop: 32,
         borderWidth: 1,
-        borderRadius: 16,
+        borderRadius: 24,
         padding: 16,
     },
     dangerTitle: {
@@ -548,19 +703,20 @@ const styles = StyleSheet.create({
         letterSpacing: 0.5,
         marginBottom: 12,
     },
-    deleteButton: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'center',
-        gap: 8,
-        paddingVertical: 14,
-        borderRadius: 12,
-        borderWidth: 1,
+    dangerButton: {
+        marginTop: 12,
     },
-    deleteButtonText: {
-        fontSize: 15,
-        fontWeight: '600',
+    editButtonSmall: {
+        width: 32,
+        height: 32,
+        borderRadius: 18,
     },
+    listDeleteButton: {
+        width: 36,
+        height: 36,
+        borderRadius: 18,
+    },
+    activityRight: { alignItems: 'flex-end', gap: 8, justifyContent: 'center' },
     modalOverlay: {
         flex: 1,
         backgroundColor: 'rgba(0,0,0,0.5)',
@@ -613,14 +769,14 @@ const styles = StyleSheet.create({
     input: {
         height: 52,
         borderWidth: 1,
-        borderRadius: 12,
+        borderRadius: 16,
         paddingHorizontal: 16,
         fontSize: 16,
         marginBottom: 24,
     },
     saveButton: {
         height: 52,
-        borderRadius: 12,
+        borderRadius: 18,
         alignItems: 'center',
         justifyContent: 'center',
     },
@@ -628,5 +784,31 @@ const styles = StyleSheet.create({
         color: '#FFF',
         fontSize: 16,
         fontWeight: '600',
+    },
+    skeuoIconWrapper: {
+        borderRadius: 22,
+    },
+    skeuoIconInner: {
+        borderRadius: 22,
+    },
+    skeuoCardOuter: {
+        borderRadius: 24,
+        marginBottom: 24,
+    },
+    skeuoCardInner: {
+        borderRadius: 24,
+    },
+    fab: {
+        position: 'absolute',
+        bottom: 40,
+        right: 24,
+        width: 64,
+        height: 64,
+        borderRadius: 28,
+        elevation: 8,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.3,
+        shadowRadius: 4,
     },
 });

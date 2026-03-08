@@ -186,7 +186,7 @@ const styles = StyleSheet.create({
     chip: {
         paddingHorizontal: 16,
         paddingVertical: 8,
-        borderRadius: 20,
+        borderRadius: 24,
         marginRight: 8,
         flexDirection: 'row',
         alignItems: 'center',
@@ -197,15 +197,15 @@ const styles = StyleSheet.create({
     },
     splitToggle: {
         flexDirection: 'row',
-        borderRadius: 8,
+        borderRadius: 28,
         padding: 4,
         marginBottom: 16,
     },
     toggleOption: {
         flex: 1,
         alignItems: 'center',
-        paddingVertical: 8,
-        borderRadius: 6,
+        paddingVertical: 10,
+        borderRadius: 24,
     },
     toggleText: {
         fontSize: 14,
@@ -233,10 +233,10 @@ const styles = StyleSheet.create({
         fontSize: 14,
     },
     skeuoDetailsWrapper: {
-        borderRadius: 24,
+        borderRadius: 28,
     },
     skeuoDetailsInner: {
-        borderRadius: 24,
+        borderRadius: 28,
     },
     skeuoChipInner: {
         flexDirection: 'row',
@@ -246,22 +246,22 @@ const styles = StyleSheet.create({
         borderRadius: 24,
     },
     skeuoToggleContainer: {
-        borderRadius: 24,
+        borderRadius: 28,
         padding: 4,
         marginBottom: 16,
     },
     skeuoToggleInner: {
         flexDirection: 'row',
         flex: 1,
-        borderRadius: 24,
+        borderRadius: 28,
     },
     skeuoActiveToggle: {
-        borderRadius: 20,
+        borderRadius: 24,
         flex: 1,
     },
     skeuoActiveToggleInner: {
         alignItems: 'center',
         paddingVertical: 8,
-        borderRadius: 20,
+        borderRadius: 24,
     }
 });

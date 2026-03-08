@@ -4,8 +4,11 @@ import { useRouter } from 'expo-router';
 import { ChevronLeft, Plus, Trash2, Tag, X, DollarSign, RefreshCw } from 'lucide-react-native';
 import { useSplittyStore } from '../store/useSplittyStore';
 import { GlassCard } from '../components/GlassCard';
+import { Skeuomorphic } from '../constants/Colors';
+import { LinearGradient } from 'expo-linear-gradient';
 import * as IconComponents from 'lucide-react-native';
 import { CategoryIcon } from '../components/CategoryIcon';
+import { VibrantButton } from '../components/VibrantButton';
 
 const PRESET_COLORS = [
     '#EF4444', // Red
@@ -27,8 +30,12 @@ const PRESET_ICONS = [
 
 export default function ManageCategoriesScreen() {
     const router = useRouter();
-    const { colors, categories, deleteCategory, addCategory, updateCategory, getCurrencySymbol } = useSplittyStore();
+    const { colors, appearance, categories, deleteCategory, addCategory, updateCategory, getCurrencySymbol, designPreference } = useSplittyStore();
     const currency = getCurrencySymbol();
+
+    const isDark = appearance === 'dark';
+    const isSkeuomorphic = designPreference === 'skeuomorphic';
+    const skeuo = isDark ? Skeuomorphic.dark : Skeuomorphic.light;
 
     const [addModalVisible, setAddModalVisible] = useState(false);
     const [editingId, setEditingId] = useState<string | null>(null);
@@ -102,21 +109,70 @@ export default function ManageCategoriesScreen() {
     };
 
     return (
-        <SafeAreaView style={[styles.safeArea, { backgroundColor: colors.background }]}>
+        <SafeAreaView style={[styles.safeArea, { backgroundColor: isSkeuomorphic ? skeuo.background : colors.background }]}>
             <View style={styles.header}>
                 <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
                     <ChevronLeft color={colors.text} size={28} />
                 </TouchableOpacity>
                 <Text style={[styles.headerTitle, { color: colors.text }]}>Manage Categories</Text>
-                <TouchableOpacity onPress={() => setAddModalVisible(true)} style={styles.addButton}>
-                    <Plus color={colors.primary} size={24} />
-                </TouchableOpacity>
+                <VibrantButton
+                    onPress={() => setAddModalVisible(true)}
+                    variant="outline"
+                    style={styles.headerAddButton}
+                    leftIcon={<Plus color={colors.primary} size={24} />}
+                />
             </View>
 
             <ScrollView contentContainerStyle={styles.container}>
                 <View style={styles.list}>
                     {categories.map((cat) => {
                         const isGeneral = cat.id === 'general';
+
+                        const CardContent = () => (
+                            <View style={styles.categoryCardInnerContent}>
+                                <View style={styles.categoryLeft}>
+                                    <View style={[styles.iconWrapper, { backgroundColor: cat.color + '20' }]}>
+                                        <CategoryIcon name={cat.icon} color={cat.color} size={20} />
+                                    </View>
+                                    <View>
+                                        <Text style={[styles.categoryLabel, { color: colors.text }]}>{cat.label}</Text>
+                                        {cat.defaultBudget && cat.defaultBudget > 0 && (
+                                            <Text style={[styles.categorySubLabel, { color: colors.textSecondary }]}>
+                                                Default Budget: {currency}{cat.defaultBudget}
+                                            </Text>
+                                        )}
+                                    </View>
+                                </View>
+
+                                {!isGeneral && (
+                                    <VibrantButton
+                                        style={styles.deleteButton}
+                                        onPress={() => handleDelete(cat.id, cat.label)}
+                                        variant="outline"
+                                        leftIcon={<Trash2 color={colors.error} size={20} />}
+                                    />
+                                )}
+                            </View>
+                        );
+
+                        if (isSkeuomorphic) {
+                            return (
+                                <TouchableOpacity
+                                    key={cat.id}
+                                    onPress={() => openModal(cat)}
+                                    activeOpacity={0.7}
+                                    style={styles.skeuoCategoryWrapper}
+                                >
+                                    <View style={[styles.skeuoCardOuter, skeuo.outset.light]}>
+                                        <View style={[styles.skeuoCardInner, skeuo.outset.dark]}>
+                                            <LinearGradient colors={skeuo.surfaceGradient} style={styles.categoryCard}>
+                                                <CardContent />
+                                            </LinearGradient>
+                                        </View>
+                                    </View>
+                                </TouchableOpacity>
+                            );
+                        }
 
                         return (
                             <TouchableOpacity
@@ -125,34 +181,13 @@ export default function ManageCategoriesScreen() {
                                 activeOpacity={0.7}
                             >
                                 <GlassCard style={[styles.categoryCard, { backgroundColor: colors.surface }]}>
-                                    <View style={styles.categoryLeft}>
-                                        <View style={[styles.iconWrapper, { backgroundColor: cat.color + '20' }]}>
-                                            <CategoryIcon name={cat.icon} color={cat.color} size={20} />
-                                        </View>
-                                        <View>
-                                            <Text style={[styles.categoryLabel, { color: colors.text }]}>{cat.label}</Text>
-                                            {cat.defaultBudget && cat.defaultBudget > 0 && (
-                                                <Text style={[styles.categorySubLabel, { color: colors.textSecondary }]}>
-                                                    Default Budget: {currency}{cat.defaultBudget}
-                                                </Text>
-                                            )}
-                                        </View>
-                                    </View>
-
-                                    {!isGeneral && (
-                                        <TouchableOpacity
-                                            style={styles.deleteButton}
-                                            onPress={() => handleDelete(cat.id, cat.label)}
-                                        >
-                                            <Trash2 color={colors.error} size={20} />
-                                        </TouchableOpacity>
-                                    )}
+                                    <CardContent />
                                 </GlassCard>
                             </TouchableOpacity>
                         );
                     })}
                 </View>
-                <View style={{ height: 40 }} />
+                <View style={{ height: 100 }} />
             </ScrollView>
 
             {/* Add Category Modal */}
@@ -166,7 +201,7 @@ export default function ManageCategoriesScreen() {
                     behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
                     style={styles.modalOverlay}
                 >
-                    <View style={[styles.modalContent, { backgroundColor: colors.background }]}>
+                    <View style={[styles.modalContent, { backgroundColor: isSkeuomorphic ? skeuo.background : colors.background }]}>
                         <View style={styles.modalHeader}>
                             <Text style={[styles.modalTitle, { color: colors.text }]}>
                                 {editingId ? 'Edit Category' : 'New Category'}
@@ -179,43 +214,89 @@ export default function ManageCategoriesScreen() {
                         <ScrollView contentContainerStyle={styles.modalBody}>
                             {/* Preview */}
                             <View style={styles.previewContainer}>
-                                <View style={[styles.previewIcon, { backgroundColor: newColor + '20' }]}>
-                                    {React.createElement((IconComponents as any)[newIconName], { color: newColor, size: 32 })}
-                                </View>
+                                {isSkeuomorphic ? (
+                                    <View style={[styles.skeuoPreviewOuter, skeuo.outset.light]}>
+                                        <View style={[styles.skeuoPreviewInner, skeuo.outset.dark]}>
+                                            <LinearGradient colors={skeuo.surfaceGradient} style={styles.previewIconSkeuo}>
+                                                {React.createElement((IconComponents as any)[newIconName], { color: newColor, size: 32 })}
+                                            </LinearGradient>
+                                        </View>
+                                    </View>
+                                ) : (
+                                    <View style={[styles.previewIcon, { backgroundColor: newColor + '20' }]}>
+                                        {React.createElement((IconComponents as any)[newIconName], { color: newColor, size: 32 })}
+                                    </View>
+                                )}
                             </View>
 
                             <View style={styles.inputGroup}>
                                 <Text style={[styles.inputLabel, { color: colors.textSecondary }]}>Category Name</Text>
-                                <View style={[styles.inputWrapper, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-                                    <Tag color={colors.textSecondary} size={20} />
-                                    <TextInput
-                                        style={[styles.input, { color: colors.text }]}
-                                        placeholder="e.g. Groceries"
-                                        placeholderTextColor={colors.textSecondary}
-                                        value={newLabel}
-                                        onChangeText={setNewLabel}
-                                        autoFocus={!editingId}
-                                    />
-                                </View>
+                                {isSkeuomorphic ? (
+                                    <View style={[styles.skeuoInputOuter, skeuo.inset.dark]}>
+                                        <View style={[styles.skeuoInputInner, skeuo.inset.light]}>
+                                            <View style={styles.inputWrapperSkeuo}>
+                                                <Tag color={colors.textSecondary} size={20} />
+                                                <TextInput
+                                                    style={[styles.input, { color: colors.text }]}
+                                                    placeholder="e.g. Groceries"
+                                                    placeholderTextColor={colors.textSecondary}
+                                                    value={newLabel}
+                                                    onChangeText={setNewLabel}
+                                                    autoFocus={!editingId}
+                                                />
+                                            </View>
+                                        </View>
+                                    </View>
+                                ) : (
+                                    <View style={[styles.inputWrapper, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+                                        <Tag color={colors.textSecondary} size={20} />
+                                        <TextInput
+                                            style={[styles.input, { color: colors.text }]}
+                                            placeholder="e.g. Groceries"
+                                            placeholderTextColor={colors.textSecondary}
+                                            value={newLabel}
+                                            onChangeText={setNewLabel}
+                                            autoFocus={!editingId}
+                                        />
+                                    </View>
+                                )}
                             </View>
 
                             <View style={styles.inputGroup}>
                                 <Text style={[styles.inputLabel, { color: colors.textSecondary }]}>Default Budget (Optional)</Text>
-                                <View style={[styles.inputWrapper, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-                                    <Text style={{ color: colors.textSecondary, fontSize: 18, fontWeight: '600', marginLeft: 4, marginRight: 2 }}>{currency}</Text>
-                                    <TextInput
-                                        style={[styles.input, { color: colors.text }]}
-                                        placeholder="0.00"
-                                        placeholderTextColor={colors.textSecondary}
-                                        keyboardType="decimal-pad"
-                                        value={newDefaultBudget}
-                                        onChangeText={text => setNewDefaultBudget(text.replace(/[^0-9.]/g, ''))}
-                                    />
-                                </View>
+                                {isSkeuomorphic ? (
+                                    <View style={[styles.skeuoInputOuter, skeuo.inset.dark]}>
+                                        <View style={[styles.skeuoInputInner, skeuo.inset.light]}>
+                                            <View style={styles.inputWrapperSkeuo}>
+                                                <Text style={{ color: colors.textSecondary, fontSize: 18, fontWeight: '600', marginLeft: 4, marginRight: 2 }}>{currency}</Text>
+                                                <TextInput
+                                                    style={[styles.input, { color: colors.text }]}
+                                                    placeholder="0.00"
+                                                    placeholderTextColor={colors.textSecondary}
+                                                    keyboardType="decimal-pad"
+                                                    value={newDefaultBudget}
+                                                    onChangeText={text => setNewDefaultBudget(text.replace(/[^0-9.]/g, ''))}
+                                                />
+                                            </View>
+                                        </View>
+                                    </View>
+                                ) : (
+                                    <View style={[styles.inputWrapper, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+                                        <Text style={{ color: colors.textSecondary, fontSize: 18, fontWeight: '600', marginLeft: 4, marginRight: 2 }}>{currency}</Text>
+                                        <TextInput
+                                            style={[styles.input, { color: colors.text }]}
+                                            placeholder="0.00"
+                                            placeholderTextColor={colors.textSecondary}
+                                            keyboardType="decimal-pad"
+                                            value={newDefaultBudget}
+                                            onChangeText={text => setNewDefaultBudget(text.replace(/[^0-9.]/g, ''))}
+                                        />
+                                    </View>
+                                )}
                             </View>
 
                             {newDefaultBudget.trim() !== '' && (
-                                <View style={[styles.toggleGroup, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+                                <View style={[styles.toggleGroup, { backgroundColor: isSkeuomorphic ? 'transparent' : colors.surface, borderColor: colors.border, borderWidth: isSkeuomorphic ? 0 : 1 }]}>
                                     <View style={styles.toggleTextContainer}>
                                         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
                                             <RefreshCw size={16} color={colors.primary} />
@@ -258,7 +339,7 @@ export default function ManageCategoriesScreen() {
                                             key={iconName}
                                             style={[
                                                 styles.iconSelectBtn,
-                                                { backgroundColor: colors.surface },
+                                                { backgroundColor: isSkeuomorphic ? 'rgba(0,0,0,0.03)' : colors.surface },
                                                 newIconName === iconName && { borderColor: colors.primary, borderWidth: 2 }
                                             ]}
                                             onPress={() => setNewIconName(iconName)}
@@ -269,12 +350,11 @@ export default function ManageCategoriesScreen() {
                                 </View>
                             </View>
 
-                            <TouchableOpacity
-                                style={[styles.saveBtn, { backgroundColor: colors.primary }]}
+                            <VibrantButton
+                                title={editingId ? 'Save Changes' : 'Save Category'}
                                 onPress={handleSaveCategory}
-                            >
-                                <Text style={styles.saveBtnText}>{editingId ? 'Save Changes' : 'Save Category'}</Text>
-                            </TouchableOpacity>
+                                style={styles.saveBtn}
+                            />
                         </ScrollView>
                     </View>
                 </KeyboardAvoidingView>
@@ -299,11 +379,13 @@ const styles = StyleSheet.create({
     container: { padding: 20 },
     list: { gap: 12 },
     categoryCard: {
+        padding: 16,
+        borderRadius: 24,
+    },
+    categoryCardInnerContent: {
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'space-between',
-        padding: 16,
-        borderRadius: 16,
     },
     categoryLeft: {
         flexDirection: 'row',
@@ -312,14 +394,16 @@ const styles = StyleSheet.create({
     },
     iconWrapper: {
         padding: 10,
-        borderRadius: 12,
+        borderRadius: 16,
     },
     categoryLabel: {
         fontSize: 16,
         fontWeight: '600',
     },
     deleteButton: {
-        padding: 8,
+        width: 40,
+        height: 40,
+        borderRadius: 18,
     },
     modalOverlay: {
         flex: 1,
@@ -327,21 +411,21 @@ const styles = StyleSheet.create({
         backgroundColor: 'rgba(0,0,0,0.5)'
     },
     modalContent: {
-        borderTopLeftRadius: 24,
-        borderTopRightRadius: 24,
+        borderTopLeftRadius: 32,
+        borderTopRightRadius: 32,
         maxHeight: '90%',
     },
     modalHeader: {
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'space-between',
-        padding: 20,
+        padding: 24,
         borderBottomWidth: 1,
         borderBottomColor: 'rgba(150,150,150,0.1)',
     },
     modalTitle: { fontSize: 18, fontWeight: '700' },
     modalCloseButton: { padding: 4 },
-    modalBody: { padding: 20 },
+    modalBody: { padding: 24 },
     previewContainer: {
         alignItems: 'center',
         marginBottom: 24,
@@ -362,9 +446,9 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         alignItems: 'center',
         borderWidth: 1,
-        borderRadius: 12,
+        borderRadius: 24,
         paddingHorizontal: 16,
-        height: 56,
+        height: 60,
     },
     input: {
         flex: 1,
@@ -377,9 +461,9 @@ const styles = StyleSheet.create({
         gap: 12,
     },
     colorCircle: {
-        width: 40,
-        height: 40,
-        borderRadius: 20,
+        width: 44,
+        height: 44,
+        borderRadius: 22,
     },
     colorCircleSelected: {
         borderWidth: 3,
@@ -396,23 +480,20 @@ const styles = StyleSheet.create({
         gap: 12,
     },
     iconSelectBtn: {
-        width: 56,
-        height: 56,
-        borderRadius: 16,
+        width: 60,
+        height: 60,
+        borderRadius: 24,
         alignItems: 'center',
         justifyContent: 'center',
     },
     saveBtn: {
-        paddingVertical: 16,
-        borderRadius: 16,
-        alignItems: 'center',
         marginTop: 12,
         marginBottom: 40,
     },
-    saveBtnText: {
-        color: '#FFF',
-        fontSize: 16,
-        fontWeight: '700',
+    headerAddButton: {
+        width: 44,
+        height: 44,
+        borderRadius: 18,
     },
     categorySubLabel: {
         fontSize: 13,
@@ -424,7 +505,7 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         justifyContent: 'space-between',
         padding: 16,
-        borderRadius: 16,
+        borderRadius: 24,
         borderWidth: 1,
         marginBottom: 24,
     },
@@ -440,5 +521,38 @@ const styles = StyleSheet.create({
     toggleDesc: {
         fontSize: 13,
         lineHeight: 18,
+    },
+    skeuoCategoryWrapper: {
+        marginBottom: 16,
+    },
+    skeuoCardOuter: {
+        borderRadius: 24,
+    },
+    skeuoCardInner: {
+        borderRadius: 24,
+    },
+    skeuoPreviewOuter: {
+        borderRadius: 32,
+    },
+    skeuoPreviewInner: {
+        borderRadius: 32,
+    },
+    previewIconSkeuo: {
+        padding: 24,
+        borderRadius: 32,
+    },
+    skeuoInputOuter: {
+        borderRadius: 24,
+    },
+    skeuoInputInner: {
+        borderRadius: 24,
+    },
+    inputWrapperSkeuo: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        paddingHorizontal: 16,
+        height: 60,
     }
 });
+
+

@@ -265,8 +265,8 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         justifyContent: 'space-between',
         paddingVertical: 14,
-        paddingHorizontal: 16,
-        borderRadius: 12,
+        paddingHorizontal: 20,
+        borderRadius: 24,
         borderWidth: 1,
         marginBottom: 16,
     },
@@ -305,7 +305,7 @@ const styles = StyleSheet.create({
     doneButton: {
         paddingHorizontal: 16,
         paddingVertical: 8,
-        borderRadius: 20,
+        borderRadius: 24,
     },
     doneButtonText: {
         color: 'white',
@@ -320,7 +320,7 @@ const styles = StyleSheet.create({
         marginBottom: 8,
         paddingHorizontal: 14,
         paddingVertical: 12,
-        borderRadius: 12,
+        borderRadius: 24,
     },
     searchInput: {
         flex: 1,
@@ -331,7 +331,7 @@ const styles = StyleSheet.create({
         marginTop: 8,
         paddingVertical: 8,
         paddingHorizontal: 14,
-        borderRadius: 8,
+        borderRadius: 12,
     },
     selectionBannerText: {
         fontSize: 13,
@@ -342,7 +342,7 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         paddingVertical: 12,
         paddingHorizontal: 16,
-        borderRadius: 12,
+        borderRadius: 24,
         borderWidth: 1,
         gap: 12,
     },
@@ -376,23 +376,23 @@ const styles = StyleSheet.create({
     },
     skeuoTriggerWrapper: {
         marginBottom: 16,
-        borderRadius: 24,
+        borderRadius: 28,
     },
     skeuoTriggerInner: {
-        borderRadius: 24,
+        borderRadius: 28,
     },
     skeuoSearchWrapper: {
         marginHorizontal: 16,
         marginTop: 16,
         marginBottom: 8,
-        borderRadius: 20,
+        borderRadius: 24,
     },
     skeuoSearchInner: {
         flexDirection: 'row',
         alignItems: 'center',
         paddingHorizontal: 14,
         paddingVertical: 12,
-        borderRadius: 20,
+        borderRadius: 24,
     },
     skeuoListItem: {
         borderWidth: 0,
@@ -402,7 +402,7 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         paddingVertical: 12,
         paddingHorizontal: 16,
-        borderRadius: 20,
+        borderRadius: 24,
         gap: 12,
         flex: 1,
     }

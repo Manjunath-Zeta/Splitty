@@ -1,53 +1,96 @@
 import React from 'react';
 import { View, Text, StyleSheet, SafeAreaView, TouchableOpacity, Dimensions } from 'react-native';
-import { useRouter } from 'expo-router';
+import { useRouter, Stack } from 'expo-router';
 import { useSplittyStore } from '../store/useSplittyStore';
 import { DebtTree } from '../components/DebtTree';
 import { ChevronLeft } from 'lucide-react-native';
 import { ScrollView } from 'react-native-gesture-handler';
+import { Skeuomorphic } from '../constants/Colors';
+import { LinearGradient } from 'expo-linear-gradient';
 
 // We import Zoom from 'react-native-zoom-reanimated'
 import Zoom from 'react-native-zoom-reanimated';
-import { VibrantButton } from '../components/VibrantButton';
 
 export default function DebtTreeScreen() {
     const router = useRouter();
-    const { colors, groups } = useSplittyStore();
-    const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
+    const { colors, groups, appearance, designPreference } = useSplittyStore();
+    const isDark = appearance === 'dark';
+    const isSkeuomorphic = designPreference === 'skeuomorphic';
+    const skeuo = isDark ? Skeuomorphic.dark : Skeuomorphic.light;
 
     const [selectedGroupId, setSelectedGroupId] = React.useState<string | null>(null);
 
     return (
-        <SafeAreaView style={[styles.safeArea, { backgroundColor: colors.background }]}>
-            <View style={[styles.header, { borderBottomColor: colors.border }]}>
-                <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
-                    <ChevronLeft size={28} color={colors.text} />
-                </TouchableOpacity>
+        <SafeAreaView style={[styles.safeArea, { backgroundColor: isSkeuomorphic ? skeuo.background : colors.background }]}>
+            <Stack.Screen options={{ headerShown: false }} />
+            <View style={[styles.header, !isSkeuomorphic && { borderBottomWidth: 1, borderBottomColor: colors.border }]}>
+                {isSkeuomorphic ? (
+                    <View style={[styles.skeuoIconWrapper, skeuo.outset.light]}>
+                        <View style={[styles.skeuoIconInner, skeuo.outset.dark]}>
+                            <TouchableOpacity onPress={() => router.back()} style={[styles.backButtonSkeuo, { backgroundColor: skeuo.background }]}>
+                                <ChevronLeft size={28} color={colors.text} />
+                            </TouchableOpacity>
+                        </View>
+                    </View>
+                ) : (
+                    <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
+                        <ChevronLeft size={28} color={colors.text} />
+                    </TouchableOpacity>
+                )}
                 <Text style={[styles.headerTitle, { color: colors.text }]}>Debt Flow Map</Text>
-                <View style={{ width: 40 }} />
+                <View style={{ width: 44 }} />
             </View>
 
-            <View style={{ paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: colors.border }}>
-                <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 16, gap: 8 }}>
+            <View style={[styles.filterContainer, !isSkeuomorphic && { borderBottomWidth: 1, borderBottomColor: colors.border }]}>
+                <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 16, gap: 12 }}>
                     <TouchableOpacity
                         style={[
                             styles.filterChip,
-                            { borderColor: colors.primary, backgroundColor: selectedGroupId === null ? colors.primary : 'transparent' }
+                            {
+                                borderColor: colors.primary,
+                                backgroundColor: selectedGroupId === null ? colors.primary : (isSkeuomorphic ? 'transparent' : 'transparent'),
+                                borderWidth: isSkeuomorphic && selectedGroupId !== null ? 0 : 1
+                            },
                         ]}
                         onPress={() => setSelectedGroupId(null)}
                     >
-                        <Text style={[styles.filterChipText, { color: selectedGroupId === null ? '#FFF' : colors.primary }]}>All</Text>
+                        {isSkeuomorphic && selectedGroupId !== null ? (
+                            <View style={[styles.skeuoChipOuter, skeuo.outset.light]}>
+                                <View style={[styles.skeuoChipInner, skeuo.outset.dark]}>
+                                    <View style={[styles.skeuoChipContent, { backgroundColor: skeuo.background }]}>
+                                        <Text style={[styles.filterChipText, { color: colors.primary }]}>All</Text>
+                                    </View>
+                                </View>
+                            </View>
+                        ) : (
+                            <Text style={[styles.filterChipText, { color: selectedGroupId === null ? '#FFF' : colors.primary }]}>All</Text>
+                        )}
                     </TouchableOpacity>
+
                     {groups.map(g => (
                         <TouchableOpacity
                             key={g.id}
                             style={[
                                 styles.filterChip,
-                                { borderColor: colors.primary, backgroundColor: selectedGroupId === g.id ? colors.primary : 'transparent' }
+                                {
+                                    borderColor: colors.primary,
+                                    backgroundColor: selectedGroupId === g.id ? colors.primary : 'transparent',
+                                    borderWidth: isSkeuomorphic && selectedGroupId !== g.id ? 0 : 1
+                                }
                             ]}
                             onPress={() => setSelectedGroupId(g.id)}
                         >
-                            <Text style={[styles.filterChipText, { color: selectedGroupId === g.id ? '#FFF' : colors.primary }]}>{g.name}</Text>
+                            {isSkeuomorphic && selectedGroupId !== g.id ? (
+                                <View style={[styles.skeuoChipOuter, skeuo.outset.light]}>
+                                    <View style={[styles.skeuoChipInner, skeuo.outset.dark]}>
+                                        <View style={[styles.skeuoChipContent, { backgroundColor: skeuo.background }]}>
+                                            <Text style={[styles.filterChipText, { color: colors.primary }]}>{g.name}</Text>
+                                        </View>
+                                    </View>
+                                </View>
+                            ) : (
+                                <Text style={[styles.filterChipText, { color: selectedGroupId === g.id ? '#FFF' : colors.primary }]}>{g.name}</Text>
+                            )}
                         </TouchableOpacity>
                     ))}
                 </ScrollView>
@@ -61,11 +104,23 @@ export default function DebtTreeScreen() {
                 </Zoom>
             </View>
 
-            <View style={[styles.legend, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-                <Text style={[styles.legendText, { color: colors.textSecondary }]}>
-                    Pinch to zoom, drag to pan
-                </Text>
-            </View>
+            {isSkeuomorphic ? (
+                <View style={[styles.legendSkeuo, skeuo.outset.light]}>
+                    <View style={[styles.legendInnerSkeuo, skeuo.outset.dark]}>
+                        <LinearGradient colors={skeuo.surfaceGradient} style={styles.legendGradient}>
+                            <Text style={[styles.legendText, { color: colors.textSecondary }]}>
+                                Pinch to zoom, drag to pan
+                            </Text>
+                        </LinearGradient>
+                    </View>
+                </View>
+            ) : (
+                <View style={[styles.legend, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+                    <Text style={[styles.legendText, { color: colors.textSecondary }]}>
+                        Pinch to zoom, drag to pan
+                    </Text>
+                </View>
+            )}
         </SafeAreaView>
     );
 }
@@ -78,18 +133,28 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'space-between',
-        paddingHorizontal: 16,
+        paddingHorizontal: 20,
         paddingVertical: 12,
-        borderBottomWidth: 1,
-        zIndex: 10, // Ensure header sits above zoomable content
+        zIndex: 10,
     },
     backButton: {
         padding: 4,
         marginLeft: -4,
     },
+    backButtonSkeuo: {
+        width: 44,
+        height: 44,
+        borderRadius: 22,
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
     headerTitle: {
         fontSize: 18,
         fontWeight: '700',
+    },
+    filterContainer: {
+        paddingVertical: 12,
+        zIndex: 10,
     },
     canvasContainer: {
         flex: 1,
@@ -104,31 +169,61 @@ const styles = StyleSheet.create({
     },
     legend: {
         position: 'absolute',
-        bottom: 40,
+        bottom: 110,
         alignSelf: 'center',
         paddingHorizontal: 16,
         paddingVertical: 8,
-        borderRadius: 20,
+        borderRadius: 24,
         borderWidth: 1,
-        // Glass effect
         shadowColor: '#000',
         shadowOffset: { width: 0, height: 4 },
         shadowOpacity: 0.1,
         shadowRadius: 10,
         elevation: 4,
     },
+    legendSkeuo: {
+        position: 'absolute',
+        bottom: 110,
+        alignSelf: 'center',
+        borderRadius: 24,
+    },
+    legendInnerSkeuo: {
+        borderRadius: 24,
+    },
+    legendGradient: {
+        paddingHorizontal: 20,
+        paddingVertical: 10,
+        borderRadius: 24,
+    },
     legendText: {
         fontSize: 12,
         fontWeight: '600',
     },
     filterChip: {
-        paddingHorizontal: 16,
-        paddingVertical: 6,
-        borderRadius: 20,
-        borderWidth: 1,
+        borderRadius: 24,
+        justifyContent: 'center',
+        alignItems: 'center',
+        minHeight: 36,
     },
     filterChipText: {
         fontSize: 14,
         fontWeight: '600',
+        paddingHorizontal: 16,
+    },
+    skeuoIconWrapper: {
+        borderRadius: 22,
+    },
+    skeuoIconInner: {
+        borderRadius: 22,
+    },
+    skeuoChipOuter: {
+        borderRadius: 24,
+    },
+    skeuoChipInner: {
+        borderRadius: 24,
+    },
+    skeuoChipContent: {
+        borderRadius: 24,
+        paddingVertical: 6,
     }
 });

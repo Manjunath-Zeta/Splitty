@@ -148,77 +148,95 @@ export const GlassTheme = {
 export const Skeuomorphic = {
   light: {
     background: '#E9EEF5',
-    surface: '#E9EEF5',
+    surface: '#EEF2F8',
+    text: '#2E3A4A',
+    textSecondary: '#6B7788',
+    accent: '#4A6CF7',
     // Protrusion: Light shadow top-left, Dark shadow bottom-right
     outset: {
       light: {
         shadowColor: 'rgba(255, 255, 255, 0.9)',
-        shadowOffset: { width: -6, height: -6 },
+        shadowOffset: { width: -10, height: -10 },
         shadowOpacity: 1,
-        shadowRadius: 12,
-        elevation: 12,
+        shadowRadius: 20,
+        elevation: 20,
       },
       dark: {
-        shadowColor: 'rgba(0, 0, 0, 0.08)',
-        shadowOffset: { width: 6, height: 6 },
+        shadowColor: 'rgba(0, 0, 0, 0.12)',
+        shadowOffset: { width: 10, height: 10 },
         shadowOpacity: 1,
-        shadowRadius: 12,
+        shadowRadius: 20,
       }
     },
     // Recession: Dark shadow top-left, Light shadow bottom-right (simulated inner shadow)
     inset: {
       dark: {
-        shadowColor: 'rgba(0, 0, 0, 0.08)',
+        shadowColor: 'rgba(0, 0, 0, 0.06)',
         shadowOffset: { width: -3, height: -3 },
         shadowOpacity: 1,
         shadowRadius: 6,
       },
       light: {
-        shadowColor: 'rgba(255, 255, 255, 0.9)',
+        shadowColor: 'rgba(255, 255, 255, 0.8)',
         shadowOffset: { width: 3, height: 3 },
         shadowOpacity: 1,
         shadowRadius: 6,
       }
     },
     bgGradient: ['#E1E6F0', '#E9EEF5'] as const,
-    surfaceGradient: ['#E9EEF5', '#E1E6F0'] as const,
+    surfaceGradient: ['#EEF2F8', '#E5EBF5'] as const,
     bezel: '#D1D9E6',
+    radii: {
+      card: 24,
+      button: 18,
+      input: 16,
+      fab: 28,
+    }
   },
   dark: {
     background: '#1A1D23',
     surface: '#1E232B',
+    text: '#F8FAFC',
+    textSecondary: '#94A3B8',
+    accent: '#818CF8',
     outset: {
       light: {
         shadowColor: '#2A303C',
-        shadowOffset: { width: -6, height: -6 },
+        shadowOffset: { width: -8, height: -8 },
         shadowOpacity: 0.5,
-        shadowRadius: 12,
-        elevation: 12,
+        shadowRadius: 16,
+        elevation: 16,
       },
       dark: {
         shadowColor: '#0A0C10',
-        shadowOffset: { width: 6, height: 6 },
+        shadowOffset: { width: 8, height: 8 },
         shadowOpacity: 1,
-        shadowRadius: 12,
+        shadowRadius: 16,
       }
     },
     inset: {
       dark: {
         shadowColor: '#0A0C10',
-        shadowOffset: { width: -2, height: -2 },
+        shadowOffset: { width: -3, height: -3 },
         shadowOpacity: 0.7,
-        shadowRadius: 4,
+        shadowRadius: 5,
       },
       light: {
         shadowColor: '#2A303C',
-        shadowOffset: { width: 2, height: 2 },
+        shadowOffset: { width: 3, height: 3 },
         shadowOpacity: 0.3,
-        shadowRadius: 4,
+        shadowRadius: 5,
       }
     },
     bgGradient: ['#121419', '#1A1D23'] as const,
     surfaceGradient: ['#1E232B', '#121419'] as const,
     bezel: '#2D343F',
+    radii: {
+      card: 24,
+      button: 18,
+      input: 16,
+      fab: 28,
+    }
   }
 };
 

@@ -3,18 +3,26 @@ import { View, Text, StyleSheet, SafeAreaView, TouchableOpacity, Alert, ScrollVi
 import { useLocalSearchParams, useRouter, Stack } from 'expo-router';
 import { useSplittyStore } from '../../store/useSplittyStore';
 import { GlassCard } from '../../components/GlassCard';
-import { ArrowLeft, Users, Receipt, Banknote, Trash2, CheckCircle, ArrowRightLeft } from 'lucide-react-native';
+import { ArrowLeft, Users, Receipt, Banknote, Trash2, CheckCircle, ArrowRightLeft, Plus } from 'lucide-react-native';
 import { InitialsAvatar } from '../../components/InitialsAvatar';
 import { CategoryIcon } from '../../components/CategoryIcon';
 import * as Haptics from 'expo-haptics';
+import { Skeuomorphic } from '../../constants/Colors';
+import { LinearGradient } from 'expo-linear-gradient';
+import { VibrantButton } from '../../components/VibrantButton';
 
 export default function GroupDetailsScreen() {
     const { id } = useLocalSearchParams<{ id: string }>();
     const router = useRouter();
     const {
         groups, expenses, friends, colors, formatCurrency,
-        deleteExpense, settleUp, userProfile, unknownFriendNames, getCategoryById
+        deleteExpense, settleUp, userProfile, unknownFriendNames, getCategoryById,
+        appearance, designPreference
     } = useSplittyStore();
+
+    const isDark = appearance === 'dark';
+    const isSkeuomorphic = designPreference === 'skeuomorphic';
+    const skeuo = isDark ? Skeuomorphic.dark : Skeuomorphic.light;
 
     const group = groups.find(g => g.id === id);
     const groupExpenses = expenses.filter(e => e.groupId === id);
@@ -135,139 +143,278 @@ export default function GroupDetailsScreen() {
     const nonSelfMembers = group.members.filter(m => m !== 'self');
 
     return (
-        <SafeAreaView style={[styles.safeArea, { backgroundColor: colors.background }]}>
+        <SafeAreaView style={[styles.safeArea, { backgroundColor: isSkeuomorphic ? skeuo.background : colors.background }]}>
             <Stack.Screen options={{ headerShown: false }} />
-            <View style={styles.header}>
-                <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
-                    <ArrowLeft size={24} color={colors.text} />
-                </TouchableOpacity>
-                <Text style={[styles.headerTitle, { color: colors.text }]}>Group Details</Text>
-                <View style={{ width: 24 }} />
-            </View>
-
             <ScrollView contentContainerStyle={styles.container}>
+                {/* Header */}
+                <View style={styles.header}>
+                    {isSkeuomorphic ? (
+                        <View style={[styles.skeuoIconWrapper, skeuo.outset.light]}>
+                            <View style={[styles.skeuoIconInner, skeuo.outset.dark]}>
+                                <TouchableOpacity onPress={() => router.back()} style={[styles.backButtonSkeuo, { backgroundColor: skeuo.background }]}>
+                                    <ArrowLeft size={24} color={colors.text} />
+                                </TouchableOpacity>
+                            </View>
+                        </View>
+                    ) : (
+                        <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
+                            <ArrowLeft size={24} color={colors.text} />
+                        </TouchableOpacity>
+                    )}
+                    <Text style={[styles.headerTitle, { color: colors.text }]}>Group Details</Text>
+                    <View style={{ width: 44 }} />
+                </View>
 
                 {/* Group Summary Card */}
-                <GlassCard style={[styles.summaryCard, { backgroundColor: colors.surface }]}>
-                    <View style={[styles.groupIcon, { backgroundColor: colors.inputBackground }]}>
-                        <Users size={32} color={colors.primary} />
+                {isSkeuomorphic ? (
+                    <View style={[styles.skeuoCardOuter, skeuo.outset.light]}>
+                        <View style={[styles.skeuoCardInner, skeuo.outset.dark]}>
+                            <LinearGradient colors={skeuo.surfaceGradient} style={styles.skeuoSectionCard}>
+                                <View style={[styles.groupIcon, { backgroundColor: isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)' }]}>
+                                    <Users size={32} color={colors.primary} />
+                                </View>
+                                <Text style={[styles.groupName, { color: colors.text }]}>{group.name}</Text>
+                                <Text style={[styles.memberCount, { color: colors.textSecondary }]}>
+                                    {nonSelfMembers.length + 1} members (inc. you)
+                                </Text>
+                                <View style={[styles.balanceContainer, { borderTopColor: colors.border }]}>
+                                    <Text style={[styles.balanceLabel, { color: colors.textSecondary }]}>Group Total</Text>
+                                    <Text style={[styles.balanceAmount, { color: colors.text }]}>
+                                        {formatCurrency(totalGroupSpending)}
+                                    </Text>
+                                    <Text style={[styles.balanceSub, { color: colors.textSecondary }]}>total spent</Text>
+                                </View>
+                            </LinearGradient>
+                        </View>
                     </View>
-                    <Text style={[styles.groupName, { color: colors.text }]}>{group.name}</Text>
-                    <Text style={[styles.memberCount, { color: colors.textSecondary }]}>
-                        {nonSelfMembers.length + 1} members (inc. you)
-                    </Text>
-                    <View style={[styles.balanceContainer, { borderTopColor: colors.border }]}>
-                        <Text style={[styles.balanceLabel, { color: colors.textSecondary }]}>Group Total</Text>
-                        <Text style={[styles.balanceAmount, { color: colors.text }]}>
-                            {formatCurrency(totalGroupSpending)}
+                ) : (
+                    <GlassCard style={[styles.summaryCard, { backgroundColor: colors.surface }]}>
+                        <View style={[styles.groupIcon, { backgroundColor: colors.inputBackground }]}>
+                            <Users size={32} color={colors.primary} />
+                        </View>
+                        <Text style={[styles.groupName, { color: colors.text }]}>{group.name}</Text>
+                        <Text style={[styles.memberCount, { color: colors.textSecondary }]}>
+                            {nonSelfMembers.length + 1} members (inc. you)
                         </Text>
-                        <Text style={[styles.balanceSub, { color: colors.textSecondary }]}>total spent</Text>
-                    </View>
-                </GlassCard>
+                        <View style={[styles.balanceContainer, { borderTopColor: colors.border }]}>
+                            <Text style={[styles.balanceLabel, { color: colors.textSecondary }]}>Group Total</Text>
+                            <Text style={[styles.balanceAmount, { color: colors.text }]}>
+                                {formatCurrency(totalGroupSpending)}
+                            </Text>
+                            <Text style={[styles.balanceSub, { color: colors.textSecondary }]}>total spent</Text>
+                        </View>
+                    </GlassCard>
+                )}
 
                 {/* ── Balances Card ── */}
-                <GlassCard style={[styles.sectionCard, { backgroundColor: colors.surface }]}>
-                    <Text style={[styles.cardTitle, { color: colors.text }]}>Balances</Text>
-                    {nonSelfMembers.length === 0 ? (
-                        <Text style={{ color: colors.textSecondary, fontSize: 13 }}>
-                            Add more members to see balances.
-                        </Text>
-                    ) : (
-                        nonSelfMembers.map((mId, idx) => {
-                            const balance = memberBalances[mId] ?? 0;
-                            const isSettled = Math.abs(balance) < 0.01;
-                            const theyOweMe = balance > 0;
-                            const memberFriend = friends.find(f => f.id === mId);
-                            const isLast = idx === nonSelfMembers.length - 1;
+                {isSkeuomorphic ? (
+                    <View style={[styles.skeuoCardOuter, skeuo.outset.light]}>
+                        <View style={[styles.skeuoCardInner, skeuo.outset.dark]}>
+                            <LinearGradient colors={skeuo.surfaceGradient} style={styles.skeuoSectionCard}>
+                                <Text style={[styles.cardTitle, { color: colors.text }]}>Balances</Text>
+                                {nonSelfMembers.length === 0 ? (
+                                    <Text style={{ color: colors.textSecondary, fontSize: 13 }}>
+                                        Add more members to see balances.
+                                    </Text>
+                                ) : (
+                                    nonSelfMembers.map((mId, idx) => {
+                                        const balance = memberBalances[mId] ?? 0;
+                                        const isSettled = Math.abs(balance) < 0.01;
+                                        const theyOweMe = balance > 0;
+                                        const memberFriend = friends.find(f => f.id === mId);
+                                        const isLast = idx === nonSelfMembers.length - 1;
 
-                            return (
-                                <View
-                                    key={mId}
-                                    style={[
-                                        styles.balanceRow,
-                                        !isLast && { borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: colors.border }
-                                    ]}
-                                >
-                                    <InitialsAvatar
-                                        name={getMemberName(mId)}
-                                        avatarUrl={memberFriend?.avatarUrl}
-                                        size={42}
-                                        isLocal={!memberFriend?.linkedUserId}
-                                    />
-                                    <View style={styles.balanceInfo}>
-                                        <Text style={[styles.balanceMemberName, { color: colors.text }]}>
-                                            {getMemberName(mId)}
-                                        </Text>
+                                        return (
+                                            <View
+                                                key={mId}
+                                                style={[
+                                                    styles.balanceRow,
+                                                    !isLast && { borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: colors.border + '30' }
+                                                ]}
+                                            >
+                                                <InitialsAvatar
+                                                    name={getMemberName(mId)}
+                                                    avatarUrl={memberFriend?.avatarUrl}
+                                                    size={42}
+                                                    isLocal={!memberFriend?.linkedUserId}
+                                                />
+                                                <View style={styles.balanceInfo}>
+                                                    <Text style={[styles.balanceMemberName, { color: colors.text }]}>
+                                                        {getMemberName(mId)}
+                                                    </Text>
+                                                    {isSettled ? (
+                                                        <Text style={[styles.balanceStatus, { color: colors.success }]}>
+                                                            All settled up ✓
+                                                        </Text>
+                                                    ) : (
+                                                        <Text style={[styles.balanceStatus, {
+                                                            color: theyOweMe ? colors.success : colors.accent
+                                                        }]}>
+                                                            {theyOweMe
+                                                                ? `Owes you ${formatCurrency(balance)}`
+                                                                : `You owe ${formatCurrency(Math.abs(balance))}`}
+                                                        </Text>
+                                                    )}
+                                                </View>
+                                                {isSettled ? (
+                                                    <CheckCircle size={22} color={colors.success} />
+                                                ) : (
+                                                    <VibrantButton
+                                                        style={styles.settleButtonSmall}
+                                                        onPress={() => handleSettle(mId, balance)}
+                                                        variant="outline"
+                                                        leftIcon={<ArrowRightLeft size={14} color={colors.primary} />}
+                                                        title="Settle"
+                                                    />
+                                                )}
+                                            </View>
+                                        );
+                                    })
+                                )}
+                            </LinearGradient>
+                        </View>
+                    </View>
+                ) : (
+                    <GlassCard style={[styles.sectionCard, { backgroundColor: colors.surface }]}>
+                        <Text style={[styles.cardTitle, { color: colors.text }]}>Balances</Text>
+                        {nonSelfMembers.length === 0 ? (
+                            <Text style={{ color: colors.textSecondary, fontSize: 13 }}>
+                                Add more members to see balances.
+                            </Text>
+                        ) : (
+                            nonSelfMembers.map((mId, idx) => {
+                                const balance = memberBalances[mId] ?? 0;
+                                const isSettled = Math.abs(balance) < 0.01;
+                                const theyOweMe = balance > 0;
+                                const memberFriend = friends.find(f => f.id === mId);
+                                const isLast = idx === nonSelfMembers.length - 1;
+
+                                return (
+                                    <View
+                                        key={mId}
+                                        style={[
+                                            styles.balanceRow,
+                                            !isLast && { borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: colors.border }
+                                        ]}
+                                    >
+                                        <InitialsAvatar
+                                            name={getMemberName(mId)}
+                                            avatarUrl={memberFriend?.avatarUrl}
+                                            size={42}
+                                            isLocal={!memberFriend?.linkedUserId}
+                                        />
+                                        <View style={styles.balanceInfo}>
+                                            <Text style={[styles.balanceMemberName, { color: colors.text }]}>
+                                                {getMemberName(mId)}
+                                            </Text>
+                                            {isSettled ? (
+                                                <Text style={[styles.balanceStatus, { color: colors.success }]}>
+                                                    All settled up ✓
+                                                </Text>
+                                            ) : (
+                                                <Text style={[styles.balanceStatus, {
+                                                    color: theyOweMe ? colors.success : colors.accent
+                                                }]}>
+                                                    {theyOweMe
+                                                        ? `Owes you ${formatCurrency(balance)}`
+                                                        : `You owe ${formatCurrency(Math.abs(balance))}`}
+                                                </Text>
+                                            )}
+                                        </View>
                                         {isSettled ? (
-                                            <Text style={[styles.balanceStatus, { color: colors.success }]}>
-                                                All settled up ✓
-                                            </Text>
+                                            <CheckCircle size={22} color={colors.success} />
                                         ) : (
-                                            <Text style={[styles.balanceStatus, {
-                                                color: theyOweMe ? colors.success : colors.accent
-                                            }]}>
-                                                {theyOweMe
-                                                    ? `Owes you ${formatCurrency(balance)}`
-                                                    : `You owe ${formatCurrency(Math.abs(balance))}`}
-                                            </Text>
+                                            <VibrantButton
+                                                style={styles.settleButtonSmall}
+                                                onPress={() => handleSettle(mId, balance)}
+                                                variant="outline"
+                                                leftIcon={<ArrowRightLeft size={14} color={colors.primary} />}
+                                                title="Settle"
+                                            />
                                         )}
                                     </View>
-                                    {isSettled ? (
-                                        <CheckCircle size={22} color={colors.success} />
-                                    ) : (
-                                        <TouchableOpacity
-                                            style={[styles.settleBtn, {
-                                                backgroundColor: colors.primary + '18',
-                                                borderColor: colors.primary + '40'
-                                            }]}
-                                            onPress={() => handleSettle(mId, balance)}
-                                            activeOpacity={0.7}
-                                        >
-                                            <ArrowRightLeft size={14} color={colors.primary} />
-                                            <Text style={[styles.settleBtnText, { color: colors.primary }]}>Settle</Text>
-                                        </TouchableOpacity>
-                                    )}
-                                </View>
-                            );
-                        })
-                    )}
-                </GlassCard>
+                                );
+                            })
+                        )}
+                    </GlassCard>
+                )}
 
                 {/* ── Spending Summary ── */}
-                <GlassCard style={[styles.sectionCard, { backgroundColor: colors.surface }]}>
-                    <Text style={[styles.cardTitle, { color: colors.text }]}>Spending Summary</Text>
-                    <View style={styles.contributionRow}>
-                        <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                            <InitialsAvatar name={userProfile.name || 'You'} avatarUrl={userProfile.avatar} size={32} />
-                            <View style={{ width: 10 }} />
-                            <Text style={[styles.contributionName, { color: colors.text }]}>You</Text>
+                {isSkeuomorphic ? (
+                    <View style={[styles.skeuoCardOuter, skeuo.outset.light]}>
+                        <View style={[styles.skeuoCardInner, skeuo.outset.dark]}>
+                            <LinearGradient colors={skeuo.surfaceGradient} style={styles.skeuoSectionCard}>
+                                <Text style={[styles.cardTitle, { color: colors.text }]}>Spending Summary</Text>
+                                <View style={styles.contributionRow}>
+                                    <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                                        <InitialsAvatar name={userProfile.name || 'You'} avatarUrl={userProfile.avatar} size={32} />
+                                        <View style={{ width: 10 }} />
+                                        <Text style={[styles.contributionName, { color: colors.text }]}>You</Text>
+                                    </View>
+                                    <Text style={[styles.contributionAmount, { color: colors.text }]}>
+                                        {formatCurrency(contributions['self'] || 0)}
+                                    </Text>
+                                </View>
+                                {nonSelfMembers.map(mId => (
+                                    <View key={mId} style={styles.contributionRow}>
+                                        <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                                            <InitialsAvatar
+                                                name={getMemberName(mId)}
+                                                avatarUrl={friends.find(f => f.id === mId)?.avatarUrl}
+                                                size={32}
+                                                isLocal={!friends.find(f => f.id === mId)?.linkedUserId}
+                                            />
+                                            <View style={{ width: 10 }} />
+                                            <Text style={[styles.contributionName, { color: colors.text }]}>{getMemberName(mId)}</Text>
+                                        </View>
+                                        <Text style={[styles.contributionAmount, { color: colors.text }]}>
+                                            {formatCurrency(contributions[mId] || 0)}
+                                        </Text>
+                                    </View>
+                                ))}
+                                <View style={[styles.totalRow, { borderTopColor: colors.border + '30' }]}>
+                                    <Text style={[styles.totalLabel, { color: colors.textSecondary }]}>Total</Text>
+                                    <Text style={[styles.totalAmount, { color: colors.text }]}>{formatCurrency(totalGroupSpending)}</Text>
+                                </View>
+                            </LinearGradient>
                         </View>
-                        <Text style={[styles.contributionAmount, { color: colors.text }]}>
-                            {formatCurrency(contributions['self'] || 0)}
-                        </Text>
                     </View>
-                    {nonSelfMembers.map(mId => (
-                        <View key={mId} style={styles.contributionRow}>
+                ) : (
+                    <GlassCard style={[styles.sectionCard, { backgroundColor: colors.surface }]}>
+                        <Text style={[styles.cardTitle, { color: colors.text }]}>Spending Summary</Text>
+                        <View style={styles.contributionRow}>
                             <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                                <InitialsAvatar
-                                    name={getMemberName(mId)}
-                                    avatarUrl={friends.find(f => f.id === mId)?.avatarUrl}
-                                    size={32}
-                                    isLocal={!friends.find(f => f.id === mId)?.linkedUserId}
-                                />
+                                <InitialsAvatar name={userProfile.name || 'You'} avatarUrl={userProfile.avatar} size={32} />
                                 <View style={{ width: 10 }} />
-                                <Text style={[styles.contributionName, { color: colors.text }]}>{getMemberName(mId)}</Text>
+                                <Text style={[styles.contributionName, { color: colors.text }]}>You</Text>
                             </View>
                             <Text style={[styles.contributionAmount, { color: colors.text }]}>
-                                {formatCurrency(contributions[mId] || 0)}
+                                {formatCurrency(contributions['self'] || 0)}
                             </Text>
                         </View>
-                    ))}
-                    <View style={[styles.totalRow, { borderTopColor: colors.border }]}>
-                        <Text style={[styles.totalLabel, { color: colors.textSecondary }]}>Total</Text>
-                        <Text style={[styles.totalAmount, { color: colors.text }]}>{formatCurrency(totalGroupSpending)}</Text>
-                    </View>
-                </GlassCard>
+                        {nonSelfMembers.map(mId => (
+                            <View key={mId} style={styles.contributionRow}>
+                                <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                                    <InitialsAvatar
+                                        name={getMemberName(mId)}
+                                        avatarUrl={friends.find(f => f.id === mId)?.avatarUrl}
+                                        size={32}
+                                        isLocal={!friends.find(f => f.id === mId)?.linkedUserId}
+                                    />
+                                    <View style={{ width: 10 }} />
+                                    <Text style={[styles.contributionName, { color: colors.text }]}>{getMemberName(mId)}</Text>
+                                </View>
+                                <Text style={[styles.contributionAmount, { color: colors.text }]}>
+                                    {formatCurrency(contributions[mId] || 0)}
+                                </Text>
+                            </View>
+                        ))}
+                        <View style={[styles.totalRow, { borderTopColor: colors.border }]}>
+                            <Text style={[styles.totalLabel, { color: colors.textSecondary }]}>Total</Text>
+                            <Text style={[styles.totalAmount, { color: colors.text }]}>{formatCurrency(totalGroupSpending)}</Text>
+                        </View>
+                    </GlassCard>
+                )}
 
                 {/* ── Members ── */}
                 <Text style={[styles.sectionTitle, { color: colors.text }]}>Members</Text>
@@ -302,35 +449,68 @@ export default function GroupDetailsScreen() {
                             activeOpacity={0.7}
                             onPress={() => router.push({ pathname: '/add-expense', params: { id: expense.id } })}
                         >
-                            <GlassCard style={[
-                                styles.activityItem,
-                                { backgroundColor: colors.surface, borderLeftWidth: 3, borderLeftColor: expense.isSettlement ? colors.success : getCategoryById(expense.category).color }
-                            ]}>
-                                <View style={[styles.categoryIcon, {
-                                    backgroundColor: expense.isSettlement ? colors.success + '20' : getCategoryById(expense.category).color + '20'
-                                }]}>
-                                    {expense.isSettlement ? (
-                                        <Banknote size={20} color={colors.success} />
-                                    ) : (
-                                        <CategoryIcon name={getCategoryById(expense.category).icon} size={20} color={getCategoryById(expense.category).color} />
-                                    )}
+                            {isSkeuomorphic ? (
+                                <View style={[styles.skeuoCardOuter, skeuo.outset.light, { marginBottom: 12 }]}>
+                                    <View style={[styles.skeuoCardInner, skeuo.outset.dark]}>
+                                        <LinearGradient colors={skeuo.surfaceGradient} style={styles.skeuoActivityItem}>
+                                            <View style={[styles.categoryIcon, {
+                                                backgroundColor: expense.isSettlement ? colors.success + '20' : getCategoryById(expense.category).color + '20'
+                                            }]}>
+                                                {expense.isSettlement ? (
+                                                    <Banknote size={20} color={colors.success} />
+                                                ) : (
+                                                    <CategoryIcon name={getCategoryById(expense.category).icon} size={20} color={getCategoryById(expense.category).color} />
+                                                )}
+                                            </View>
+                                            <View style={{ flex: 1, marginLeft: 12 }}>
+                                                <Text style={[styles.activityDesc, { color: colors.text }]}>{expense.description}</Text>
+                                                <Text style={[styles.activitySub, { color: colors.textSecondary }]}>
+                                                    {getMemberName(expense.payerId)} paid • {new Date(expense.date).toLocaleDateString()}
+                                                </Text>
+                                            </View>
+                                            <View style={styles.activityRight}>
+                                                <Text style={[styles.activityAmount, { color: colors.text }]}>{formatCurrency(expense.amount)}</Text>
+                                                <VibrantButton
+                                                    onPress={() => handleDeleteExpense(expense.id)}
+                                                    variant="outline"
+                                                    style={styles.listDeleteButton}
+                                                    leftIcon={<Trash2 size={18} color={colors.error} />}
+                                                />
+                                            </View>
+                                        </LinearGradient>
+                                    </View>
                                 </View>
-                                <View style={{ flex: 1, marginLeft: 12 }}>
-                                    <Text style={[styles.activityDesc, { color: colors.text }]}>{expense.description}</Text>
-                                    <Text style={[styles.activitySub, { color: colors.textSecondary }]}>
-                                        {getMemberName(expense.payerId)} paid • {new Date(expense.date).toLocaleDateString()}
-                                    </Text>
-                                </View>
-                                <View style={styles.activityRight}>
-                                    <Text style={[styles.activityAmount, { color: colors.text }]}>{formatCurrency(expense.amount)}</Text>
-                                    <TouchableOpacity
-                                        onPress={(e) => { e.stopPropagation(); handleDeleteExpense(expense.id); }}
-                                        hitSlop={10}
-                                    >
-                                        <Trash2 size={18} color={colors.error} />
-                                    </TouchableOpacity>
-                                </View>
-                            </GlassCard>
+                            ) : (
+                                <GlassCard style={[
+                                    styles.activityItem,
+                                    { backgroundColor: colors.surface, borderLeftWidth: 3, borderLeftColor: expense.isSettlement ? colors.success : getCategoryById(expense.category).color }
+                                ]}>
+                                    <View style={[styles.categoryIcon, {
+                                        backgroundColor: expense.isSettlement ? colors.success + '20' : getCategoryById(expense.category).color + '20'
+                                    }]}>
+                                        {expense.isSettlement ? (
+                                            <Banknote size={20} color={colors.success} />
+                                        ) : (
+                                            <CategoryIcon name={getCategoryById(expense.category).icon} size={20} color={getCategoryById(expense.category).color} />
+                                        )}
+                                    </View>
+                                    <View style={{ flex: 1, marginLeft: 12 }}>
+                                        <Text style={[styles.activityDesc, { color: colors.text }]}>{expense.description}</Text>
+                                        <Text style={[styles.activitySub, { color: colors.textSecondary }]}>
+                                            {getMemberName(expense.payerId)} paid • {new Date(expense.date).toLocaleDateString()}
+                                        </Text>
+                                    </View>
+                                    <View style={styles.activityRight}>
+                                        <Text style={[styles.activityAmount, { color: colors.text }]}>{formatCurrency(expense.amount)}</Text>
+                                        <TouchableOpacity
+                                            onPress={(e) => { e.stopPropagation(); handleDeleteExpense(expense.id); }}
+                                            hitSlop={10}
+                                        >
+                                            <Trash2 size={18} color={colors.error} />
+                                        </TouchableOpacity>
+                                    </View>
+                                </GlassCard>
+                            )}
                         </TouchableOpacity>
                     ))
                 ) : (
@@ -340,9 +520,16 @@ export default function GroupDetailsScreen() {
                     </GlassCard>
                 )}
 
-                <View style={{ height: 40 }} />
+                <View style={{ height: 100 }} />
             </ScrollView>
-        </SafeAreaView>
+
+            <VibrantButton
+                style={styles.fab}
+                onPress={() => router.push({ pathname: '/add-expense', params: { groupId: id } })}
+                leftIcon={<Plus size={32} color="#FFF" />}
+                variant="primary"
+            />
+        </SafeAreaView >
     );
 }
 
@@ -353,10 +540,18 @@ const styles = StyleSheet.create({
         justifyContent: 'space-between', paddingHorizontal: 20, paddingVertical: 16,
     },
     backButton: { padding: 4 },
+    backButtonSkeuo: {
+        width: 44,
+        height: 44,
+        borderRadius: 22,
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
     headerTitle: { fontSize: 18, fontWeight: '700' },
     container: { padding: 20, paddingTop: 0 },
     // Summary card
-    summaryCard: { alignItems: 'center', padding: 24, marginBottom: 16 },
+    summaryCard: { alignItems: 'center', padding: 24, marginBottom: 16, borderRadius: 24 },
+    skeuoSectionCard: { padding: 24, borderRadius: 24 },
     groupIcon: {
         width: 64, height: 64, borderRadius: 32,
         alignItems: 'center', justifyContent: 'center', marginBottom: 16,
@@ -368,7 +563,7 @@ const styles = StyleSheet.create({
     balanceAmount: { fontSize: 28, fontWeight: '800', marginBottom: 4 },
     balanceSub: { fontSize: 12 },
     // Shared section card
-    sectionCard: { padding: 20, marginBottom: 16 },
+    sectionCard: { padding: 20, marginBottom: 16, borderRadius: 24 },
     cardTitle: { fontSize: 16, fontWeight: '700', marginBottom: 16 },
     // Balances rows
     balanceRow: {
@@ -378,13 +573,17 @@ const styles = StyleSheet.create({
     balanceInfo: { flex: 1 },
     balanceMemberName: { fontSize: 15, fontWeight: '600', marginBottom: 2 },
     balanceStatus: { fontSize: 13, fontWeight: '500' },
-    settleBtn: {
-        flexDirection: 'row', alignItems: 'center', gap: 5,
-        paddingHorizontal: 12, paddingVertical: 7,
-        borderRadius: 20, borderWidth: 1,
+    settleButtonSmall: {
+        paddingHorizontal: 12,
+        height: 36,
+        borderRadius: 12,
     },
-    settleBtnText: { fontSize: 13, fontWeight: '600' },
-    // Spending summary
+    listDeleteButton: {
+        width: 36,
+        height: 36,
+        borderRadius: 10,
+    },
+    activityRight: { alignItems: 'flex-end', gap: 8, justifyContent: 'center' },
     contributionRow: {
         flexDirection: 'row', justifyContent: 'space-between',
         alignItems: 'center', marginBottom: 12,
@@ -403,12 +602,29 @@ const styles = StyleSheet.create({
     memberItem: { alignItems: 'center', width: 60 },
     memberName: { fontSize: 12, textAlign: 'center' },
     // Expense rows
-    activityItem: { flexDirection: 'row', alignItems: 'center', padding: 16, marginBottom: 12 },
+    activityItem: { flexDirection: 'row', alignItems: 'center', padding: 16, marginBottom: 12, borderRadius: 24 },
+    skeuoActivityItem: { flexDirection: 'row', alignItems: 'center', padding: 16, borderRadius: 28 },
     categoryIcon: { width: 40, height: 40, borderRadius: 20, justifyContent: 'center', alignItems: 'center' },
     activityDesc: { fontSize: 16, fontWeight: '600' },
     activitySub: { fontSize: 12, marginTop: 4 },
-    activityRight: { alignItems: 'flex-end', gap: 8 },
     activityAmount: { fontSize: 16, fontWeight: '700' },
-    emptyCard: { alignItems: 'center', justifyContent: 'center', padding: 40, gap: 16 },
+    emptyCard: { alignItems: 'center', justifyContent: 'center', padding: 40, gap: 16, borderRadius: 24 },
     emptyText: { fontSize: 14 },
+    skeuoIconWrapper: { borderRadius: 22 },
+    skeuoIconInner: { borderRadius: 22 },
+    skeuoCardOuter: { borderRadius: 28, marginBottom: 16 },
+    skeuoCardInner: { borderRadius: 28 },
+    fab: {
+        position: 'absolute',
+        bottom: 40,
+        right: 24,
+        width: 64,
+        height: 64,
+        borderRadius: 28,
+        elevation: 8,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.3,
+        shadowRadius: 4,
+    },
 });

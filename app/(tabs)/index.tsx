@@ -1,3 +1,4 @@
+import React, { useState, useMemo, useCallback } from 'react';
 import { View, Text, StyleSheet, ScrollView, SafeAreaView, TouchableOpacity, Alert, RefreshControl } from 'react-native';
 import { GlassCard } from '../../components/GlassCard';
 import { VibrantButton } from '../../components/VibrantButton';
@@ -9,7 +10,6 @@ import { getCategoryById } from '../../constants/Categories';
 import { Skeuomorphic } from '../../constants/Colors';
 import { LinearGradient } from 'expo-linear-gradient';
 import * as Haptics from 'expo-haptics';
-import { useState, useMemo, useCallback } from 'react';
 
 export default function DashboardScreen() {
     const router = useRouter();
@@ -72,7 +72,7 @@ export default function DashboardScreen() {
     }, [fetchData]);
 
     return (
-        <SafeAreaView style={[styles.safeArea, { backgroundColor: colors.background }]}>
+        <SafeAreaView style={[styles.safeArea, { backgroundColor: isSkeuomorphic ? skeuo.background : colors.background }]}>
             <ScrollView
                 contentContainerStyle={styles.container}
                 refreshControl={
@@ -192,7 +192,7 @@ export default function DashboardScreen() {
                     title="View Analytics"
                     onPress={() => router.push('/analytics')}
                     variant="outline"
-                    style={styles.analyticsButton}
+                    style={[styles.analyticsButton, isSkeuomorphic && { borderRadius: skeuo.radii.button }]}
                 />
 
                 <View style={styles.section}>
@@ -204,60 +204,100 @@ export default function DashboardScreen() {
                     </View>
 
                     {recentExpenses.length > 0 ? (
-                        recentExpenses.map((expense: any) => (
-                            <TouchableOpacity
-                                key={expense.id}
-                                activeOpacity={0.7}
-                                onPress={() => router.push({ pathname: '/add-expense', params: { id: expense.id } })}
-                                style={isSkeuomorphic ? styles.skeuoActivityWrapper : null}
-                            >
-                                <View style={isSkeuomorphic ? [styles.skeuoActivityOuter, skeuo.outset.light] : null}>
-                                    <View style={isSkeuomorphic ? [styles.skeuoActivityInner, skeuo.outset.dark] : null}>
-                                        <LinearGradient
-                                            colors={isSkeuomorphic ? skeuo.surfaceGradient : ['transparent', 'transparent']}
-                                            style={[
-                                                styles.activityItem,
-                                                !isSkeuomorphic && { backgroundColor: colors.surface },
-                                                !isSkeuomorphic && { borderLeftWidth: 3, borderLeftColor: expense.isSettlement ? colors.success : expense._category.color },
-                                                isSkeuomorphic && { borderRadius: 16 }
-                                            ]}
-                                        >
-                                            <View style={[
-                                                styles.categoryIcon,
-                                                { backgroundColor: expense.isSettlement ? colors.success + '20' : expense._category.color + '20' }
-                                            ]}>
-                                                {expense.isSettlement ? (
-                                                    <Banknote size={20} color={colors.primary} />
-                                                ) : (
-                                                    <CategoryIcon name={expense._category.icon} size={20} color={expense._category.color} />
-                                                )}
-                                            </View>
-                                            <View style={{ flex: 1, marginLeft: 12 }}>
-                                                <Text style={[styles.activityDesc, { color: colors.text }]}>{expense.description}</Text>
-                                                <Text style={[styles.activityDate, { color: colors.textSecondary }]}>
-                                                    {new Date(expense.date).toLocaleDateString()}
-                                                </Text>
-                                                <Text style={[styles.paidByText, { color: colors.textSecondary }]}>
-                                                    {getPayerName(expense.payerId)} paid
-                                                </Text>
-                                            </View>
-                                            <View style={styles.activityRight}>
-                                                <Text style={[styles.activityAmount, { color: colors.text }]}>{formatCurrency(expense.amount)}</Text>
+                        isSkeuomorphic ? (
+                            <View style={[styles.skeuoActivityGroupWrapper, skeuo.outset.light]}>
+                                <View style={[styles.skeuoActivityGroupInner, skeuo.outset.dark]}>
+                                    <View style={[styles.skeuoActivityGroupContent, { backgroundColor: skeuo.background }]}>
+                                        {recentExpenses.map((expense: any, index: number) => (
+                                            <React.Fragment key={expense.id}>
                                                 <TouchableOpacity
-                                                    onPress={(e) => {
-                                                        e.stopPropagation();
-                                                        handleDelete(expense.id);
-                                                    }}
-                                                    hitSlop={10}
+                                                    activeOpacity={0.7}
+                                                    onPress={() => router.push({ pathname: '/add-expense', params: { id: expense.id } })}
+                                                    style={styles.activityItem}
                                                 >
-                                                    <Trash2 size={20} color={colors.error} />
+                                                    <View style={[
+                                                        styles.categoryIcon,
+                                                        { backgroundColor: expense.isSettlement ? colors.success + '20' : expense._category.color + '20' }
+                                                    ]}>
+                                                        {expense.isSettlement ? (
+                                                            <Banknote size={20} color={colors.primary} />
+                                                        ) : (
+                                                            <CategoryIcon name={expense._category.icon} size={20} color={expense._category.color} />
+                                                        )}
+                                                    </View>
+                                                    <View style={{ flex: 1, marginLeft: 12 }}>
+                                                        <Text style={[styles.activityDesc, { color: colors.text }]}>{expense.description}</Text>
+                                                        <Text style={[styles.activityDate, { color: colors.textSecondary }]}>
+                                                            {new Date(expense.date).toLocaleDateString()}
+                                                        </Text>
+                                                        <Text style={[styles.paidByText, { color: colors.textSecondary }]}>
+                                                            {getPayerName(expense.payerId)} paid
+                                                        </Text>
+                                                    </View>
+                                                    <View style={styles.activityRight}>
+                                                        <Text style={[styles.activityAmount, { color: colors.text }]}>{formatCurrency(expense.amount)}</Text>
+                                                        <VibrantButton
+                                                            onPress={() => handleDelete(expense.id)}
+                                                            variant="outline"
+                                                            style={styles.deleteButton}
+                                                            leftIcon={<Trash2 size={18} color={colors.error} />}
+                                                        />
+                                                    </View>
                                                 </TouchableOpacity>
-                                            </View>
-                                        </LinearGradient>
+                                                {index < recentExpenses.length - 1 && (
+                                                    <View style={[styles.separator, { backgroundColor: colors.border + '20' }]} />
+                                                )}
+                                            </React.Fragment>
+                                        ))}
                                     </View>
                                 </View>
-                            </TouchableOpacity>
-                        ))
+                            </View>
+                        ) : (
+                            recentExpenses.map((expense: any) => (
+                                <TouchableOpacity
+                                    key={expense.id}
+                                    activeOpacity={0.7}
+                                    onPress={() => router.push({ pathname: '/add-expense', params: { id: expense.id } })}
+                                >
+                                    <GlassCard
+                                        style={[
+                                            styles.activityItem,
+                                            { backgroundColor: colors.surface },
+                                            { borderLeftWidth: 3, borderLeftColor: expense.isSettlement ? colors.success : expense._category.color }
+                                        ]}
+                                    >
+                                        <View style={[
+                                            styles.categoryIcon,
+                                            { backgroundColor: expense.isSettlement ? colors.success + '20' : expense._category.color + '20' }
+                                        ]}>
+                                            {expense.isSettlement ? (
+                                                <Banknote size={20} color={colors.primary} />
+                                            ) : (
+                                                <CategoryIcon name={expense._category.icon} size={20} color={expense._category.color} />
+                                            )}
+                                        </View>
+                                        <View style={{ flex: 1, marginLeft: 12 }}>
+                                            <Text style={[styles.activityDesc, { color: colors.text }]}>{expense.description}</Text>
+                                            <Text style={[styles.activityDate, { color: colors.textSecondary }]}>
+                                                {new Date(expense.date).toLocaleDateString()}
+                                            </Text>
+                                            <Text style={[styles.paidByText, { color: colors.textSecondary }]}>
+                                                {getPayerName(expense.payerId)} paid
+                                            </Text>
+                                        </View>
+                                        <View style={styles.activityRight}>
+                                            <Text style={[styles.activityAmount, { color: colors.text }]}>{formatCurrency(expense.amount)}</Text>
+                                            <VibrantButton
+                                                onPress={() => handleDelete(expense.id)}
+                                                variant="outline"
+                                                style={styles.deleteButton}
+                                                leftIcon={<Trash2 size={18} color={colors.error} />}
+                                            />
+                                        </View>
+                                    </GlassCard>
+                                </TouchableOpacity>
+                            ))
+                        )
                     ) : (
                         <GlassCard style={[styles.activityCard, { backgroundColor: colors.surface }]}>
                             <Text style={{ color: colors.textSecondary, textAlign: 'center' }}>No recent activity yet. Start spliting bills!</Text>
@@ -268,35 +308,14 @@ export default function DashboardScreen() {
 
             </ScrollView>
 
-            {isSkeuomorphic ? (
-                <View style={styles.skeuoFABContainer}>
-                    <TouchableOpacity
-                        style={[styles.skeuoFABWrapper, skeuo.outset.light]}
-                        onPress={() => {
-                            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                            router.push('/add-expense');
-                        }}
-                        activeOpacity={0.8}
-                    >
-                        <View style={[styles.skeuoFABInner, skeuo.outset.dark]}>
-                            <LinearGradient colors={skeuo.surfaceGradient} style={styles.skeuoFABContent}>
-                                <Plus size={32} color={colors.primary} />
-                            </LinearGradient>
-                        </View>
-                    </TouchableOpacity>
-                </View>
-            ) : (
-                <TouchableOpacity
-                    style={[styles.fab, { backgroundColor: colors.primary }]}
-                    activeOpacity={0.8}
-                    onPress={() => {
-                        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                        router.push('/add-expense');
-                    }}
-                >
-                    <Plus size={32} color="white" />
-                </TouchableOpacity>
-            )}
+            <VibrantButton
+                onPress={() => {
+                    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                    router.push('/add-expense');
+                }}
+                style={[styles.fab, isSkeuomorphic && { borderRadius: skeuo.radii.fab }]}
+                leftIcon={<Plus size={32} color={isSkeuomorphic ? colors.primary : "white"} />}
+            />
         </SafeAreaView >
     );
 }
@@ -422,6 +441,7 @@ const styles = StyleSheet.create({
     },
     breakdownCard: {
         padding: 16,
+        borderRadius: 24,
     },
     breakdownTitle: {
         fontSize: 13,
@@ -446,20 +466,18 @@ const styles = StyleSheet.create({
         fontSize: 16,
         fontWeight: '700',
     },
+    deleteButton: {
+        width: 36,
+        height: 36,
+        borderRadius: 18,
+    },
     fab: {
         position: 'absolute',
-        bottom: 24,
+        bottom: 110,
         right: 24,
         width: 64,
         height: 64,
-        borderRadius: 32,
-        justifyContent: 'center',
-        alignItems: 'center',
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.3,
-        shadowRadius: 8,
-        elevation: 8,
+        borderRadius: 28,
     },
     skeuoSummaryWrapper: {
         width: '48%',
@@ -472,33 +490,30 @@ const styles = StyleSheet.create({
         marginBottom: 12,
     },
     skeuoActivityOuter: {
-        borderRadius: 20,
+        borderRadius: 24,
     },
     skeuoActivityInner: {
-        borderRadius: 20,
+        borderRadius: 24,
     },
     skeuoBreakdownWrapper: {
-        borderRadius: 20,
+        borderRadius: 24,
     },
     skeuoBreakdownInner: {
-        borderRadius: 20,
+        borderRadius: 24,
     },
-    skeuoFABContainer: {
-        position: 'absolute',
-        bottom: 24,
-        right: 24,
+    skeuoActivityGroupWrapper: {
+        borderRadius: 24,
+        marginBottom: 20,
     },
-    skeuoFABWrapper: {
-        borderRadius: 28,
+    skeuoActivityGroupInner: {
+        borderRadius: 24,
     },
-    skeuoFABInner: {
-        borderRadius: 28,
+    skeuoActivityGroupContent: {
+        borderRadius: 24,
+        overflow: 'hidden',
     },
-    skeuoFABContent: {
-        width: 56,
-        height: 56,
-        borderRadius: 28,
-        alignItems: 'center',
-        justifyContent: 'center',
-    }
+    separator: {
+        height: 1,
+        marginHorizontal: 16,
+    },
 });

@@ -4,14 +4,16 @@ import { useRouter, Stack } from 'expo-router';
 import { useSplittyStore } from '../store/useSplittyStore';
 import { GlassCard } from '../components/GlassCard';
 import { CategoryIcon } from '../components/CategoryIcon';
+import { VibrantButton } from '../components/VibrantButton';
 import { ArrowLeft, Search, Trash2, Banknote, Users } from 'lucide-react-native';
 import { getCategoryById } from '../constants/Categories';
 import * as Haptics from 'expo-haptics';
+import { Skeuomorphic } from '../constants/Colors';
+import { LinearGradient } from 'expo-linear-gradient';
 
 export default function ActivityScreen() {
     const router = useRouter();
 
-    // Granular selectors — component only re-renders when these specific slices change
     const expenses = useSplittyStore(s => s.expenses);
     const friends = useSplittyStore(s => s.friends);
     const groups = useSplittyStore(s => s.groups);
@@ -20,18 +22,22 @@ export default function ActivityScreen() {
     const deleteExpense = useSplittyStore(s => s.deleteExpense);
     const fetchData = useSplittyStore(s => s.fetchData);
     const unknownFriendNames = useSplittyStore(s => s.unknownFriendNames);
+    const designPreference = useSplittyStore(s => s.designPreference);
+    const appearance = useSplittyStore(s => s.appearance);
+
+    const isSkeuomorphic = designPreference === 'skeuomorphic';
+    const isDark = appearance === 'dark';
+    const skeuo = isDark ? Skeuomorphic.dark : Skeuomorphic.light;
 
     const [searchQuery, setSearchQuery] = useState('');
     const [selectedTag, setSelectedTag] = useState<string | null>(null);
     const [refreshing, setRefreshing] = useState(false);
 
-    // Memoized helper — avoids recreation on every render
     const getPayerName = useCallback((id: string) => {
         if (id === 'self') return 'You';
         return friends.find(f => f.id === id)?.name || unknownFriendNames[id] || 'Unknown';
     }, [friends, unknownFriendNames]);
 
-    // Memoized filtered + enriched expense list
     const filteredExpenses = useMemo(() => {
         let filtered = expenses;
 
@@ -49,7 +55,6 @@ export default function ActivityScreen() {
             filtered = filtered.filter(e => e.tags && e.tags.includes(selectedTag));
         }
 
-        // Pre-compute category per expense so renderItem doesn't call getCategoryById on every pass
         return filtered
             .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
             .map(e => ({
@@ -60,7 +65,6 @@ export default function ActivityScreen() {
             }));
     }, [expenses, searchQuery, selectedTag, friends, groups, unknownFriendNames]);
 
-    // Extract all unique tags — memoized
     const allUniqueTags = useMemo(() => {
         return Array.from(new Set(expenses.flatMap(e => e.tags || []))).sort();
     }, [expenses]);
@@ -87,95 +91,169 @@ export default function ActivityScreen() {
         setRefreshing(false);
     }, [fetchData]);
 
+    const Header = () => (
+        <View style={styles.header}>
+            {isSkeuomorphic ? (
+                <View style={[styles.skeuoIconWrapper, skeuo.outset.light]}>
+                    <View style={[styles.skeuoIconInner, skeuo.outset.dark]}>
+                        <TouchableOpacity onPress={() => router.back()} style={[styles.backButtonSkeuo, { backgroundColor: skeuo.background }]}>
+                            <ArrowLeft size={24} color={colors.text} />
+                        </TouchableOpacity>
+                    </View>
+                </View>
+            ) : (
+                <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
+                    <ArrowLeft size={24} color={colors.text} />
+                </TouchableOpacity>
+            )}
+            <Text style={[styles.headerTitle, { color: colors.text }]}>All Activity</Text>
+            <View style={{ width: 44 }} />
+        </View>
+    );
+
     const renderItem = useCallback(({ item }: { item: typeof filteredExpenses[0] }) => (
         <TouchableOpacity
             activeOpacity={0.7}
             onPress={() => router.push({ pathname: '/add-expense', params: { id: item.id } })}
         >
-            <GlassCard style={[
-                styles.activityItem,
-                { backgroundColor: colors.surface },
-                { borderLeftWidth: 3, borderLeftColor: item.isSettlement ? colors.success : item._category.color }
-            ]}>
-                <View style={[
-                    styles.categoryIcon,
-                    { backgroundColor: item.isSettlement ? colors.success + '20' : item._category.color + '20' }
-                ]}>
-                    {item.isSettlement ? (
-                        <Banknote size={20} color={colors.primary} />
-                    ) : (
-                        <CategoryIcon name={item._category.icon} size={20} color={item._category.color} />
-                    )}
+            {isSkeuomorphic ? (
+                <View style={[styles.skeuoCardOuter, skeuo.outset.light]}>
+                    <View style={[styles.skeuoCardInner, skeuo.outset.dark]}>
+                        <LinearGradient colors={skeuo.surfaceGradient} style={styles.skeuoActivityItem}>
+                            <View style={[
+                                styles.categoryIcon,
+                                { backgroundColor: item.isSettlement ? colors.success + '20' : item._category.color + '20' }
+                            ]}>
+                                {item.isSettlement ? (
+                                    <Banknote size={20} color={colors.primary} />
+                                ) : (
+                                    <CategoryIcon name={item._category.icon} size={20} color={item._category.color} />
+                                )}
+                            </View>
+                            <View style={{ flex: 1, marginLeft: 12 }}>
+                                <Text style={[styles.activityDesc, { color: colors.text }]}>{item.description}</Text>
+                                <View style={styles.metaRow}>
+                                    <Text style={[styles.activityDate, { color: colors.textSecondary }]}>
+                                        {new Date(item.date).toLocaleDateString()}
+                                    </Text>
+                                    {item._groupName && (
+                                        <View style={[styles.groupTag, { backgroundColor: isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)' }]}>
+                                            <Users size={10} color={colors.textSecondary} style={{ marginRight: 4 }} />
+                                            <Text style={[styles.groupTagText, { color: colors.textSecondary }]}>
+                                                {item._groupName}
+                                            </Text>
+                                        </View>
+                                    )}
+                                </View>
+                                {item.tags && item.tags.length > 0 && (
+                                    <View style={styles.itemTagsWrapper}>
+                                        {item.tags.map(tag => (
+                                            <View key={tag} style={[styles.itemTag, { backgroundColor: isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)' }]}>
+                                                <Text style={[styles.itemTagText, { color: colors.primary }]}>#{tag}</Text>
+                                            </View>
+                                        ))}
+                                    </View>
+                                )}
+                            </View>
+                            <View style={styles.activityRight}>
+                                <Text style={[styles.activityAmount, { color: colors.text }]}>{formatCurrency(item.amount)}</Text>
+                                <VibrantButton
+                                    onPress={() => handleDelete(item.id)}
+                                    variant="outline"
+                                    style={styles.deleteButton}
+                                    leftIcon={<Trash2 size={18} color={colors.error} />}
+                                />
+                            </View>
+                        </LinearGradient>
+                    </View>
                 </View>
-                <View style={{ flex: 1, marginLeft: 12 }}>
-                    <Text style={[styles.activityDesc, { color: colors.text }]}>{item.description}</Text>
-                    <View style={styles.metaRow}>
-                        <Text style={[styles.activityDate, { color: colors.textSecondary }]}>
-                            {new Date(item.date).toLocaleDateString()}
-                        </Text>
-                        {item._groupName && (
-                            <View style={[styles.groupTag, { backgroundColor: colors.inputBackground }]}>
-                                <Users size={10} color={colors.textSecondary} style={{ marginRight: 4 }} />
-                                <Text style={[styles.groupTagText, { color: colors.textSecondary }]}>
-                                    {item._groupName}
-                                </Text>
+            ) : (
+                <GlassCard style={[
+                    styles.activityItem,
+                    { backgroundColor: colors.surface },
+                    { borderLeftWidth: 3, borderLeftColor: item.isSettlement ? colors.success : item._category.color }
+                ]}>
+                    <View style={[
+                        styles.categoryIcon,
+                        { backgroundColor: item.isSettlement ? colors.success + '20' : item._category.color + '20' }
+                    ]}>
+                        {item.isSettlement ? (
+                            <Banknote size={20} color={colors.primary} />
+                        ) : (
+                            <CategoryIcon name={item._category.icon} size={20} color={item._category.color} />
+                        )}
+                    </View>
+                    <View style={{ flex: 1, marginLeft: 12 }}>
+                        <Text style={[styles.activityDesc, { color: colors.text }]}>{item.description}</Text>
+                        <View style={styles.metaRow}>
+                            <Text style={[styles.activityDate, { color: colors.textSecondary }]}>
+                                {new Date(item.date).toLocaleDateString()}
+                            </Text>
+                            {item._groupName && (
+                                <View style={[styles.groupTag, { backgroundColor: colors.inputBackground }]}>
+                                    <Users size={10} color={colors.textSecondary} style={{ marginRight: 4 }} />
+                                    <Text style={[styles.groupTagText, { color: colors.textSecondary }]}>
+                                        {item._groupName}
+                                    </Text>
+                                </View>
+                            )}
+                        </View>
+                        {item.tags && item.tags.length > 0 && (
+                            <View style={styles.itemTagsWrapper}>
+                                {item.tags.map(tag => (
+                                    <View key={tag} style={[styles.itemTag, { backgroundColor: colors.inputBackground }]}>
+                                        <Text style={[styles.itemTagText, { color: colors.primary }]}>#{tag}</Text>
+                                    </View>
+                                ))}
                             </View>
                         )}
                     </View>
-                    {item.tags && item.tags.length > 0 && (
-                        <View style={styles.itemTagsWrapper}>
-                            {item.tags.map(tag => (
-                                <View key={tag} style={[styles.itemTag, { backgroundColor: colors.inputBackground }]}>
-                                    <Text style={[styles.itemTagText, { color: colors.primary }]}>#{tag}</Text>
-                                </View>
-                            ))}
-                        </View>
-                    )}
-                    {!item.isSettlement && (
-                        <Text style={[styles.paidByText, { color: colors.textSecondary }]}>
-                            {item._payerName} paid
-                        </Text>
-                    )}
-                </View>
-                <View style={styles.activityRight}>
-                    <Text style={[styles.activityAmount, { color: colors.text }]}>{formatCurrency(item.amount)}</Text>
-                    <TouchableOpacity
-                        onPress={(e) => {
-                            e.stopPropagation();
-                            handleDelete(item.id);
-                        }}
-                        hitSlop={10}
-                    >
-                        <Trash2 size={18} color={colors.error} />
-                    </TouchableOpacity>
-                </View>
-            </GlassCard>
+                    <View style={styles.activityRight}>
+                        <Text style={[styles.activityAmount, { color: colors.text }]}>{formatCurrency(item.amount)}</Text>
+                        <VibrantButton
+                            onPress={() => handleDelete(item.id)}
+                            variant="outline"
+                            style={styles.deleteButton}
+                            leftIcon={<Trash2 size={18} color={colors.error} />}
+                        />
+                    </View>
+                </GlassCard>
+            )}
         </TouchableOpacity>
-    ), [colors, formatCurrency, handleDelete, router]);
+    ), [colors, formatCurrency, handleDelete, router, isSkeuomorphic, skeuo, isDark]);
 
     return (
-        <SafeAreaView style={[styles.safeArea, { backgroundColor: colors.background }]}>
+        <SafeAreaView style={[styles.safeArea, { backgroundColor: isSkeuomorphic ? skeuo.background : colors.background }]}>
             <Stack.Screen options={{ headerShown: false }} />
 
-            <View style={styles.header}>
-                <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
-                    <ArrowLeft size={24} color={colors.text} />
-                </TouchableOpacity>
-                <Text style={[styles.headerTitle, { color: colors.text }]}>All Activity</Text>
-                <View style={{ width: 24 }} />
-            </View>
+            <Header />
 
             <View style={styles.searchContainer}>
-                <View style={[styles.searchBar, { backgroundColor: colors.surface }]}>
-                    <Search size={20} color={colors.textSecondary} style={{ marginRight: 8 }} />
-                    <TextInput
-                        placeholder="Search expenses..."
-                        placeholderTextColor={colors.textSecondary}
-                        style={[styles.searchInput, { color: colors.text }]}
-                        value={searchQuery}
-                        onChangeText={setSearchQuery}
-                    />
-                </View>
+                {isSkeuomorphic ? (
+                    <View style={[styles.skeuoSearchWrapper, skeuo.inset.dark]}>
+                        <View style={[styles.skeuoSearchInner, skeuo.inset.light]}>
+                            <Search size={20} color={colors.textSecondary} style={{ marginRight: 8 }} />
+                            <TextInput
+                                placeholder="Search expenses..."
+                                placeholderTextColor={colors.textSecondary}
+                                style={[styles.searchInput, { color: colors.text }]}
+                                value={searchQuery}
+                                onChangeText={setSearchQuery}
+                            />
+                        </View>
+                    </View>
+                ) : (
+                    <View style={[styles.searchBar, { backgroundColor: colors.surface }]}>
+                        <Search size={20} color={colors.textSecondary} style={{ marginRight: 8 }} />
+                        <TextInput
+                            placeholder="Search expenses..."
+                            placeholderTextColor={colors.textSecondary}
+                            style={[styles.searchInput, { color: colors.text }]}
+                            value={searchQuery}
+                            onChangeText={setSearchQuery}
+                        />
+                    </View>
+                )}
             </View>
 
             {allUniqueTags.length > 0 && (
@@ -190,21 +268,24 @@ export default function ActivityScreen() {
                             <TouchableOpacity
                                 style={[
                                     styles.filterChip,
-                                    { borderColor: colors.border, backgroundColor: colors.surface },
-                                    selectedTag === item && { backgroundColor: colors.primary, borderColor: colors.primary }
+                                    !isSkeuomorphic && { borderColor: colors.border, backgroundColor: colors.surface },
+                                    isSkeuomorphic && (selectedTag === item ? skeuo.outset.light : skeuo.inset.dark),
+                                    selectedTag === item && !isSkeuomorphic && { backgroundColor: colors.primary, borderColor: colors.primary }
                                 ]}
                                 onPress={() => {
                                     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
                                     setSelectedTag(selectedTag === item ? null : item);
                                 }}
                             >
-                                <Text style={[
-                                    styles.filterChipText,
-                                    { color: colors.textSecondary },
-                                    selectedTag === item && { color: 'white', fontWeight: 'bold' }
-                                ]}>
-                                    #{item}
-                                </Text>
+                                <View style={isSkeuomorphic ? (selectedTag === item ? [styles.skeuoChipInner, skeuo.outset.dark] : [styles.skeuoChipInner, skeuo.inset.light]) : null}>
+                                    <Text style={[
+                                        styles.filterChipText,
+                                        { color: colors.textSecondary },
+                                        selectedTag === item && { color: isSkeuomorphic ? colors.primary : 'white', fontWeight: 'bold' }
+                                    ]}>
+                                        #{item}
+                                    </Text>
+                                </View>
                             </TouchableOpacity>
                         )}
                     />
@@ -247,6 +328,13 @@ const styles = StyleSheet.create({
         paddingVertical: 16,
     },
     backButton: { padding: 4 },
+    backButtonSkeuo: {
+        width: 44,
+        height: 44,
+        borderRadius: 22,
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
     headerTitle: { fontSize: 18, fontWeight: '700' },
     searchContainer: { paddingHorizontal: 20, marginBottom: 16 },
     searchBar: {
@@ -256,6 +344,16 @@ const styles = StyleSheet.create({
         paddingVertical: 12,
         borderRadius: 12,
     },
+    skeuoSearchWrapper: {
+        borderRadius: 24,
+    },
+    skeuoSearchInner: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        paddingHorizontal: 16,
+        paddingVertical: 12,
+        borderRadius: 24,
+    },
     searchInput: { flex: 1, fontSize: 16 },
     listContainer: { paddingHorizontal: 20, paddingBottom: 20 },
     activityItem: {
@@ -263,6 +361,13 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         padding: 16,
         marginBottom: 12,
+        borderRadius: 24,
+    },
+    skeuoActivityItem: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        padding: 16,
+        borderRadius: 24,
     },
     categoryIcon: {
         width: 40,
@@ -285,7 +390,7 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         paddingHorizontal: 6,
         paddingVertical: 2,
-        borderRadius: 4,
+        borderRadius: 12,
     },
     groupTagText: { fontSize: 10, fontWeight: '500' },
     itemTagsWrapper: {
@@ -294,19 +399,39 @@ const styles = StyleSheet.create({
         marginTop: 6,
         gap: 6,
     },
-    itemTag: { paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4 },
+    itemTag: { paddingHorizontal: 6, paddingVertical: 2, borderRadius: 12 },
     itemTagText: { fontSize: 10, fontWeight: '600' },
     paidByText: { fontSize: 12, marginTop: 4, fontStyle: 'italic' },
-    activityRight: { alignItems: 'flex-end', gap: 8 },
+    activityRight: { alignItems: 'flex-end', gap: 8, justifyContent: 'center' },
+    deleteButton: {
+        width: 36,
+        height: 36,
+        borderRadius: 18,
+    },
     activityAmount: { fontSize: 16, fontWeight: '700' },
     emptyContainer: { alignItems: 'center', justifyContent: 'center', paddingTop: 40 },
     tagsContainer: { marginBottom: 16 },
     filterChip: {
-        paddingHorizontal: 12,
-        paddingVertical: 6,
-        borderRadius: 16,
-        borderWidth: 1,
+        borderRadius: 24,
         marginRight: 8,
     },
+    skeuoChipInner: {
+        paddingHorizontal: 14,
+        paddingVertical: 8,
+        borderRadius: 24,
+    },
     filterChipText: { fontSize: 13 },
+    skeuoIconWrapper: {
+        borderRadius: 22,
+    },
+    skeuoIconInner: {
+        borderRadius: 22,
+    },
+    skeuoCardOuter: {
+        borderRadius: 24,
+        marginBottom: 12,
+    },
+    skeuoCardInner: {
+        borderRadius: 24,
+    }
 });

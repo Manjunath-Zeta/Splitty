@@ -1,14 +1,14 @@
 import React, { useState } from 'react';
-import { Pressable, Text, StyleSheet, ViewStyle, TextStyle, View, Platform } from 'react-native';
+import { Pressable, Text, StyleSheet, ViewStyle, TextStyle, View, Platform, StyleProp } from 'react-native';
 import { Skeuomorphic } from '../constants/Colors';
 import { useSplittyStore } from '../store/useSplittyStore';
 import { LinearGradient } from 'expo-linear-gradient';
 
 interface VibrantButtonProps {
-    title: string;
+    title?: string;
     onPress: () => void;
-    style?: ViewStyle;
-    textStyle?: TextStyle;
+    style?: StyleProp<ViewStyle>;
+    textStyle?: StyleProp<TextStyle>;
     variant?: 'primary' | 'secondary' | 'outline';
     disabled?: boolean;
     leftIcon?: React.ReactNode;
@@ -33,18 +33,21 @@ export const VibrantButton: React.FC<VibrantButtonProps> = ({
     const isOutline = variant === 'outline';
     const isSecondary = variant === 'secondary';
 
-    if (isSkeuomorphic) {
-        const isOutline = variant === 'outline';
-        const isSecondary = variant === 'secondary';
+    // Extract custom border radius or width/height from style if present
+    const flattenedStyle = StyleSheet.flatten(style) || {};
+    const customRadius = flattenedStyle.borderRadius !== undefined ? flattenedStyle.borderRadius : skeuo.radii.button;
+    const isIconOnly = !title && !!leftIcon;
 
+    if (isSkeuomorphic) {
         return (
             <Pressable
                 onPress={onPress}
-                onPressIn={() => setIsPressed(true)}
-                onPressOut={() => setIsPressed(false)}
+                onPressIn={() => !disabled && setIsPressed(true)}
+                onPressOut={() => !disabled && setIsPressed(false)}
                 disabled={disabled}
                 style={({ pressed }) => [
                     styles.skeuoWrapper,
+                    { borderRadius: customRadius as number },
                     !pressed && !isOutline && skeuo.outset.light,
                     isOutline && !pressed && skeuo.inset.dark,
                     pressed && skeuo.inset.light,
@@ -55,6 +58,7 @@ export const VibrantButton: React.FC<VibrantButtonProps> = ({
                 {({ pressed }) => (
                     <View style={[
                         styles.skeuoOuterDark,
+                        { borderRadius: customRadius as number },
                         !pressed && !isOutline && skeuo.outset.dark,
                         isOutline && !pressed && skeuo.inset.light,
                         pressed && skeuo.inset.dark,
@@ -65,19 +69,25 @@ export const VibrantButton: React.FC<VibrantButtonProps> = ({
                                 (isOutline ? ['transparent', 'transparent'] :
                                     (pressed ? [skeuo.surfaceGradient[1], skeuo.surfaceGradient[0]] :
                                         (isSecondary ? [colors.secondary, colors.secondary] : skeuo.surfaceGradient)))}
-                            style={styles.skeuoGradient}
+                            style={[
+                                styles.skeuoGradient,
+                                { borderRadius: customRadius as number },
+                                isIconOnly && { paddingHorizontal: 0, paddingVertical: 0, width: '100%', height: '100%', alignItems: 'center', justifyContent: 'center' }
+                            ]}
                             start={{ x: 0, y: 0 }}
                             end={{ x: 1, y: 1 }}
                         >
                             <View style={styles.content}>
-                                {leftIcon && <View style={styles.iconContainer}>{leftIcon}</View>}
-                                <Text style={[
-                                    styles.text,
-                                    { color: disabled ? colors.textSecondary : (isSecondary ? colors.text : colors.primary) },
-                                    textStyle
-                                ]}>
-                                    {title}
-                                </Text>
+                                {leftIcon && <View style={[styles.iconContainer, !title && { marginRight: 0 }]}>{leftIcon}</View>}
+                                {title ? (
+                                    <Text style={[
+                                        styles.text,
+                                        { color: disabled ? colors.textSecondary : (isSecondary ? colors.text : (isOutline ? colors.primary : colors.primary)) },
+                                        textStyle
+                                    ]}>
+                                        {title}
+                                    </Text>
+                                ) : null}
                             </View>
                         </LinearGradient>
                     </View>
@@ -93,6 +103,7 @@ export const VibrantButton: React.FC<VibrantButtonProps> = ({
             isSecondary ? { backgroundColor: colors.secondary } :
                 { backgroundColor: colors.primary },
         disabled && { backgroundColor: colors.border, borderColor: colors.border },
+        isIconOnly && { paddingHorizontal: 0, paddingVertical: 0, width: flattenedStyle.width || 50, height: flattenedStyle.height || 50 },
         style
     ];
 
@@ -107,14 +118,18 @@ export const VibrantButton: React.FC<VibrantButtonProps> = ({
             onPress={onPress}
             disabled={disabled}
         >
-            {leftIcon && <View style={styles.iconContainer}>{leftIcon}</View>}
-            <Text style={[
-                styles.text,
-                { color: finalTextColor },
-                textStyle
-            ]}>
-                {title}
-            </Text>
+            <View style={styles.content}>
+                {leftIcon && <View style={[styles.iconContainer, !title && { marginRight: 0 }]}>{leftIcon}</View>}
+                {title ? (
+                    <Text style={[
+                        styles.text,
+                        { color: finalTextColor },
+                        textStyle
+                    ]}>
+                        {title}
+                    </Text>
+                ) : null}
+            </View>
         </Pressable>
     );
 };
@@ -129,19 +144,16 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
     },
     skeuoWrapper: {
-        borderRadius: 24,
     },
     skeuoOuterDark: {
-        borderRadius: 24,
         backgroundColor: 'transparent',
     },
     skeuoGradient: {
-        borderRadius: 24,
         paddingVertical: 16,
         paddingHorizontal: 32,
     },
     skeuoPressed: {
-        transform: [{ scale: 0.96 }],
+        opacity: 0.9,
     },
     content: {
         flexDirection: 'row',

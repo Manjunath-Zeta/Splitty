@@ -336,7 +336,7 @@ const styles = StyleSheet.create({
     googleButton: {
         marginTop: 0,
         height: 56,
-        borderRadius: 12,
+        borderRadius: 24,
     },
     googleButtonText: {
         fontSize: 19,

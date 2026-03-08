@@ -64,17 +64,16 @@ const styles = StyleSheet.create({
         marginLeft: 4,
     },
     input: {
-        borderRadius: 24,
         padding: 16,
         fontSize: 16,
-        borderWidth: 1,
     },
     skeuoInsetWrapper: {
-        borderRadius: 24,
+        borderRadius: 16,
         backgroundColor: 'transparent',
+        overflow: 'hidden',
     },
     skeuoInsetInner: {
-        borderRadius: 24,
+        borderRadius: 16,
         backgroundColor: 'transparent',
     }
 });

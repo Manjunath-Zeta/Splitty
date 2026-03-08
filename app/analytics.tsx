@@ -2,7 +2,7 @@ import React from 'react';
 import { View, Text, StyleSheet, ScrollView, SafeAreaView, TouchableOpacity, Dimensions } from 'react-native';
 import { useRouter, Stack } from 'expo-router';
 import { useSplittyStore } from '../store/useSplittyStore';
-import { Themes, ThemeName, Colors } from '../constants/Colors';
+import { Skeuomorphic } from '../constants/Colors';
 import { GlassCard } from '../components/GlassCard';
 import { ArrowLeft, ArrowUpRight, ArrowDownLeft } from 'lucide-react-native';
 import { PieChart, BarChart } from 'react-native-gifted-charts';
@@ -11,8 +11,10 @@ import { LinearGradient } from 'expo-linear-gradient';
 
 export default function AnalyticsScreen() {
     const router = useRouter();
-    const { expenses, categories, getCategoryById, friends, groups, appearance, colors, formatCurrency, userProfile, unknownFriendNames } = useSplittyStore();
+    const { expenses, categories, getCategoryById, friends, groups, appearance, colors, formatCurrency, userProfile, unknownFriendNames, designPreference } = useSplittyStore();
     const isDark = appearance === 'dark';
+    const isSkeuomorphic = designPreference === 'skeuomorphic';
+    const skeuo = isDark ? Skeuomorphic.dark : Skeuomorphic.light;
     const { width } = Dimensions.get('window');
 
     // 1. Spending by Category (Pie Chart)
@@ -110,144 +112,299 @@ export default function AnalyticsScreen() {
     }).sort((a, b) => b.amount - a.amount).slice(0, 5);
 
     return (
-        <SafeAreaView style={[styles.safeArea, { backgroundColor: colors.background }]}>
+        <SafeAreaView style={[styles.safeArea, { backgroundColor: isSkeuomorphic ? skeuo.background : colors.background }]}>
             <Stack.Screen options={{ headerShown: false }} />
             <View style={styles.header}>
-                <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
-                    <ArrowLeft size={24} color={colors.text} />
-                </TouchableOpacity>
+                {isSkeuomorphic ? (
+                    <View style={[styles.skeuoIconWrapper, skeuo.outset.light]}>
+                        <View style={[styles.skeuoIconInner, skeuo.outset.dark]}>
+                            <TouchableOpacity onPress={() => router.back()} style={[styles.backButtonSkeuo, { backgroundColor: skeuo.background }]}>
+                                <ArrowLeft size={24} color={colors.text} />
+                            </TouchableOpacity>
+                        </View>
+                    </View>
+                ) : (
+                    <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
+                        <ArrowLeft size={24} color={colors.text} />
+                    </TouchableOpacity>
+                )}
                 <Text style={[styles.headerTitle, { color: colors.text }]}>Analytics</Text>
-                <View style={{ width: 24 }} />
+                <View style={{ width: 44 }} />
             </View>
 
             <ScrollView contentContainerStyle={styles.container} showsVerticalScrollIndicator={false}>
                 {/* Overview Cards */}
                 <View style={styles.overviewRow}>
-                    <GlassCard style={[styles.overviewCard, { backgroundColor: colors.surface }]}>
-                        <Text style={[styles.summaryLabel, { color: colors.textSecondary }]}>Total Spent</Text>
-                        <Text style={[styles.summaryAmount, { color: colors.text }]}>{formatCurrency(totalSpent)}</Text>
-                    </GlassCard>
+                    {isSkeuomorphic ? (
+                        <View style={[styles.skeuoCardOuter, skeuo.outset.light]}>
+                            <View style={[styles.skeuoCardInner, skeuo.outset.dark]}>
+                                <LinearGradient colors={skeuo.surfaceGradient} style={styles.skeuoOverviewCard}>
+                                    <Text style={[styles.summaryLabel, { color: colors.textSecondary }]}>Total Spent</Text>
+                                    <Text style={[styles.summaryAmount, { color: colors.text }]}>{formatCurrency(totalSpent)}</Text>
+                                </LinearGradient>
+                            </View>
+                        </View>
+                    ) : (
+                        <GlassCard style={[styles.overviewCard, { backgroundColor: colors.surface }]}>
+                            <Text style={[styles.summaryLabel, { color: colors.textSecondary }]}>Total Spent</Text>
+                            <Text style={[styles.summaryAmount, { color: colors.text }]}>{formatCurrency(totalSpent)}</Text>
+                        </GlassCard>
+                    )}
                 </View>
 
                 {/* Monthly Trend */}
                 <Text style={[styles.sectionTitle, { color: colors.text }]}>Monthly Trend</Text>
-                <GlassCard style={[styles.chartCard, { backgroundColor: colors.surface }]}>
-                    {maxMonthly > 0 ? (
-                        <BarChart
-                            data={barData}
-                            barWidth={22}
-                            spacing={20}
-                            roundedTop
-                            roundedBottom
-                            hideRules
-                            xAxisThickness={0}
-                            yAxisThickness={0}
-                            yAxisTextStyle={{ color: colors.textSecondary }}
-                            noOfSections={4}
-                            maxValue={maxMonthly * 1.2}
-                            height={180}
-                            width={width - 80}
-                            xAxisLabelTextStyle={{ color: colors.textSecondary }}
-                        />
-                    ) : (
-                        <View style={styles.emptyContainer}>
-                            <Text style={{ color: colors.textSecondary }}>No data available</Text>
+                {isSkeuomorphic ? (
+                    <View style={[styles.skeuoCardOuter, skeuo.outset.light]}>
+                        <View style={[styles.skeuoCardInner, skeuo.outset.dark]}>
+                            <LinearGradient colors={skeuo.surfaceGradient} style={styles.skeuoChartCard}>
+                                {maxMonthly > 0 ? (
+                                    <BarChart
+                                        data={barData}
+                                        barWidth={22}
+                                        spacing={20}
+                                        roundedTop
+                                        roundedBottom
+                                        hideRules
+                                        xAxisThickness={0}
+                                        yAxisThickness={0}
+                                        yAxisTextStyle={{ color: colors.textSecondary }}
+                                        noOfSections={4}
+                                        maxValue={maxMonthly * 1.2}
+                                        height={180}
+                                        width={width - 80}
+                                        xAxisLabelTextStyle={{ color: colors.textSecondary }}
+                                    />
+                                ) : (
+                                    <View style={styles.emptyContainer}>
+                                        <Text style={{ color: colors.textSecondary }}>No data available</Text>
+                                    </View>
+                                )}
+                            </LinearGradient>
                         </View>
-                    )}
-                </GlassCard>
+                    </View>
+                ) : (
+                    <GlassCard style={[styles.chartCard, { backgroundColor: colors.surface }]}>
+                        {maxMonthly > 0 ? (
+                            <BarChart
+                                data={barData}
+                                barWidth={22}
+                                spacing={20}
+                                roundedTop
+                                roundedBottom
+                                hideRules
+                                xAxisThickness={0}
+                                yAxisThickness={0}
+                                yAxisTextStyle={{ color: colors.textSecondary }}
+                                noOfSections={4}
+                                maxValue={maxMonthly * 1.2}
+                                height={180}
+                                width={width - 80}
+                                xAxisLabelTextStyle={{ color: colors.textSecondary }}
+                            />
+                        ) : (
+                            <View style={styles.emptyContainer}>
+                                <Text style={{ color: colors.textSecondary }}>No data available</Text>
+                            </View>
+                        )}
+                    </GlassCard>
+                )}
 
                 {/* Category Breakdown */}
                 <Text style={[styles.sectionTitle, { color: colors.text, marginTop: 24 }]}>Category Breakdown</Text>
-                <GlassCard style={[styles.chartCard, { backgroundColor: colors.surface }]}>
-                    {pieData.length > 0 ? (
-                        <View>
-                            <View style={{ alignItems: 'center', marginBottom: 20 }}>
-                                <PieChart
-                                    data={pieData}
-                                    donut
-                                    showGradient
-                                    radius={85}
-                                    innerRadius={55}
-                                    innerCircleColor={colors.surface}
-                                    centerLabelComponent={() => (
-                                        <View style={{ alignItems: 'center' }}>
-                                            <Text style={{ fontSize: 20, color: colors.text, fontWeight: 'bold' }}>{pieData.length}</Text>
-                                            <Text style={{ fontSize: 10, color: colors.textSecondary }}>Categories</Text>
+                {isSkeuomorphic ? (
+                    <View style={[styles.skeuoCardOuter, skeuo.outset.light]}>
+                        <View style={[styles.skeuoCardInner, skeuo.outset.dark]}>
+                            <LinearGradient colors={skeuo.surfaceGradient} style={styles.skeuoChartCard}>
+                                {pieData.length > 0 ? (
+                                    <View>
+                                        <View style={{ alignItems: 'center', marginBottom: 20 }}>
+                                            <PieChart
+                                                data={pieData}
+                                                donut
+                                                showGradient
+                                                radius={85}
+                                                innerRadius={55}
+                                                innerCircleColor={skeuo.background}
+                                                centerLabelComponent={() => (
+                                                    <View style={{ alignItems: 'center' }}>
+                                                        <Text style={{ fontSize: 20, color: colors.text, fontWeight: 'bold' }}>{pieData.length}</Text>
+                                                        <Text style={{ fontSize: 10, color: colors.textSecondary }}>Categories</Text>
+                                                    </View>
+                                                )}
+                                            />
                                         </View>
-                                    )}
-                                />
-                            </View>
-                            {pieData.map((item, index) => (
-                                <View key={index} style={styles.rankingItem}>
-                                    <View style={[styles.legendColor, { backgroundColor: item.color }]} />
-                                    <View style={{ flex: 1 }}>
-                                        <View style={styles.rankingHeader}>
-                                            <Text style={[styles.rankingName, { color: colors.text }]}>{item.categoryName}</Text>
-                                            <Text style={[styles.rankingAmount, { color: colors.text }]}>{formatCurrency(item.amount)}</Text>
-                                        </View>
-                                        <View style={[styles.progressBarBase, { backgroundColor: isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)' }]}>
-                                            <View style={[styles.progressBarFill, { backgroundColor: item.color, width: `${(item.amount / totalSpent) * 100}%` }]} />
+                                        {pieData.map((item, index) => (
+                                            <View key={index} style={styles.rankingItem}>
+                                                <View style={[styles.legendColor, { backgroundColor: item.color }]} />
+                                                <View style={{ flex: 1 }}>
+                                                    <View style={styles.rankingHeader}>
+                                                        <Text style={[styles.rankingName, { color: colors.text }]}>{item.categoryName}</Text>
+                                                        <Text style={[styles.rankingAmount, { color: colors.text }]}>{formatCurrency(item.amount)}</Text>
+                                                    </View>
+                                                    <View style={[styles.progressBarBase, { backgroundColor: isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)' }]}>
+                                                        <View style={[styles.progressBarFill, { backgroundColor: item.color, width: `${(item.amount / totalSpent) * 100}%` }]} />
+                                                    </View>
+                                                </View>
+                                            </View>
+                                        ))}
+                                    </View>
+                                ) : (
+                                    <View style={styles.emptyContainer}>
+                                        <Text style={{ color: colors.textSecondary }}>No categories yet</Text>
+                                    </View>
+                                )}
+                            </LinearGradient>
+                        </View>
+                    </View>
+                ) : (
+                    <GlassCard style={[styles.chartCard, { backgroundColor: colors.surface }]}>
+                        {pieData.length > 0 ? (
+                            <View>
+                                <View style={{ alignItems: 'center', marginBottom: 20 }}>
+                                    <PieChart
+                                        data={pieData}
+                                        donut
+                                        showGradient
+                                        radius={85}
+                                        innerRadius={55}
+                                        innerCircleColor={colors.surface}
+                                        centerLabelComponent={() => (
+                                            <View style={{ alignItems: 'center' }}>
+                                                <Text style={{ fontSize: 20, color: colors.text, fontWeight: 'bold' }}>{pieData.length}</Text>
+                                                <Text style={{ fontSize: 10, color: colors.textSecondary }}>Categories</Text>
+                                            </View>
+                                        )}
+                                    />
+                                </View>
+                                {pieData.map((item, index) => (
+                                    <View key={index} style={styles.rankingItem}>
+                                        <View style={[styles.legendColor, { backgroundColor: item.color }]} />
+                                        <View style={{ flex: 1 }}>
+                                            <View style={styles.rankingHeader}>
+                                                <Text style={[styles.rankingName, { color: colors.text }]}>{item.categoryName}</Text>
+                                                <Text style={[styles.rankingAmount, { color: colors.text }]}>{formatCurrency(item.amount)}</Text>
+                                            </View>
+                                            <View style={[styles.progressBarBase, { backgroundColor: isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)' }]}>
+                                                <View style={[styles.progressBarFill, { backgroundColor: item.color, width: `${(item.amount / totalSpent) * 100}%` }]} />
+                                            </View>
                                         </View>
                                     </View>
-                                </View>
-                            ))}
-                        </View>
-                    ) : (
-                        <View style={styles.emptyContainer}>
-                            <Text style={{ color: colors.textSecondary }}>No categories yet</Text>
-                        </View>
-                    )}
-                </GlassCard>
+                                ))}
+                            </View>
+                        ) : (
+                            <View style={styles.emptyContainer}>
+                                <Text style={{ color: colors.textSecondary }}>No categories yet</Text>
+                            </View>
+                        )}
+                    </GlassCard>
+                )}
 
                 {/* Friend-wise Breakdown */}
                 <Text style={[styles.sectionTitle, { color: colors.text, marginTop: 24 }]}>Spend Split with Friends</Text>
-                <GlassCard style={[styles.chartCard, { backgroundColor: colors.surface }]}>
-                    {friendSpendData.length > 0 ? (
-                        friendSpendData.map((item, index) => (
-                            <View key={index} style={styles.rankingItem}>
-                                <View style={{ flex: 1 }}>
-                                    <View style={styles.rankingHeader}>
-                                        <Text style={[styles.rankingName, { color: colors.text }]}>{item.name}</Text>
-                                        <Text style={[styles.rankingAmount, { color: colors.text }]}>{formatCurrency(item.amount)}</Text>
+                {isSkeuomorphic ? (
+                    <View style={[styles.skeuoCardOuter, skeuo.outset.light]}>
+                        <View style={[styles.skeuoCardInner, skeuo.outset.dark]}>
+                            <LinearGradient colors={skeuo.surfaceGradient} style={styles.skeuoChartCard}>
+                                {friendSpendData.length > 0 ? (
+                                    friendSpendData.map((item, index) => (
+                                        <View key={index} style={styles.rankingItem}>
+                                            <View style={{ flex: 1 }}>
+                                                <View style={styles.rankingHeader}>
+                                                    <Text style={[styles.rankingName, { color: colors.text }]}>{item.name}</Text>
+                                                    <Text style={[styles.rankingAmount, { color: colors.text }]}>{formatCurrency(item.amount)}</Text>
+                                                </View>
+                                                <View style={[styles.progressBarBase, { backgroundColor: isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)' }]}>
+                                                    <View style={[styles.progressBarFill, { backgroundColor: colors.primary, width: `${item.percentage}%` }]} />
+                                                </View>
+                                            </View>
+                                        </View>
+                                    ))
+                                ) : (
+                                    <View style={styles.emptyContainer}>
+                                        <Text style={{ color: colors.textSecondary }}>No shared expenses yet</Text>
                                     </View>
-                                    <View style={[styles.progressBarBase, { backgroundColor: isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)' }]}>
-                                        <View style={[styles.progressBarFill, { backgroundColor: colors.primary, width: `${item.percentage}%` }]} />
+                                )}
+                            </LinearGradient>
+                        </View>
+                    </View>
+                ) : (
+                    <GlassCard style={[styles.chartCard, { backgroundColor: colors.surface }]}>
+                        {friendSpendData.length > 0 ? (
+                            friendSpendData.map((item, index) => (
+                                <View key={index} style={styles.rankingItem}>
+                                    <View style={{ flex: 1 }}>
+                                        <View style={styles.rankingHeader}>
+                                            <Text style={[styles.rankingName, { color: colors.text }]}>{item.name}</Text>
+                                            <Text style={[styles.rankingAmount, { color: colors.text }]}>{formatCurrency(item.amount)}</Text>
+                                        </View>
+                                        <View style={[styles.progressBarBase, { backgroundColor: isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)' }]}>
+                                            <View style={[styles.progressBarFill, { backgroundColor: colors.primary, width: `${item.percentage}%` }]} />
+                                        </View>
                                     </View>
                                 </View>
+                            ))
+                        ) : (
+                            <View style={styles.emptyContainer}>
+                                <Text style={{ color: colors.textSecondary }}>No shared expenses yet</Text>
                             </View>
-                        ))
-                    ) : (
-                        <View style={styles.emptyContainer}>
-                            <Text style={{ color: colors.textSecondary }}>No shared expenses yet</Text>
-                        </View>
-                    )}
-                </GlassCard>
+                        )}
+                    </GlassCard>
+                )}
 
                 {/* Group Activity */}
                 <Text style={[styles.sectionTitle, { color: colors.text, marginTop: 24 }]}>Spending by Group</Text>
-                <GlassCard style={[styles.chartCard, { backgroundColor: colors.surface }]}>
-                    {groupSpendData.length > 0 ? (
-                        groupSpendData.map((item, index) => (
-                            <View key={index} style={styles.rankingItem}>
-                                <View style={{ flex: 1 }}>
-                                    <View style={styles.rankingHeader}>
-                                        <Text style={[styles.rankingName, { color: colors.text }]}>{item.name}</Text>
-                                        <Text style={[styles.rankingAmount, { color: colors.text }]}>{formatCurrency(item.amount)}</Text>
+                {isSkeuomorphic ? (
+                    <View style={[styles.skeuoCardOuter, skeuo.outset.light]}>
+                        <View style={[styles.skeuoCardInner, skeuo.outset.dark]}>
+                            <LinearGradient colors={skeuo.surfaceGradient} style={styles.skeuoChartCard}>
+                                {groupSpendData.length > 0 ? (
+                                    groupSpendData.map((item, index) => (
+                                        <View key={index} style={styles.rankingItem}>
+                                            <View style={{ flex: 1 }}>
+                                                <View style={styles.rankingHeader}>
+                                                    <Text style={[styles.rankingName, { color: colors.text }]}>{item.name}</Text>
+                                                    <Text style={[styles.rankingAmount, { color: colors.text }]}>{formatCurrency(item.amount)}</Text>
+                                                </View>
+                                                <View style={[styles.progressBarBase, { backgroundColor: isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)' }]}>
+                                                    <View style={[styles.progressBarFill, { backgroundColor: colors.secondary, width: `${(item.amount / totalSpent) * 100}%` }]} />
+                                                </View>
+                                            </View>
+                                        </View>
+                                    ))
+                                ) : (
+                                    <View style={styles.emptyContainer}>
+                                        <Text style={{ color: colors.textSecondary }}>No group expenses yet</Text>
                                     </View>
-                                    <View style={[styles.progressBarBase, { backgroundColor: isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)' }]}>
-                                        <View style={[styles.progressBarFill, { backgroundColor: colors.secondary, width: `${(item.amount / totalSpent) * 100}%` }]} />
+                                )}
+                            </LinearGradient>
+                        </View>
+                    </View>
+                ) : (
+                    <GlassCard style={[styles.chartCard, { backgroundColor: colors.surface }]}>
+                        {groupSpendData.length > 0 ? (
+                            groupSpendData.map((item, index) => (
+                                <View key={index} style={styles.rankingItem}>
+                                    <View style={{ flex: 1 }}>
+                                        <View style={styles.rankingHeader}>
+                                            <Text style={[styles.rankingName, { color: colors.text }]}>{item.name}</Text>
+                                            <Text style={[styles.rankingAmount, { color: colors.text }]}>{formatCurrency(item.amount)}</Text>
+                                        </View>
+                                        <View style={[styles.progressBarBase, { backgroundColor: isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)' }]}>
+                                            <View style={[styles.progressBarFill, { backgroundColor: colors.secondary, width: `${(item.amount / totalSpent) * 100}%` }]} />
+                                        </View>
                                     </View>
                                 </View>
+                            ))
+                        ) : (
+                            <View style={styles.emptyContainer}>
+                                <Text style={{ color: colors.textSecondary }}>No group expenses yet</Text>
                             </View>
-                        ))
-                    ) : (
-                        <View style={styles.emptyContainer}>
-                            <Text style={{ color: colors.textSecondary }}>No group expenses yet</Text>
-                        </View>
-                    )}
-                </GlassCard>
+                        )}
+                    </GlassCard>
+                )}
 
-                <View style={{ height: 60 }} />
+                <View style={{ height: 120 }} />
             </ScrollView>
         </SafeAreaView>
     );
@@ -267,6 +424,13 @@ const styles = StyleSheet.create({
     backButton: {
         padding: 4,
     },
+    backButtonSkeuo: {
+        width: 44,
+        height: 44,
+        borderRadius: 22,
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
     headerTitle: {
         fontSize: 18,
         fontWeight: '700',
@@ -281,6 +445,12 @@ const styles = StyleSheet.create({
     overviewCard: {
         padding: 24,
         alignItems: 'center',
+        borderRadius: 24,
+    },
+    skeuoOverviewCard: {
+        padding: 24,
+        alignItems: 'center',
+        borderRadius: 24,
     },
     summaryLabel: {
         fontSize: 14,
@@ -298,6 +468,12 @@ const styles = StyleSheet.create({
     chartCard: {
         padding: 20,
         overflow: 'hidden',
+        borderRadius: 24,
+    },
+    skeuoChartCard: {
+        padding: 20,
+        overflow: 'hidden',
+        borderRadius: 24,
     },
     emptyContainer: {
         height: 150,
@@ -324,20 +500,33 @@ const styles = StyleSheet.create({
         fontWeight: '700',
     },
     progressBarBase: {
-        height: 8,
-        borderRadius: 4,
+        height: 10,
+        borderRadius: 10,
         width: '100%',
         overflow: 'hidden',
     },
     progressBarFill: {
         height: '100%',
-        borderRadius: 4,
+        borderRadius: 10,
     },
     legendColor: {
         width: 10,
         height: 10,
         borderRadius: 5,
         marginRight: 10,
-        marginTop: -16, // Align with text
+        marginTop: -16,
     },
+    skeuoIconWrapper: {
+        borderRadius: 22,
+    },
+    skeuoIconInner: {
+        borderRadius: 22,
+    },
+    skeuoCardOuter: {
+        borderRadius: 24,
+        marginBottom: 24,
+    },
+    skeuoCardInner: {
+        borderRadius: 24,
+    }
 });

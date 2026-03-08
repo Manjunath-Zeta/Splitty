@@ -297,7 +297,7 @@ const styles = StyleSheet.create({
     saveButton: { padding: 4 },
     headerTitle: { fontSize: 20, fontWeight: '700' },
     subtitle: { fontSize: 16, marginBottom: 24 },
-    autoFillCard: { padding: 20, marginBottom: 30, borderWidth: 1 },
+    autoFillCard: { padding: 20, marginBottom: 30, borderWidth: 1, borderRadius: 24 },
     autoFillHeader: { flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 8 },
     autoFillTitle: { fontSize: 18, fontWeight: '700' },
     autoFillDesc: { fontSize: 14, lineHeight: 22, marginBottom: 16 },
@@ -305,7 +305,7 @@ const styles = StyleSheet.create({
     categoryContent: { gap: 12 },
     categoryItem: { gap: 12 },
     catHeader: { flexDirection: 'row', alignItems: 'center', gap: 12 },
-    iconWrapper: { padding: 10, borderRadius: 12 },
+    iconWrapper: { padding: 10, borderRadius: 16 },
     catName: { fontSize: 18, fontWeight: '600', flex: 1 },
     visibilityToggle: { padding: 8, marginRight: -8 },
     inputWrapper: {
@@ -364,7 +364,7 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         paddingHorizontal: 16,
         height: 50,
-        borderRadius: 24,
+        borderRadius: 16,
     },
     skeuoTotalBarWrapper: {
         position: 'absolute',

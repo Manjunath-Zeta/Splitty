@@ -5,13 +5,19 @@ import { useSplittyStore } from '../store/useSplittyStore';
 import { GlassCard } from '../components/GlassCard';
 import { ChevronLeft, Check, User } from 'lucide-react-native';
 import { VibrantButton } from '../components/VibrantButton';
+import { Skeuomorphic } from '../constants/Colors';
+import { LinearGradient } from 'expo-linear-gradient';
 
 export default function SettleUpScreen() {
     const router = useRouter();
-    const { friends, colors, formatCurrency, settleUp } = useSplittyStore();
+    const { friends, colors, appearance, formatCurrency, settleUp, designPreference } = useSplittyStore();
     const [selectedFriendId, setSelectedFriendId] = useState<string | null>(null);
     const [amount, setAmount] = useState<string>('');
     const [isPaying, setIsPaying] = useState<boolean>(true); // true = User pays Friend; false = Friend pays User
+
+    const isDark = appearance === 'dark';
+    const isSkeuomorphic = designPreference === 'skeuomorphic';
+    const skeuo = isDark ? Skeuomorphic.dark : Skeuomorphic.light;
 
     // Filter friends with non-zero balances
     const friendsWithBalances = friends.filter(auth => Math.abs(auth.balance) > 0.01);
@@ -19,8 +25,6 @@ export default function SettleUpScreen() {
     const handleSelectFriend = (friendId: string, balance: number) => {
         setSelectedFriendId(friendId);
         setAmount(Math.abs(balance).toFixed(2));
-        // If balance > 0, friend owes user (friend pays user)
-        // If balance < 0, user owes friend (user pays friend)
         setIsPaying(balance < 0);
     };
 
@@ -49,47 +53,89 @@ export default function SettleUpScreen() {
         }
     };
 
+    const Header = ({ title, onBack }: { title: string; onBack: () => void }) => (
+        <View style={styles.header}>
+            {isSkeuomorphic ? (
+                <View style={[styles.skeuoIconWrapper, skeuo.outset.light]}>
+                    <View style={[styles.skeuoIconInner, skeuo.outset.dark]}>
+                        <TouchableOpacity style={[styles.backButtonSkeuo, { backgroundColor: skeuo.background }]} onPress={onBack}>
+                            <ChevronLeft size={28} color={colors.text} />
+                        </TouchableOpacity>
+                    </View>
+                </View>
+            ) : (
+                <TouchableOpacity style={styles.backButton} onPress={onBack}>
+                    <ChevronLeft size={28} color={colors.text} />
+                </TouchableOpacity>
+            )}
+            <Text style={[styles.headerTitle, { color: colors.text }]}>{title}</Text>
+            <View style={{ width: 44 }} />
+        </View>
+    );
+
     if (selectedFriendId) {
         const friend = friends.find(f => f.id === selectedFriendId);
         if (!friend) return null;
 
         return (
-            <SafeAreaView style={[styles.safeArea, { backgroundColor: colors.background }]}>
+            <SafeAreaView style={[styles.safeArea, { backgroundColor: isSkeuomorphic ? skeuo.background : colors.background }]}>
                 <Stack.Screen options={{ headerShown: false }} />
                 <KeyboardAvoidingView
                     style={{ flex: 1 }}
                     behavior={Platform.OS === 'ios' ? 'padding' : undefined}
                 >
-                    <View style={styles.header}>
-                        <TouchableOpacity style={styles.backButton} onPress={() => setSelectedFriendId(null)}>
-                            <ChevronLeft size={28} color={colors.text} />
-                        </TouchableOpacity>
-                        <Text style={[styles.headerTitle, { color: colors.text }]}>Record Settlement</Text>
-                        <View style={{ width: 44 }} />
-                    </View>
+                    <Header title="Record Settlement" onBack={() => setSelectedFriendId(null)} />
 
                     <ScrollView contentContainerStyle={styles.content}>
-                        <GlassCard style={[styles.card, { backgroundColor: colors.surface }]}>
-                            <View style={styles.fixedDirectionContainer}>
-                                <Text style={[styles.fixedDirectionText, { color: isPaying ? colors.primary : colors.success }]}>
-                                    {isPaying ? `You pay ${friend.name}` : `${friend.name} pays You`}
-                                </Text>
-                            </View>
+                        {isSkeuomorphic ? (
+                            <View style={[styles.skeuoCardOuter, skeuo.outset.light]}>
+                                <View style={[styles.skeuoCardInner, skeuo.outset.dark]}>
+                                    <LinearGradient colors={skeuo.surfaceGradient} style={styles.skeuoCard}>
+                                        <View style={[styles.fixedDirectionContainer, { backgroundColor: isDark ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.03)', borderRadius: 24 }]}>
+                                            <Text style={[styles.fixedDirectionText, { color: isPaying ? colors.primary : colors.success }]}>
+                                                {isPaying ? `You pay ${friend.name}` : `${friend.name} pays You`}
+                                            </Text>
+                                        </View>
 
-                            <View style={styles.amountContainer}>
-                                <Text style={[styles.amountLabel, { color: colors.textSecondary }]}>Amount to settle</Text>
-                                <TextInput
-                                    style={[styles.amountInput, { color: colors.text }]}
-                                    value={amount}
-                                    onChangeText={setAmount}
-                                    keyboardType="decimal-pad"
-                                    autoFocus
-                                />
-                                <Text style={[styles.currentBalanceInfo, { color: colors.textSecondary }]}>
-                                    Remaining balance: {formatCurrency(Math.abs(friend.balance))}
-                                </Text>
+                                        <View style={styles.amountContainer}>
+                                            <Text style={[styles.amountLabel, { color: colors.textSecondary }]}>Amount to settle</Text>
+                                            <TextInput
+                                                style={[styles.amountInput, { color: colors.text }]}
+                                                value={amount}
+                                                onChangeText={setAmount}
+                                                keyboardType="decimal-pad"
+                                                autoFocus
+                                            />
+                                            <Text style={[styles.currentBalanceInfo, { color: colors.textSecondary }]}>
+                                                Remaining balance: {formatCurrency(Math.abs(friend.balance))}
+                                            </Text>
+                                        </View>
+                                    </LinearGradient>
+                                </View>
                             </View>
-                        </GlassCard>
+                        ) : (
+                            <GlassCard style={[styles.card, { backgroundColor: colors.surface }]}>
+                                <View style={[styles.fixedDirectionContainer, { backgroundColor: 'rgba(150,150,150,0.1)', borderRadius: 12 }]}>
+                                    <Text style={[styles.fixedDirectionText, { color: isPaying ? colors.primary : colors.success }]}>
+                                        {isPaying ? `You pay ${friend.name}` : `${friend.name} pays You`}
+                                    </Text>
+                                </View>
+
+                                <View style={styles.amountContainer}>
+                                    <Text style={[styles.amountLabel, { color: colors.textSecondary }]}>Amount to settle</Text>
+                                    <TextInput
+                                        style={[styles.amountInput, { color: colors.text }]}
+                                        value={amount}
+                                        onChangeText={setAmount}
+                                        keyboardType="decimal-pad"
+                                        autoFocus
+                                    />
+                                    <Text style={[styles.currentBalanceInfo, { color: colors.textSecondary }]}>
+                                        Remaining balance: {formatCurrency(Math.abs(friend.balance))}
+                                    </Text>
+                                </View>
+                            </GlassCard>
+                        )}
                     </ScrollView>
 
                     <View style={styles.footer}>
@@ -104,15 +150,9 @@ export default function SettleUpScreen() {
     }
 
     return (
-        <SafeAreaView style={[styles.safeArea, { backgroundColor: colors.background }]}>
+        <SafeAreaView style={[styles.safeArea, { backgroundColor: isSkeuomorphic ? skeuo.background : colors.background }]}>
             <Stack.Screen options={{ headerShown: false }} />
-            <View style={styles.header}>
-                <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
-                    <ChevronLeft size={28} color={colors.text} />
-                </TouchableOpacity>
-                <Text style={[styles.headerTitle, { color: colors.text }]}>Settle Up</Text>
-                <View style={{ width: 44 }} />
-            </View>
+            <Header title="Settle Up" onBack={() => router.back()} />
 
             <ScrollView contentContainerStyle={styles.content}>
                 {friendsWithBalances.length === 0 ? (
@@ -126,36 +166,72 @@ export default function SettleUpScreen() {
                 ) : (
                     <>
                         <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>Select a friend to settle with</Text>
-                        <GlassCard style={[styles.listCard, { backgroundColor: colors.surface }]}>
-                            {friendsWithBalances.map((friend, index) => (
-                                <TouchableOpacity
-                                    key={friend.id}
-                                    style={[
-                                        styles.friendItem,
-                                        index < friendsWithBalances.length - 1 && { borderBottomWidth: 1, borderBottomColor: colors.border }
-                                    ]}
-                                    onPress={() => handleSelectFriend(friend.id, friend.balance)}
-                                >
-                                    <View style={styles.friendInfoRow}>
-                                        <View style={[styles.avatar, { backgroundColor: colors.primary + '20' }]}>
-                                            <User size={20} color={colors.primary} />
+                        {isSkeuomorphic ? (
+                            <View style={[styles.skeuoCardOuter, skeuo.outset.light]}>
+                                <View style={[styles.skeuoCardInner, skeuo.outset.dark]}>
+                                    <LinearGradient colors={skeuo.surfaceGradient} style={styles.skeuoListCard}>
+                                        {friendsWithBalances.map((friend, index) => (
+                                            <TouchableOpacity
+                                                key={friend.id}
+                                                style={[
+                                                    styles.friendItem,
+                                                    index < friendsWithBalances.length - 1 && { borderBottomWidth: 1, borderBottomColor: isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)' }
+                                                ]}
+                                                onPress={() => handleSelectFriend(friend.id, friend.balance)}
+                                            >
+                                                <View style={styles.friendInfoRow}>
+                                                    <View style={[styles.avatar, { backgroundColor: colors.primary + '20' }]}>
+                                                        <User size={20} color={colors.primary} />
+                                                    </View>
+                                                    <Text style={[styles.friendName, { color: colors.text }]}>{friend.name}</Text>
+                                                </View>
+                                                <View style={styles.balanceInfo}>
+                                                    <Text style={[
+                                                        styles.balanceText,
+                                                        { color: friend.balance > 0 ? colors.success : colors.error }
+                                                    ]}>
+                                                        {friend.balance > 0 ? 'Owes you ' : 'You owe '}
+                                                        {formatCurrency(friend.balance)}
+                                                    </Text>
+                                                </View>
+                                            </TouchableOpacity>
+                                        ))}
+                                    </LinearGradient>
+                                </View>
+                            </View>
+                        ) : (
+                            <GlassCard style={[styles.listCard, { backgroundColor: colors.surface }]}>
+                                {friendsWithBalances.map((friend, index) => (
+                                    <TouchableOpacity
+                                        key={friend.id}
+                                        style={[
+                                            styles.friendItem,
+                                            index < friendsWithBalances.length - 1 && { borderBottomWidth: 1, borderBottomColor: colors.border }
+                                        ]}
+                                        onPress={() => handleSelectFriend(friend.id, friend.balance)}
+                                    >
+                                        <View style={styles.friendInfoRow}>
+                                            <View style={[styles.avatar, { backgroundColor: colors.primary + '20' }]}>
+                                                <User size={20} color={colors.primary} />
+                                            </View>
+                                            <Text style={[styles.friendName, { color: colors.text }]}>{friend.name}</Text>
                                         </View>
-                                        <Text style={[styles.friendName, { color: colors.text }]}>{friend.name}</Text>
-                                    </View>
-                                    <View style={styles.balanceInfo}>
-                                        <Text style={[
-                                            styles.balanceText,
-                                            { color: friend.balance > 0 ? colors.success : colors.error }
-                                        ]}>
-                                            {friend.balance > 0 ? 'Owes you ' : 'You owe '}
-                                            {formatCurrency(friend.balance)}
-                                        </Text>
-                                    </View>
-                                </TouchableOpacity>
-                            ))}
-                        </GlassCard>
+                                        <View style={styles.balanceInfo}>
+                                            <Text style={[
+                                                styles.balanceText,
+                                                { color: friend.balance > 0 ? colors.success : colors.error }
+                                            ]}>
+                                                {friend.balance > 0 ? 'Owes you ' : 'You owe '}
+                                                {formatCurrency(friend.balance)}
+                                            </Text>
+                                        </View>
+                                    </TouchableOpacity>
+                                ))}
+                            </GlassCard>
+                        )}
                     </>
                 )}
+                <View style={{ height: 120 }} />
             </ScrollView>
         </SafeAreaView>
     );
@@ -167,10 +243,17 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'space-between',
-        paddingHorizontal: 8,
+        paddingHorizontal: 20,
         paddingVertical: 12,
     },
-    backButton: { padding: 8 },
+    backButton: { padding: 8, marginLeft: -8 },
+    backButtonSkeuo: {
+        width: 44,
+        height: 44,
+        borderRadius: 22,
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
     headerTitle: {
         fontSize: 20,
         fontWeight: '700',
@@ -204,6 +287,11 @@ const styles = StyleSheet.create({
     listCard: {
         padding: 0,
         overflow: 'hidden',
+        borderRadius: 24,
+    },
+    skeuoListCard: {
+        overflow: 'hidden',
+        borderRadius: 24,
     },
     friendItem: {
         flexDirection: 'row',
@@ -236,13 +324,16 @@ const styles = StyleSheet.create({
     },
     card: {
         padding: 24,
+        borderRadius: 24,
+    },
+    skeuoCard: {
+        padding: 24,
+        borderRadius: 24,
     },
     fixedDirectionContainer: {
         alignItems: 'center',
         marginBottom: 32,
-        paddingVertical: 12,
-        backgroundColor: 'rgba(150,150,150,0.1)',
-        borderRadius: 12,
+        paddingVertical: 16,
     },
     fixedDirectionText: {
         fontWeight: '700',
@@ -269,6 +360,18 @@ const styles = StyleSheet.create({
     },
     footer: {
         padding: 24,
-        paddingBottom: 40,
+        paddingBottom: 110,
     },
+    skeuoIconWrapper: {
+        borderRadius: 22,
+    },
+    skeuoIconInner: {
+        borderRadius: 22,
+    },
+    skeuoCardOuter: {
+        borderRadius: 24,
+    },
+    skeuoCardInner: {
+        borderRadius: 24,
+    }
 });

@@ -6,12 +6,18 @@ import { ArrowLeft, Clock, Activity, Users } from 'lucide-react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useSplittyStore, ActivityLog } from '../store/useSplittyStore';
 import { GlassCard } from '../components/GlassCard';
+import { Skeuomorphic } from '../constants/Colors';
+import { LinearGradient } from 'expo-linear-gradient';
 
 export default function ActivityLogScreen() {
-    const { colors, isDarkMode, activities, expenses, fetchData, formatCurrency } = useSplittyStore();
+    const { colors, appearance, activities, expenses, fetchData, formatCurrency, designPreference } = useSplittyStore();
     const insets = useSafeAreaInsets();
     const router = useRouter();
     const [refreshing, setRefreshing] = useState(false);
+
+    const isDark = appearance === 'dark';
+    const isSkeuomorphic = designPreference === 'skeuomorphic';
+    const skeuo = isDark ? Skeuomorphic.dark : Skeuomorphic.light;
 
     useEffect(() => {
         fetchData();
@@ -51,17 +57,12 @@ export default function ActivityLogScreen() {
         const meta = item.metadata || {};
 
         const handlePress = () => {
-            // 1. If it's a deletion, show alert (no navigation)
             if (item.action === 'deleted' || item.action === 'removed_member' || item.action === 'left_group') {
                 Alert.alert("Notice", "This item has been deleted or you are no longer a member.");
                 return;
             }
 
-            // 2. Navigate based on type
             if (isExpense) {
-                // Check if expense still exists in store? 
-                // It's safer to just try navigating. If AddExpense handles "ID not found" gracefully (it does logic check), it might show error or empty form.
-                // Better: Check store first.
                 const exists = useSplittyStore.getState().expenses.some(e => e.id === item.entity_id);
                 if (exists) {
                     router.push({ pathname: "/add-expense", params: { id: item.entity_id } });
@@ -78,94 +79,110 @@ export default function ActivityLogScreen() {
             }
         };
 
+        const CardContent = () => (
+            <View style={styles.cardContent}>
+                <View style={[styles.iconContainer, { backgroundColor: isSkeuomorphic ? 'rgba(0,0,0,0.03)' : colors.surface }]}>
+                    {isExpense ? (
+                        <Activity size={20} color={colors.primary} />
+                    ) : isGroup ? (
+                        <Users size={20} color={colors.secondary || '#4bc0c0'} />
+                    ) : (
+                        <Activity size={20} color={colors.textSecondary} />
+                    )}
+                </View>
+                <View style={styles.textContainer}>
+                    <Text style={[styles.description, { color: colors.text }]}>
+                        {(() => {
+                            let desc = item.description;
+                            if (isExpense) {
+                                desc = desc.replace(/^You added 'Paid (.*)'$/, "You settled '$1'");
+                                desc = desc.replace(/^You added '(.*) paid you'$/, "$1 settled with you");
+                                desc = desc.replace(/^(.*) added you to 'Paid .*'$/, "$1 settled with you");
+                                desc = desc.replace(/^(.*) added you to '.* paid you'$/, "$1 settled with you");
+                            }
+                            return desc;
+                        })()}
+                    </Text>
+
+                    {(meta.amount !== undefined || meta.group_name) && (
+                        <View style={styles.detailsContainer}>
+                            {meta.amount !== undefined && (
+                                <View style={[styles.badge, { backgroundColor: colors.primary + '15' }]}>
+                                    <Text style={[styles.badgeText, { color: colors.primary }]}>
+                                        {meta.payer_name ? `${meta.payer_name} paid ` : ''}
+                                        {formatCurrency(Number(meta.amount))}
+                                    </Text>
+                                </View>
+                            )}
+                            {meta.group_name && (
+                                <View style={[styles.badge, { backgroundColor: colors.textSecondary + '15' }]}>
+                                    <Text style={[styles.badgeText, { color: colors.text }]}>
+                                        {meta.group_name}
+                                    </Text>
+                                </View>
+                            )}
+                        </View>
+                    )}
+
+                    <View style={styles.metaContainer}>
+                        <Clock size={12} color={colors.textSecondary} />
+                        <Text style={[styles.time, { color: colors.textSecondary }]}>
+                            {formatTime(item.created_at)}
+                        </Text>
+                    </View>
+                </View>
+            </View>
+        );
+
+        if (isSkeuomorphic) {
+            return (
+                <TouchableOpacity activeOpacity={0.7} onPress={handlePress} style={styles.skeuoCardWrapper}>
+                    <View style={[styles.skeuoCardOuter, skeuo.outset.light]}>
+                        <View style={[styles.skeuoCardInner, skeuo.outset.dark]}>
+                            <LinearGradient colors={skeuo.surfaceGradient} style={styles.card}>
+                                <CardContent />
+                            </LinearGradient>
+                        </View>
+                    </View>
+                </TouchableOpacity>
+            );
+        }
+
         return (
             <TouchableOpacity activeOpacity={0.7} onPress={handlePress}>
                 <GlassCard style={styles.card}>
-                    <View style={styles.cardContent}>
-                        <View style={[styles.iconContainer, { backgroundColor: colors.surface }]}>
-                            {isExpense ? (
-                                <Activity size={20} color={colors.primary} />
-                            ) : isGroup ? (
-                                <Users size={20} color={colors.secondary || '#4bc0c0'} />
-                            ) : (
-                                <Activity size={20} color={colors.textSecondary} />
-                            )}
-                        </View>
-                        <View style={styles.textContainer}>
-                            <Text style={[styles.description, { color: colors.text }]}>
-                                {(() => {
-                                    let desc = item.description;
-                                    if (isExpense) {
-                                        // 1. "You added 'Paid Manasa'" -> "You settled 'Manasa'"
-                                        desc = desc.replace(/^You added 'Paid (.*)'$/, "You settled '$1'");
-
-                                        // 2. "You added 'Manasa paid you'" -> "Manasa settled with you"
-                                        desc = desc.replace(/^You added '(.*) paid you'$/, "$1 settled with you");
-
-                                        // 3. "Manasa added you to 'Paid ...'" -> "Manasa settled with you"
-                                        desc = desc.replace(/^(.*) added you to 'Paid .*'$/, "$1 settled with you");
-
-                                        // 4. "Manasa added you to '... paid you'" -> "Manasa settled with you"
-                                        desc = desc.replace(/^(.*) added you to '.* paid you'$/, "$1 settled with you");
-                                    }
-                                    return desc;
-                                })()}
-                            </Text>
-
-                            {/* Rich Details Row */}
-                            {(meta.amount !== undefined || meta.group_name) && (
-                                <View style={styles.detailsContainer}>
-                                    {meta.amount !== undefined && (
-                                        <View style={[styles.badge, { backgroundColor: colors.primary + '15' }]}>
-                                            <Text style={[styles.badgeText, { color: colors.primary }]}>
-                                                {meta.payer_name ? `${meta.payer_name} paid ` : ''}
-                                                {formatCurrency(Number(meta.amount))}
-                                            </Text>
-                                        </View>
-                                    )}
-                                    {meta.group_name && (
-                                        <View style={[styles.badge, { backgroundColor: colors.textSecondary + '15' }]}>
-                                            <Text style={[styles.badgeText, { color: colors.text }]}>
-                                                {meta.group_name}
-                                            </Text>
-                                        </View>
-                                    )}
-                                    {meta.participants && meta.participants.length > 0 && (
-                                        <View style={[styles.badge, { backgroundColor: colors.surface }]}>
-                                            <Text style={[styles.badgeText, { color: colors.textSecondary }]}>
-                                                With: {meta.participants.join(', ')}
-                                            </Text>
-                                        </View>
-                                    )}
-                                </View>
-                            )}
-
-                            <View style={styles.metaContainer}>
-                                <Clock size={12} color={colors.textSecondary} />
-                                <Text style={[styles.time, { color: colors.textSecondary }]}>
-                                    {formatTime(item.created_at)}
-                                </Text>
-                            </View>
-                        </View>
-                    </View>
+                    <CardContent />
                 </GlassCard>
             </TouchableOpacity>
         );
     };
 
     return (
-        <View style={[styles.container, { backgroundColor: colors.background }]}>
+        <View style={[styles.container, { backgroundColor: isSkeuomorphic ? skeuo.background : colors.background }]}>
             <Stack.Screen options={{ headerShown: false }} />
-            <StatusBar style={isDarkMode ? 'light' : 'dark'} />
+            <StatusBar style={isDark ? 'light' : 'dark'} />
 
             {/* Header */}
-            <View style={[styles.header, { paddingTop: insets.top, backgroundColor: colors.background }]}>
-                <TouchableOpacity
-                    onPress={() => router.back()}
-                    style={[styles.backButton, { backgroundColor: colors.surface }]}
-                >
-                    <ArrowLeft size={24} color={colors.text} />
-                </TouchableOpacity>
+            <View style={[styles.header, { paddingTop: insets.top + (isSkeuomorphic ? 10 : 0) }]}>
+                {isSkeuomorphic ? (
+                    <View style={[styles.skeuoIconWrapper, skeuo.outset.light]}>
+                        <View style={[styles.skeuoIconInner, skeuo.outset.dark]}>
+                            <TouchableOpacity
+                                onPress={() => router.back()}
+                                style={[styles.backButton, { backgroundColor: skeuo.background }]}
+                            >
+                                <ArrowLeft size={24} color={colors.text} />
+                            </TouchableOpacity>
+                        </View>
+                    </View>
+                ) : (
+                    <TouchableOpacity
+                        onPress={() => router.back()}
+                        style={[styles.backButton, { backgroundColor: colors.surface }]}
+                    >
+                        <ArrowLeft size={24} color={colors.text} />
+                    </TouchableOpacity>
+                )}
                 <Text style={[styles.headerTitle, { color: colors.text }]}>Activity Log</Text>
                 <View style={{ width: 40 }} />
             </View>
@@ -204,9 +221,9 @@ const styles = StyleSheet.create({
         zIndex: 10,
     },
     backButton: {
-        width: 40,
-        height: 40,
-        borderRadius: 20,
+        width: 44,
+        height: 44,
+        borderRadius: 22,
         alignItems: 'center',
         justifyContent: 'center',
     },
@@ -217,20 +234,20 @@ const styles = StyleSheet.create({
     listContent: {
         padding: 20,
         paddingTop: 10,
+        paddingBottom: 120, // Account for floating tab bar
     },
     card: {
-        marginBottom: 12,
         padding: 16,
-        borderRadius: 16,
+        borderRadius: 24,
     },
     cardContent: {
         flexDirection: 'row',
         alignItems: 'center',
     },
     iconContainer: {
-        width: 40,
-        height: 40,
-        borderRadius: 20,
+        width: 44,
+        height: 44,
+        borderRadius: 22,
         alignItems: 'center',
         justifyContent: 'center',
         marginRight: 16,
@@ -259,7 +276,7 @@ const styles = StyleSheet.create({
     badge: {
         paddingHorizontal: 8,
         paddingVertical: 4,
-        borderRadius: 8,
+        borderRadius: 12,
     },
     badgeText: {
         fontSize: 12,
@@ -276,5 +293,20 @@ const styles = StyleSheet.create({
     },
     emptyText: {
         fontSize: 16,
+    },
+    skeuoCardWrapper: {
+        marginBottom: 16,
+    },
+    skeuoCardOuter: {
+        borderRadius: 24,
+    },
+    skeuoCardInner: {
+        borderRadius: 24,
+    },
+    skeuoIconWrapper: {
+        borderRadius: 22,
+    },
+    skeuoIconInner: {
+        borderRadius: 22,
     }
 });
