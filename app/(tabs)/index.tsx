@@ -94,7 +94,7 @@ export default function DashboardScreen() {
                     {isSkeuomorphic ? (
                         <View style={[styles.skeuoSummaryWrapper, skeuo.outset.light]}>
                             <View style={[styles.skeuoSummaryInner, skeuo.outset.dark]}>
-                                <LinearGradient colors={skeuo.surfaceGradient} style={styles.summaryCard}>
+                                <LinearGradient colors={skeuo.surfaceGradient} style={styles.summaryCardContent}>
                                     <Text style={[styles.summaryLabel, { color: colors.textSecondary }]}>You are owed</Text>
                                     <Text style={[styles.summaryAmount, { color: colors.success }]}>{formatCurrency(owed)}</Text>
                                 </LinearGradient>
@@ -110,7 +110,7 @@ export default function DashboardScreen() {
                     {isSkeuomorphic ? (
                         <View style={[styles.skeuoSummaryWrapper, skeuo.outset.light]}>
                             <View style={[styles.skeuoSummaryInner, skeuo.outset.dark]}>
-                                <LinearGradient colors={skeuo.surfaceGradient} style={styles.summaryCard}>
+                                <LinearGradient colors={skeuo.surfaceGradient} style={styles.summaryCardContent}>
                                     <Text style={[styles.summaryLabel, { color: colors.textSecondary }]}>You owe</Text>
                                     <Text style={[styles.summaryAmount, { color: colors.accent }]}>{formatCurrency(owe)}</Text>
                                 </LinearGradient>
@@ -127,49 +127,63 @@ export default function DashboardScreen() {
                 {(owed > 0 || owe > 0) && (
                     <View style={styles.breakdownSection}>
                         {owed > 0 && (
-                            <GlassCard style={[styles.breakdownCard, { backgroundColor: colors.surface, marginBottom: owe > 0 ? 16 : 0 }]}>
-                                <Text style={[styles.breakdownTitle, { color: colors.textSecondary }]}>People who owe you</Text>
-                                {friends
-                                    .filter(f => f.balance > 0)
-                                    .sort((a, b) => b.balance - a.balance)
-                                    .slice(0, 3)
-                                    .map(friend => (
-                                        <TouchableOpacity
-                                            key={friend.id}
-                                            style={styles.breakdownItem}
-                                            onPress={() => router.push({ pathname: '/friend-details/[id]', params: { id: friend.id } })}
-                                            activeOpacity={0.7}
-                                        >
-                                            <Text style={[styles.breakdownName, { color: colors.text }]}>{friend.name}</Text>
-                                            <Text style={[styles.breakdownAmount, { color: colors.success }]}>
-                                                {formatCurrency(friend.balance)}
-                                            </Text>
-                                        </TouchableOpacity>
-                                    ))}
-                            </GlassCard>
+                            <View style={isSkeuomorphic ? [styles.skeuoBreakdownWrapper, skeuo.outset.light, { marginBottom: owe > 0 ? 16 : 0 }] : null}>
+                                <View style={isSkeuomorphic ? [styles.skeuoBreakdownInner, skeuo.outset.dark] : null}>
+                                    <LinearGradient
+                                        colors={isSkeuomorphic ? skeuo.surfaceGradient : ['transparent', 'transparent']}
+                                        style={[styles.breakdownCard, !isSkeuomorphic && { backgroundColor: colors.surface, marginBottom: owe > 0 ? 16 : 0 }]}
+                                    >
+                                        <Text style={[styles.breakdownTitle, { color: colors.textSecondary }]}>People who owe you</Text>
+                                        {friends
+                                            .filter(f => f.balance > 0)
+                                            .sort((a, b) => b.balance - a.balance)
+                                            .slice(0, 3)
+                                            .map(friend => (
+                                                <TouchableOpacity
+                                                    key={friend.id}
+                                                    style={styles.breakdownItem}
+                                                    onPress={() => router.push({ pathname: '/friend-details/[id]', params: { id: friend.id } })}
+                                                    activeOpacity={0.7}
+                                                >
+                                                    <Text style={[styles.breakdownName, { color: colors.text }]}>{friend.name}</Text>
+                                                    <Text style={[styles.breakdownAmount, { color: colors.success }]}>
+                                                        {formatCurrency(friend.balance)}
+                                                    </Text>
+                                                </TouchableOpacity>
+                                            ))}
+                                    </LinearGradient>
+                                </View>
+                            </View>
                         )}
 
                         {owe > 0 && (
-                            <GlassCard style={[styles.breakdownCard, { backgroundColor: colors.surface }]}>
-                                <Text style={[styles.breakdownTitle, { color: colors.textSecondary }]}>People you owe</Text>
-                                {friends
-                                    .filter(f => f.balance < 0)
-                                    .sort((a, b) => Math.abs(a.balance) - Math.abs(b.balance))
-                                    .slice(0, 3)
-                                    .map(friend => (
-                                        <TouchableOpacity
-                                            key={friend.id}
-                                            style={styles.breakdownItem}
-                                            onPress={() => router.push({ pathname: '/friend-details/[id]', params: { id: friend.id } })}
-                                            activeOpacity={0.7}
-                                        >
-                                            <Text style={[styles.breakdownName, { color: colors.text }]}>{friend.name}</Text>
-                                            <Text style={[styles.breakdownAmount, { color: colors.accent }]}>
-                                                {formatCurrency(Math.abs(friend.balance))}
-                                            </Text>
-                                        </TouchableOpacity>
-                                    ))}
-                            </GlassCard>
+                            <View style={isSkeuomorphic ? [styles.skeuoBreakdownWrapper, skeuo.outset.light] : null}>
+                                <View style={isSkeuomorphic ? [styles.skeuoBreakdownInner, skeuo.outset.dark] : null}>
+                                    <LinearGradient
+                                        colors={isSkeuomorphic ? skeuo.surfaceGradient : ['transparent', 'transparent']}
+                                        style={[styles.breakdownCard, !isSkeuomorphic && { backgroundColor: colors.surface }]}
+                                    >
+                                        <Text style={[styles.breakdownTitle, { color: colors.textSecondary }]}>People you owe</Text>
+                                        {friends
+                                            .filter(f => f.balance < 0)
+                                            .sort((a, b) => Math.abs(a.balance) - Math.abs(b.balance))
+                                            .slice(0, 3)
+                                            .map(friend => (
+                                                <TouchableOpacity
+                                                    key={friend.id}
+                                                    style={styles.breakdownItem}
+                                                    onPress={() => router.push({ pathname: '/friend-details/[id]', params: { id: friend.id } })}
+                                                    activeOpacity={0.7}
+                                                >
+                                                    <Text style={[styles.breakdownName, { color: colors.text }]}>{friend.name}</Text>
+                                                    <Text style={[styles.breakdownAmount, { color: colors.accent }]}>
+                                                        {formatCurrency(Math.abs(friend.balance))}
+                                                    </Text>
+                                                </TouchableOpacity>
+                                            ))}
+                                    </LinearGradient>
+                                </View>
+                            </View>
                         )}
                     </View>
                 )}
@@ -305,7 +319,10 @@ const styles = StyleSheet.create({
     },
     summaryCard: {
         width: '48%',
+    },
+    summaryCardContent: {
         padding: 16,
+        borderRadius: 20,
     },
     iconContainer: {
         marginBottom: 12,
@@ -439,6 +456,12 @@ const styles = StyleSheet.create({
         borderRadius: 16,
     },
     skeuoActivityInner: {
+        borderRadius: 16,
+    },
+    skeuoBreakdownWrapper: {
+        borderRadius: 16,
+    },
+    skeuoBreakdownInner: {
         borderRadius: 16,
     }
 });
