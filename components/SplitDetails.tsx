@@ -233,35 +233,35 @@ const styles = StyleSheet.create({
         fontSize: 14,
     },
     skeuoDetailsWrapper: {
-        borderRadius: 16,
+        borderRadius: 24,
     },
     skeuoDetailsInner: {
-        borderRadius: 16,
+        borderRadius: 24,
     },
     skeuoChipInner: {
         flexDirection: 'row',
         alignItems: 'center',
         paddingHorizontal: 16,
         paddingVertical: 8,
-        borderRadius: 20,
+        borderRadius: 24,
     },
     skeuoToggleContainer: {
-        borderRadius: 8,
+        borderRadius: 24,
         padding: 4,
         marginBottom: 16,
     },
     skeuoToggleInner: {
         flexDirection: 'row',
         flex: 1,
-        borderRadius: 8,
+        borderRadius: 24,
     },
     skeuoActiveToggle: {
-        borderRadius: 6,
+        borderRadius: 20,
         flex: 1,
     },
     skeuoActiveToggleInner: {
         alignItems: 'center',
         paddingVertical: 8,
-        borderRadius: 6,
+        borderRadius: 20,
     }
 });

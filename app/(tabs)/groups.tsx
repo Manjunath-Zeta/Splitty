@@ -318,20 +318,20 @@ const styles = StyleSheet.create({
         marginBottom: 12,
     },
     skeuoGroupOuter: {
-        borderRadius: 16,
+        borderRadius: 24,
     },
     skeuoGroupInner: {
-        borderRadius: 16,
+        borderRadius: 24,
     },
     skeuoAddWrapper: {
         marginBottom: 24,
     },
     skeuoAddInner: {
-        borderRadius: 16,
+        borderRadius: 24,
     },
     skeuoChipInner: {
         paddingHorizontal: 12,
         paddingVertical: 6,
-        borderRadius: 20,
+        borderRadius: 24,
     }
 });

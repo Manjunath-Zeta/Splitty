@@ -46,7 +46,8 @@ export const VibrantButton: React.FC<VibrantButtonProps> = ({
                 style={({ pressed }) => [
                     styles.skeuoWrapper,
                     !pressed && !isOutline && skeuo.outset.light,
-                    isOutline && skeuo.inset.dark,
+                    isOutline && !pressed && skeuo.inset.dark,
+                    pressed && skeuo.inset.light,
                     style,
                     disabled && styles.disabled
                 ]}
@@ -55,7 +56,8 @@ export const VibrantButton: React.FC<VibrantButtonProps> = ({
                     <View style={[
                         styles.skeuoOuterDark,
                         !pressed && !isOutline && skeuo.outset.dark,
-                        isOutline && skeuo.inset.light,
+                        isOutline && !pressed && skeuo.inset.light,
+                        pressed && skeuo.inset.dark,
                         pressed && styles.skeuoPressed
                     ]}>
                         <LinearGradient
@@ -127,19 +129,19 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
     },
     skeuoWrapper: {
-        borderRadius: 20,
+        borderRadius: 24,
     },
     skeuoOuterDark: {
-        borderRadius: 20,
+        borderRadius: 24,
         backgroundColor: 'transparent',
     },
     skeuoGradient: {
-        borderRadius: 20,
+        borderRadius: 24,
         paddingVertical: 16,
         paddingHorizontal: 32,
     },
     skeuoPressed: {
-        transform: [{ scale: 0.98 }],
+        transform: [{ scale: 0.96 }],
     },
     content: {
         flexDirection: 'row',

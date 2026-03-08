@@ -340,31 +340,31 @@ const styles = StyleSheet.create({
     totalAmount: { fontSize: 28, fontWeight: '800' },
     skeuoAutoFillWrapper: {
         marginBottom: 30,
-        borderRadius: 20,
+        borderRadius: 24,
     },
     skeuoAutoFillInner: {
-        borderRadius: 20,
+        borderRadius: 24,
     },
     skeuoCategoryWrapper: {
         marginBottom: 16, // Reduced slightly to account for shadows
-        borderRadius: 16,
+        borderRadius: 24,
     },
     skeuoCategoryInner: {
-        borderRadius: 16,
+        borderRadius: 24,
     },
     skeuoCategoryContent: {
         padding: 16,
-        borderRadius: 16,
+        borderRadius: 24,
     },
     skeuoInputWrapper: {
-        borderRadius: 12,
+        borderRadius: 24,
     },
     skeuoInputInner: {
         flexDirection: 'row',
         alignItems: 'center',
         paddingHorizontal: 16,
         height: 50,
-        borderRadius: 12,
+        borderRadius: 24,
     },
     skeuoTotalBarWrapper: {
         position: 'absolute',

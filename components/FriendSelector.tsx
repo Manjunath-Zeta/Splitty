@@ -376,23 +376,23 @@ const styles = StyleSheet.create({
     },
     skeuoTriggerWrapper: {
         marginBottom: 16,
-        borderRadius: 12,
+        borderRadius: 24,
     },
     skeuoTriggerInner: {
-        borderRadius: 12,
+        borderRadius: 24,
     },
     skeuoSearchWrapper: {
         marginHorizontal: 16,
         marginTop: 16,
         marginBottom: 8,
-        borderRadius: 12,
+        borderRadius: 20,
     },
     skeuoSearchInner: {
         flexDirection: 'row',
         alignItems: 'center',
         paddingHorizontal: 14,
         paddingVertical: 12,
-        borderRadius: 12,
+        borderRadius: 20,
     },
     skeuoListItem: {
         borderWidth: 0,
@@ -402,7 +402,7 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         paddingVertical: 12,
         paddingHorizontal: 16,
-        borderRadius: 12,
+        borderRadius: 20,
         gap: 12,
         flex: 1,
     }

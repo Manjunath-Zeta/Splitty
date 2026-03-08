@@ -268,16 +268,35 @@ export default function DashboardScreen() {
 
             </ScrollView>
 
-            <TouchableOpacity
-                style={[styles.fab, { backgroundColor: colors.primary }]}
-                activeOpacity={0.8}
-                onPress={() => {
-                    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                    router.push('/add-expense');
-                }}
-            >
-                <Plus size={32} color="white" />
-            </TouchableOpacity>
+            {isSkeuomorphic ? (
+                <View style={styles.skeuoFABContainer}>
+                    <TouchableOpacity
+                        style={[styles.skeuoFABWrapper, skeuo.outset.light]}
+                        onPress={() => {
+                            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                            router.push('/add-expense');
+                        }}
+                        activeOpacity={0.8}
+                    >
+                        <View style={[styles.skeuoFABInner, skeuo.outset.dark]}>
+                            <LinearGradient colors={skeuo.surfaceGradient} style={styles.skeuoFABContent}>
+                                <Plus size={32} color={colors.primary} />
+                            </LinearGradient>
+                        </View>
+                    </TouchableOpacity>
+                </View>
+            ) : (
+                <TouchableOpacity
+                    style={[styles.fab, { backgroundColor: colors.primary }]}
+                    activeOpacity={0.8}
+                    onPress={() => {
+                        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                        router.push('/add-expense');
+                    }}
+                >
+                    <Plus size={32} color="white" />
+                </TouchableOpacity>
+            )}
         </SafeAreaView >
     );
 }
@@ -322,7 +341,7 @@ const styles = StyleSheet.create({
     },
     summaryCardContent: {
         padding: 16,
-        borderRadius: 20,
+        borderRadius: 24,
     },
     iconContainer: {
         marginBottom: 12,
@@ -444,24 +463,42 @@ const styles = StyleSheet.create({
     },
     skeuoSummaryWrapper: {
         width: '48%',
-        borderRadius: 20,
+        borderRadius: 24,
     },
     skeuoSummaryInner: {
-        borderRadius: 20,
+        borderRadius: 24,
     },
     skeuoActivityWrapper: {
         marginBottom: 12,
     },
     skeuoActivityOuter: {
-        borderRadius: 16,
+        borderRadius: 20,
     },
     skeuoActivityInner: {
-        borderRadius: 16,
+        borderRadius: 20,
     },
     skeuoBreakdownWrapper: {
-        borderRadius: 16,
+        borderRadius: 20,
     },
     skeuoBreakdownInner: {
-        borderRadius: 16,
+        borderRadius: 20,
+    },
+    skeuoFABContainer: {
+        position: 'absolute',
+        bottom: 24,
+        right: 24,
+    },
+    skeuoFABWrapper: {
+        borderRadius: 28,
+    },
+    skeuoFABInner: {
+        borderRadius: 28,
+    },
+    skeuoFABContent: {
+        width: 56,
+        height: 56,
+        borderRadius: 28,
+        alignItems: 'center',
+        justifyContent: 'center',
     }
 });

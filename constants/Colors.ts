@@ -147,42 +147,42 @@ export const GlassTheme = {
  */
 export const Skeuomorphic = {
   light: {
-    background: '#EFF3F9',
-    surface: '#F1F5F9',
+    background: '#E9EEF5',
+    surface: '#E9EEF5',
     // Protrusion: Light shadow top-left, Dark shadow bottom-right
     outset: {
       light: {
-        shadowColor: '#FFFFFF',
+        shadowColor: 'rgba(255, 255, 255, 0.9)',
         shadowOffset: { width: -6, height: -6 },
         shadowOpacity: 1,
-        shadowRadius: 10,
-        elevation: 10,
+        shadowRadius: 12,
+        elevation: 12,
       },
       dark: {
-        shadowColor: '#D1D9E6',
+        shadowColor: 'rgba(0, 0, 0, 0.08)',
         shadowOffset: { width: 6, height: 6 },
-        shadowOpacity: 0.8,
-        shadowRadius: 10,
+        shadowOpacity: 1,
+        shadowRadius: 12,
       }
     },
     // Recession: Dark shadow top-left, Light shadow bottom-right (simulated inner shadow)
     inset: {
       dark: {
-        shadowColor: '#D1D9E6',
-        shadowOffset: { width: -2, height: -2 },
-        shadowOpacity: 0.5,
-        shadowRadius: 4,
+        shadowColor: 'rgba(0, 0, 0, 0.08)',
+        shadowOffset: { width: -3, height: -3 },
+        shadowOpacity: 1,
+        shadowRadius: 6,
       },
       light: {
-        shadowColor: '#FFFFFF',
-        shadowOffset: { width: 2, height: 2 },
+        shadowColor: 'rgba(255, 255, 255, 0.9)',
+        shadowOffset: { width: 3, height: 3 },
         shadowOpacity: 1,
-        shadowRadius: 4,
+        shadowRadius: 6,
       }
     },
-    bgGradient: ['#E6EBF5', '#F1F5F9'] as const,
-    surfaceGradient: ['#F1F5F9', '#E6EBF5'] as const,
-    bezel: '#E2E8F0',
+    bgGradient: ['#E1E6F0', '#E9EEF5'] as const,
+    surfaceGradient: ['#E9EEF5', '#E1E6F0'] as const,
+    bezel: '#D1D9E6',
   },
   dark: {
     background: '#1A1D23',
@@ -192,14 +192,14 @@ export const Skeuomorphic = {
         shadowColor: '#2A303C',
         shadowOffset: { width: -6, height: -6 },
         shadowOpacity: 0.5,
-        shadowRadius: 10,
-        elevation: 10,
+        shadowRadius: 12,
+        elevation: 12,
       },
       dark: {
         shadowColor: '#0A0C10',
         shadowOffset: { width: 6, height: 6 },
         shadowOpacity: 1,
-        shadowRadius: 10,
+        shadowRadius: 12,
       }
     },
     inset: {

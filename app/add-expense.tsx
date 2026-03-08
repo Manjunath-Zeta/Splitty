@@ -576,20 +576,20 @@ const styles = StyleSheet.create({
         marginBottom: 16,
     },
     skeuoCardInner: {
-        borderRadius: 16,
+        borderRadius: 24,
     },
     skeuoTabContainer: {
-        borderRadius: 12,
+        borderRadius: 24,
         padding: 4,
         marginBottom: 12,
     },
     skeuoTabInner: {
         flexDirection: 'row',
         flex: 1,
-        borderRadius: 12,
+        borderRadius: 24,
     },
     skeuoActiveTab: {
-        borderRadius: 8,
+        borderRadius: 20,
     },
     skeuoActiveTabInner: {
         flexDirection: 'row',
@@ -597,7 +597,7 @@ const styles = StyleSheet.create({
         justifyContent: 'center',
         paddingVertical: 10,
         gap: 6,
-        borderRadius: 8,
+        borderRadius: 20,
         width: '100%',
     },
     skeuoChipInner: {
@@ -605,6 +605,6 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         paddingHorizontal: 12,
         paddingVertical: 6,
-        borderRadius: 18,
+        borderRadius: 24,
     }
 });

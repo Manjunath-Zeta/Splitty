@@ -356,26 +356,26 @@ const styles = StyleSheet.create({
         borderRadius: 8,
     },
     skeuoCardWrapper: {
-        borderRadius: 32,
+        borderRadius: 28,
     },
     skeuoCardInner: {
-        borderRadius: 32,
+        borderRadius: 28,
     },
     skeuoCardContent: {
         padding: 24,
-        borderRadius: 32,
+        borderRadius: 28,
     },
     skeuoToggleInner: {
         flex: 1,
         flexDirection: 'row',
         padding: 4,
-        borderRadius: 12,
+        borderRadius: 24,
     },
     skeuoActiveBtn: {
         width: '100%',
         height: '100%',
         alignItems: 'center',
         justifyContent: 'center',
-        borderRadius: 8,
+        borderRadius: 20,
     }
 });

@@ -1,12 +1,13 @@
-
 import React, { useState } from 'react';
 import { View, Text, StyleSheet, ScrollView, Switch, TouchableOpacity, Alert, SafeAreaView, Image, Modal } from 'react-native';
-import { AccentPalettes, AccentName, AppearanceMode } from '../../constants/Colors';
+import { AccentPalettes, AccentName, AppearanceMode, Skeuomorphic } from '../../constants/Colors';
+import { LinearGradient } from 'expo-linear-gradient';
 import { supabase } from '../../lib/supabase';
 import { GlassCard } from '../../components/GlassCard';
 import { useSplittyStore } from '../../store/useSplittyStore';
 import { User, Bell, Trash2, LogOut, ChevronRight, CreditCard, DollarSign, Activity, Palette, X, Tag } from 'lucide-react-native';
 import { useRouter } from 'expo-router';
+
 export default function SettingsScreen() {
     const {
         clearData,
@@ -22,11 +23,15 @@ export default function SettingsScreen() {
         setNotificationsEnabled,
         isRolloverEnabled,
         setRolloverEnabled,
-        signOut
+        signOut,
+        designPreference,
+        setDesignPreference
     } = useSplittyStore();
     const router = useRouter();
 
     const isDark = appearance === 'dark';
+    const isSkeuomorphic = designPreference === 'skeuomorphic';
+    const skeuo = isDark ? Skeuomorphic.dark : Skeuomorphic.light;
     const [themeModalVisible, setThemeModalVisible] = useState(false);
 
     const accentOptions: { name: AccentName; label: string; preview: string }[] = [
@@ -120,37 +125,87 @@ export default function SettingsScreen() {
         </TouchableOpacity>
     );
 
+    const renderCard = (title: string, children: React.ReactNode) => {
+        if (isSkeuomorphic) {
+            return (
+                <View style={styles.section}>
+                    <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>{title}</Text>
+                    <View style={[styles.skeuoCardWrapper, skeuo.outset.light]}>
+                        <View style={[styles.skeuoCardInner, skeuo.outset.dark]}>
+                            <View style={[styles.settingsCard, { backgroundColor: skeuo.background }]}>
+                                {children}
+                            </View>
+                        </View>
+                    </View>
+                </View>
+            );
+        }
+        return (
+            <View style={styles.section}>
+                <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>{title}</Text>
+                <GlassCard style={[styles.settingsCard, { backgroundColor: colors.surface }]}>
+                    {children}
+                </GlassCard>
+            </View>
+        );
+    };
+
     return (
-        <SafeAreaView style={[styles.safeArea, { backgroundColor: colors.background }]}>
+        <SafeAreaView style={[styles.safeArea, { backgroundColor: isSkeuomorphic ? skeuo.background : colors.background }]}>
             <ScrollView contentContainerStyle={styles.container}>
                 <Text style={[styles.headerTitle, { color: colors.text }]}>Settings</Text>
 
                 <View style={styles.section}>
                     <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>Profile</Text>
-                    <GlassCard style={[styles.profileCard, { backgroundColor: colors.surface }]}>
-                        <View style={[styles.avatar, { backgroundColor: colors.primary + '20', overflow: 'hidden' }]}>
-                            {userProfile.avatar ? (
-                                <Image source={{ uri: userProfile.avatar }} style={{ width: '100%', height: '100%' }} />
-                            ) : (
-                                <User size={32} color={colors.primary} />
-                            )}
+                    {isSkeuomorphic ? (
+                        <View style={[styles.skeuoCardWrapper, skeuo.outset.light]}>
+                            <View style={[styles.skeuoCardInner, skeuo.outset.dark]}>
+                                <LinearGradient colors={skeuo.surfaceGradient} style={styles.profileCard}>
+                                    <View style={[styles.avatar, { backgroundColor: colors.primary + '20' }]}>
+                                        {userProfile.avatar ? (
+                                            <Image source={{ uri: userProfile.avatar }} style={{ width: '100%', height: '100%' }} />
+                                        ) : (
+                                            <User size={32} color={colors.primary} />
+                                        )}
+                                    </View>
+                                    <View style={styles.profileInfo}>
+                                        <Text style={[styles.profileName, { color: colors.text }]}>{userProfile.name}</Text>
+                                        <Text style={[styles.profileEmail, { color: colors.textSecondary }]}>{userProfile.email}</Text>
+                                    </View>
+                                    <TouchableOpacity
+                                        style={[styles.editButton, { borderColor: colors.border }]}
+                                        onPress={() => router.push('/profile-edit')}
+                                    >
+                                        <Text style={[styles.editButtonText, { color: colors.text }]}>Edit</Text>
+                                    </TouchableOpacity>
+                                </LinearGradient>
+                            </View>
                         </View>
-                        <View style={styles.profileInfo}>
-                            <Text style={[styles.profileName, { color: colors.text }]}>{userProfile.name}</Text>
-                            <Text style={[styles.profileEmail, { color: colors.textSecondary }]}>{userProfile.email}</Text>
-                        </View>
-                        <TouchableOpacity
-                            style={[styles.editButton, { backgroundColor: colors.surface, borderColor: colors.border }]}
-                            onPress={() => router.push('/profile-edit')}
-                        >
-                            <Text style={[styles.editButtonText, { color: colors.text }]}>Edit</Text>
-                        </TouchableOpacity>
-                    </GlassCard>
+                    ) : (
+                        <GlassCard style={[styles.profileCard, { backgroundColor: colors.surface }]}>
+                            <View style={[styles.avatar, { backgroundColor: colors.primary + '20', overflow: 'hidden' }]}>
+                                {userProfile.avatar ? (
+                                    <Image source={{ uri: userProfile.avatar }} style={{ width: '100%', height: '100%' }} />
+                                ) : (
+                                    <User size={32} color={colors.primary} />
+                                )}
+                            </View>
+                            <View style={styles.profileInfo}>
+                                <Text style={[styles.profileName, { color: colors.text }]}>{userProfile.name}</Text>
+                                <Text style={[styles.profileEmail, { color: colors.textSecondary }]}>{userProfile.email}</Text>
+                            </View>
+                            <TouchableOpacity
+                                style={[styles.editButton, { backgroundColor: colors.surface, borderColor: colors.border }]}
+                                onPress={() => router.push('/profile-edit')}
+                            >
+                                <Text style={[styles.editButtonText, { color: colors.text }]}>Edit</Text>
+                            </TouchableOpacity>
+                        </GlassCard>
+                    )}
                 </View>
 
-                <View style={styles.section}>
-                    <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>Appearance</Text>
-                    <GlassCard style={[styles.settingsCard, { backgroundColor: colors.surface }]}>
+                {renderCard("Appearance", (
+                    <>
                         {renderSettingItem(
                             <View style={{ width: 20, height: 20, borderRadius: 10, backgroundColor: colors.text }} />,
                             "Dark Mode",
@@ -167,7 +222,7 @@ export default function SettingsScreen() {
                             "UI Design",
                             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
                                 <Text style={{ color: colors.textSecondary, fontSize: 16 }}>
-                                    {useSplittyStore.getState().designPreference === 'skeuomorphic' ? 'Skeuomorphic' : 'Existing'}
+                                    {designPreference === 'skeuomorphic' ? 'Skeuomorphic' : 'Existing'}
                                 </Text>
                                 <ChevronRight size={20} color={colors.textSecondary} />
                             </View>,
@@ -176,34 +231,30 @@ export default function SettingsScreen() {
                                     "UI Design",
                                     "Choose your preferred interface style",
                                     [
-                                        { text: "Existing (Default)", onPress: () => useSplittyStore.getState().setDesignPreference('existing') },
-                                        { text: "Skeuomorphic", onPress: () => useSplittyStore.getState().setDesignPreference('skeuomorphic') },
+                                        { text: "Existing (Default)", onPress: () => setDesignPreference('existing') },
+                                        { text: "Skeuomorphic", onPress: () => setDesignPreference('skeuomorphic') },
                                         { text: "Cancel", style: "cancel" }
                                     ]
                                 );
                             }
                         )}
-                    </GlassCard>
-                </View>
+                    </>
+                ))}
 
-                <View style={styles.section}>
-                    <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>Accent Theme</Text>
-                    <GlassCard style={[styles.settingsCard, { backgroundColor: colors.surface }]}>
-                        {renderSettingItem(
-                            <Palette size={20} color={colors.textSecondary} />,
-                            "Choose Theme",
-                            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-                                <View style={{ width: 16, height: 16, borderRadius: 8, backgroundColor: AccentPalettes[accent].primary }} />
-                                <ChevronRight size={20} color={colors.textSecondary} />
-                            </View>,
-                            () => setThemeModalVisible(true)
-                        )}
-                    </GlassCard>
-                </View>
+                {renderCard("Accent Theme", (
+                    renderSettingItem(
+                        <Palette size={20} color={colors.textSecondary} />,
+                        "Choose Theme",
+                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                            <View style={{ width: 16, height: 16, borderRadius: 8, backgroundColor: AccentPalettes[accent].primary }} />
+                            <ChevronRight size={20} color={colors.textSecondary} />
+                        </View>,
+                        () => setThemeModalVisible(true)
+                    )
+                ))}
 
-                <View style={styles.section}>
-                    <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>General</Text>
-                    <GlassCard style={[styles.settingsCard, { backgroundColor: colors.surface }]}>
+                {renderCard("General", (
+                    <>
                         {renderSettingItem(
                             <Activity size={20} color={colors.textSecondary} />,
                             "Activity Log",
@@ -248,44 +299,35 @@ export default function SettingsScreen() {
                                 thumbColor={'white'}
                             />
                         )}
-                    </GlassCard>
-                </View>
+                    </>
+                ))}
 
-                <View style={styles.section}>
-                    <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>Actions</Text>
-                    <GlassCard style={[styles.settingsCard, { backgroundColor: colors.surface }]}>
-                        {renderSettingItem(
-                            <CreditCard size={20} color={colors.textSecondary} />,
-                            "Settle Up",
-                            <ChevronRight size={20} color={colors.textSecondary} />,
-                            handleSettleUp
-                        )}
-                    </GlassCard>
-                </View>
+                {renderCard("Actions", (
+                    renderSettingItem(
+                        <CreditCard size={20} color={colors.textSecondary} />,
+                        "Settle Up",
+                        <ChevronRight size={20} color={colors.textSecondary} />,
+                        handleSettleUp
+                    )
+                ))}
 
-                <View style={styles.section}>
-                    <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>Danger Zone</Text>
-                    <GlassCard style={[styles.settingsCard, { backgroundColor: colors.surface }]}>
-                        {renderSettingItem(
-                            <Trash2 size={20} color={colors.error} />,
-                            "Delete Account",
-                            <ChevronRight size={20} color={colors.textSecondary} />,
-                            handleClearData
-                        )}
-                    </GlassCard>
-                </View>
+                {renderCard("Danger Zone", (
+                    renderSettingItem(
+                        <Trash2 size={20} color={colors.error} />,
+                        "Delete Account",
+                        <ChevronRight size={20} color={colors.textSecondary} />,
+                        handleClearData
+                    )
+                ))}
 
-                <View style={styles.section}>
-                    <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>Account</Text>
-                    <GlassCard style={[styles.settingsCard, { backgroundColor: colors.surface }]}>
-                        {renderSettingItem(
-                            <LogOut size={20} color={colors.error} />,
-                            "Sign Out",
-                            <ChevronRight size={20} color={colors.textSecondary} />,
-                            handleSignOut
-                        )}
-                    </GlassCard>
-                </View>
+                {renderCard("Account", (
+                    renderSettingItem(
+                        <LogOut size={20} color={colors.error} />,
+                        "Sign Out",
+                        <ChevronRight size={20} color={colors.textSecondary} />,
+                        handleSignOut
+                    )
+                ))}
 
                 <View style={styles.footer}>
                     <Text style={[styles.versionText, { color: colors.textSecondary }]}>Splitty v1.0.0</Text>
@@ -361,14 +403,16 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         alignItems: 'center',
         padding: 16,
+        borderRadius: 24,
     },
     avatar: {
         width: 60,
         height: 60,
-        borderRadius: 30,
+        borderRadius: 24,
         alignItems: 'center',
         justifyContent: 'center',
         marginRight: 16,
+        overflow: 'hidden',
     },
     profileInfo: {
         flex: 1,
@@ -383,7 +427,7 @@ const styles = StyleSheet.create({
     editButton: {
         paddingHorizontal: 12,
         paddingVertical: 6,
-        borderRadius: 16,
+        borderRadius: 24,
         borderWidth: 1,
     },
     editButtonText: {
@@ -393,6 +437,7 @@ const styles = StyleSheet.create({
     settingsCard: {
         padding: 0,
         overflow: 'hidden',
+        borderRadius: 24,
     },
     settingItem: {
         flexDirection: 'row',
@@ -458,7 +503,7 @@ const styles = StyleSheet.create({
     themeOptionModal: {
         width: '30%',
         aspectRatio: 1,
-        borderRadius: 12,
+        borderRadius: 24,
         borderWidth: 2,
         padding: 8,
         alignItems: 'center',
@@ -474,5 +519,12 @@ const styles = StyleSheet.create({
     themeLabelModal: {
         fontSize: 12,
         fontWeight: '600',
+    },
+    skeuoCardWrapper: {
+        borderRadius: 24,
+        marginBottom: 8,
+    },
+    skeuoCardInner: {
+        borderRadius: 24,
     },
 });

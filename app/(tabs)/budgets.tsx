@@ -548,25 +548,25 @@ const styles = StyleSheet.create({
         borderRadius: 24,
     },
     skeuoSubPill: {
-        borderRadius: 12,
+        borderRadius: 24,
         backgroundColor: 'transparent',
         alignSelf: 'flex-start',
         minWidth: 120
     },
     skeuoSubPillInner: {
-        borderRadius: 12,
+        borderRadius: 24,
         paddingVertical: 12,
         paddingHorizontal: 16,
     },
     skeuoTileWrapper: {
         width: 108,
-        borderRadius: 18,
+        borderRadius: 24,
     },
     skeuoTileInner: {
-        borderRadius: 18,
+        borderRadius: 24,
     },
     skeuoTileGradient: {
-        borderRadius: 18,
+        borderRadius: 24,
         padding: 14,
         alignItems: 'center',
     },

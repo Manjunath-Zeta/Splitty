@@ -322,15 +322,15 @@ const styles = StyleSheet.create({
         marginBottom: 24,
     },
     skeuoAddInner: {
-        borderRadius: 16,
+        borderRadius: 24,
     },
     skeuoCardWrapper: {
         marginBottom: 12,
     },
     skeuoCardOuter: {
-        borderRadius: 16,
+        borderRadius: 24,
     },
     skeuoCardInner: {
-        borderRadius: 16,
+        borderRadius: 24,
     }
 });
