@@ -136,11 +136,11 @@ export default function ManageCategoriesScreen() {
                                     </View>
                                     <View>
                                         <Text style={[styles.categoryLabel, { color: colors.text }]}>{cat.label}</Text>
-                                        {cat.defaultBudget && cat.defaultBudget > 0 && (
+                                        {cat.defaultBudget && cat.defaultBudget > 0 ? (
                                             <Text style={[styles.categorySubLabel, { color: colors.textSecondary }]}>
-                                                Default Budget: {currency}{cat.defaultBudget}
+                                                {`Default Budget: ${currency}${cat.defaultBudget}`}
                                             </Text>
-                                        )}
+                                        ) : null}
                                     </View>
                                 </View>
 
