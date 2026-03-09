@@ -222,7 +222,7 @@ export default function SettingsScreen() {
                             "UI Design",
                             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
                                 <Text style={{ color: colors.textSecondary, fontSize: 16 }}>
-                                    {designPreference === 'skeuomorphic' ? 'Skeuomorphic' : 'Existing'}
+                                    {`${designPreference === 'skeuomorphic' ? 'Skeuomorphic' : 'Existing'}`}
                                 </Text>
                                 <ChevronRight size={20} color={colors.textSecondary} />
                             </View>,

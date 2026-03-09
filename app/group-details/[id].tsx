@@ -175,7 +175,7 @@ export default function GroupDetailsScreen() {
                                 </View>
                                 <Text style={[styles.groupName, { color: colors.text }]}>{group.name}</Text>
                                 <Text style={[styles.memberCount, { color: colors.textSecondary }]}>
-                                    {nonSelfMembers.length + 1} members (inc. you)
+                                    {`${nonSelfMembers.length + 1} members (inc. you)`}
                                 </Text>
                                 <View style={[styles.balanceContainer, { borderTopColor: colors.border }]}>
                                     <Text style={[styles.balanceLabel, { color: colors.textSecondary }]}>Group Total</Text>
@@ -465,7 +465,7 @@ export default function GroupDetailsScreen() {
                                             <View style={{ flex: 1, marginLeft: 12 }}>
                                                 <Text style={[styles.activityDesc, { color: colors.text }]}>{expense.description}</Text>
                                                 <Text style={[styles.activitySub, { color: colors.textSecondary }]}>
-                                                    {getMemberName(expense.payerId)} paid • {new Date(expense.date).toLocaleDateString()}
+                                                    {`${getMemberName(expense.payerId)} paid • ${new Date(expense.date).toLocaleDateString()}`}
                                                 </Text>
                                             </View>
                                             <View style={styles.activityRight}>
@@ -497,7 +497,7 @@ export default function GroupDetailsScreen() {
                                     <View style={{ flex: 1, marginLeft: 12 }}>
                                         <Text style={[styles.activityDesc, { color: colors.text }]}>{expense.description}</Text>
                                         <Text style={[styles.activitySub, { color: colors.textSecondary }]}>
-                                            {getMemberName(expense.payerId)} paid • {new Date(expense.date).toLocaleDateString()}
+                                            {`${getMemberName(expense.payerId)} paid • ${new Date(expense.date).toLocaleDateString()}`}
                                         </Text>
                                     </View>
                                     <View style={styles.activityRight}>
@@ -529,7 +529,7 @@ export default function GroupDetailsScreen() {
                 leftIcon={<Plus size={32} color="#FFF" />}
                 variant="primary"
             />
-        </SafeAreaView >
+        </SafeAreaView>
     );
 }
 
