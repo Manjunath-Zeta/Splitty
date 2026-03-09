@@ -276,7 +276,7 @@ export const useSplittyStore = create<SplittyState>()(
                 };
 
                 // Parallelize fetching for better performance
-                const [profileRes, friendsRes, expensesRes, groupsRes, activitiesRes, categoriesRes] = await Promise.all([
+                const [profileRes, friendsRes, expensesRes, groupsRes, activitiesRes, categoriesRes, recurringRes, budgetsRes] = await Promise.all([
                     supabase.from('profiles').select('*').eq('id', userId).single(),
                     supabase.from('friends').select('*').order('name'),
                     // Fetch expenses AND their participants in one go
@@ -302,7 +302,11 @@ export const useSplittyStore = create<SplittyState>()(
                     // Fetch Activity Logs
                     supabase.from('activity_logs').select('*').order('created_at', { ascending: false }).limit(50),
                     // Fetch User Categories
-                    supabase.from('categories').select('*').order('created_at', { ascending: true })
+                    supabase.from('categories').select('*').order('created_at', { ascending: true }),
+                    // Fetch Recurring Expenses
+                    supabase.from('recurring_expenses').select('*').eq('user_id', userId).order('created_at', { ascending: false }),
+                    // Fetch Monthly Budgets
+                    supabase.from('monthly_budgets').select('*').eq('user_id', userId)
                 ]);
 
                 // 1. Handle Profile & Preferences
@@ -311,6 +315,8 @@ export const useSplittyStore = create<SplittyState>()(
                     is_rollover_enabled: false,
                     currency: 'USD',
                     design_preference: 'existing',
+                    category_order: [] as string[],
+                    hidden_categories: [] as string[],
                 };
 
                 if (!profileError && profileData) {
@@ -330,6 +336,8 @@ export const useSplittyStore = create<SplittyState>()(
                 let loadedGroups: Group[] = [];
                 let loadedExpenses: Expense[] = [];
                 let loadedCategories: Category[] = [];
+                let loadedRecurring: RecurringExpense[] = [];
+                let loadedBudgets: MonthlyBudget[] = [];
 
                 // 2. Handle Categories
                 const { data: categoriesData, error: categoriesError } = categoriesRes;
@@ -578,7 +586,40 @@ export const useSplittyStore = create<SplittyState>()(
                     return cat;
                 });
 
-                // 6. Set Final State
+                // 5. Handle Recurring Expenses
+                const { data: recurringData, error: recurringError } = recurringRes;
+                if (!recurringError && recurringData) {
+                    loadedRecurring = recurringData.map((r: any) => ({
+                        id: r.id,
+                        description: r.description,
+                        amount: Number(r.amount),
+                        payerId: r.payer_id === userId ? 'self' : r.payer_id,
+                        groupId: r.group_id,
+                        splitWith: r.split_with || [],
+                        splitType: r.split_type,
+                        splitDetails: r.split_details || {},
+                        category: r.category,
+                        frequency: r.frequency,
+                        nextDueDate: r.next_due_date,
+                        active: r.active
+                    }));
+                }
+
+                // 6. Handle Monthly Budgets
+                const { data: budgetsData, error: budgetsError } = budgetsRes;
+                if (!budgetsError && budgetsData) {
+                    const budgetMap: Record<string, Record<string, number>> = {};
+                    budgetsData.forEach((b: any) => {
+                        if (!budgetMap[b.month]) budgetMap[b.month] = {};
+                        budgetMap[b.month][b.category_id] = Number(b.amount);
+                    });
+                    loadedBudgets = Object.entries(budgetMap).map(([month, categories]) => ({
+                        month,
+                        categories
+                    }));
+                }
+
+                // 7. Set Final State
                 // Merge strategy: preserve any local friends that Supabase didn't return
                 // (e.g. whose insert failed silently) so they aren't wiped on every sync.
                 const supabaseFriendIds = new Set(loadedFriends.map(f => f.id));
@@ -592,12 +633,16 @@ export const useSplittyStore = create<SplittyState>()(
                     friends: finalFriends,
                     groups: finalGroups,
                     expenses: loadedExpenses,
+                    recurringExpenses: loadedRecurring,
+                    budgets: loadedBudgets,
                     activities: (activitiesRes as any)?.data || [],
                     unknownFriendNames: newUnknownFriendNames,
                     isRolloverEnabled: preferences.is_rollover_enabled,
                     currency: preferences.currency,
                     designPreference: preferences.design_preference as any,
-                    categories: loadedCategories
+                    categories: loadedCategories,
+                    categoryOrder: preferences.category_order || [],
+                    hiddenBudgetCategories: preferences.hidden_categories || []
                 };
 
                 if (categoriesModified) {
@@ -620,14 +665,45 @@ export const useSplittyStore = create<SplittyState>()(
             categoryOrder: [],
             hiddenBudgetCategories: [],
             unknownFriendNames: {},
-            setCategoryOrder: (order) => set({ categoryOrder: order }),
+            setCategoryOrder: (order) => {
+                set({ categoryOrder: order });
+                const { session, isRolloverEnabled, currency, designPreference, hiddenBudgetCategories } = get();
+                if (session?.user) {
+                    supabase.from('profiles').update({
+                        preferences: {
+                            is_rollover_enabled: isRolloverEnabled,
+                            currency,
+                            design_preference: designPreference,
+                            category_order: order,
+                            hidden_categories: hiddenBudgetCategories
+                        }
+                    }).eq('id', session.user.id).then(({ error }) => {
+                        if (error) console.error("Error updating category order preference:", error.message);
+                    });
+                }
+            },
             toggleCategoryBudgetVisibility: (categoryId) => set((state) => {
                 const isHidden = state.hiddenBudgetCategories.includes(categoryId);
-                return {
-                    hiddenBudgetCategories: isHidden
-                        ? state.hiddenBudgetCategories.filter(id => id !== categoryId)
-                        : [...state.hiddenBudgetCategories, categoryId]
-                };
+                const nextHidden = isHidden
+                    ? state.hiddenBudgetCategories.filter(id => id !== categoryId)
+                    : [...state.hiddenBudgetCategories, categoryId];
+
+                const { session, isRolloverEnabled, currency, designPreference, categoryOrder } = get();
+                if (session?.user) {
+                    supabase.from('profiles').update({
+                        preferences: {
+                            is_rollover_enabled: isRolloverEnabled,
+                            currency,
+                            design_preference: designPreference,
+                            category_order: categoryOrder,
+                            hidden_categories: nextHidden
+                        }
+                    }).eq('id', session.user.id).then(({ error }) => {
+                        if (error) console.error("Error updating visibility preference:", error.message);
+                    });
+                }
+
+                return { hiddenBudgetCategories: nextHidden };
             }),
             addCategory: (category, applyToAllMonths) => set((state) => {
                 const newId = Crypto.randomUUID();
@@ -681,14 +757,17 @@ export const useSplittyStore = create<SplittyState>()(
 
                 const { session } = get();
                 if (session?.user) {
-                    supabase.from('categories').update({
-                        label: updates.label,
-                        icon: updates.icon,
-                        color: updates.color,
-                        default_budget: updates.defaultBudget
-                    }).eq('id', id).then(({ error }) => {
-                        if (error) console.error("Error updating category:", error);
-                    });
+                    const categoryToUpdate = updatedCategories.find(c => c.id === id);
+                    if (categoryToUpdate) {
+                        supabase.from('categories').update({
+                            label: categoryToUpdate.label,
+                            icon: categoryToUpdate.icon,
+                            color: categoryToUpdate.color,
+                            default_budget: categoryToUpdate.defaultBudget
+                        }).eq('id', id).then(({ error }) => {
+                            if (error) console.error("Error updating category:", error.message, error.details);
+                        });
+                    }
                 }
 
                 return {
@@ -718,24 +797,40 @@ export const useSplittyStore = create<SplittyState>()(
                 const { categories } = get();
                 return categories.find(c => c.id === categoryId) || categories.find(c => c.id === 'general') || CATEGORIES[0];
             },
-            setCategoryBudget: (month, categoryId, amount) => set((state) => {
-                const existingBudgetIndex = state.budgets.findIndex(b => b.month === month);
-                if (existingBudgetIndex >= 0) {
-                    const newBudgets = [...state.budgets];
-                    newBudgets[existingBudgetIndex] = {
-                        ...newBudgets[existingBudgetIndex],
-                        categories: {
-                            ...newBudgets[existingBudgetIndex].categories,
-                            [categoryId]: amount
-                        }
-                    };
-                    return { budgets: newBudgets };
-                } else {
-                    return {
-                        budgets: [...state.budgets, { month, categories: { [categoryId]: amount } }]
-                    };
+            setCategoryBudget: (month, categoryId, amount) => {
+                const { session } = get();
+                if (session?.user) {
+                    supabase.from('monthly_budgets')
+                        .upsert({
+                            user_id: session.user.id,
+                            month,
+                            category_id: categoryId,
+                            amount
+                        }, { onConflict: 'user_id,month,category_id' })
+                        .then(({ error }) => {
+                            if (error) console.error("Error upserting monthly budget:", error.message);
+                        });
                 }
-            }),
+
+                set((state) => {
+                    const existingBudgetIndex = state.budgets.findIndex(b => b.month === month);
+                    if (existingBudgetIndex >= 0) {
+                        const newBudgets = [...state.budgets];
+                        newBudgets[existingBudgetIndex] = {
+                            ...newBudgets[existingBudgetIndex],
+                            categories: {
+                                ...newBudgets[existingBudgetIndex].categories,
+                                [categoryId]: amount
+                            }
+                        };
+                        return { budgets: newBudgets };
+                    } else {
+                        return {
+                            budgets: [...state.budgets, { month, categories: { [categoryId]: amount } }]
+                        };
+                    }
+                });
+            },
             autoFillBudget: (month) => set((state) => {
                 const currentMonthDate = new Date(`${month}-01T00:00:00Z`);
                 const threeMonthsAgo = new Date(currentMonthDate);
@@ -1071,7 +1166,10 @@ export const useSplittyStore = create<SplittyState>()(
                             design_preference: designPreference
                         }
                     }).eq('id', session.user.id).then(({ error }) => {
-                        if (error) console.error("Error updating rollover preference:", error);
+                        if (error) {
+                            console.error("Error updating rollover preference:", error.message, error.details);
+                            Alert.alert("Sync Error", "Could not save rollover setting. Have you run the SQL migration?");
+                        }
                     });
                 }
             },
@@ -1088,7 +1186,10 @@ export const useSplittyStore = create<SplittyState>()(
                             design_preference: pref
                         }
                     }).eq('id', session.user.id).then(({ error }) => {
-                        if (error) console.error("Error updating design preference:", error);
+                        if (error) {
+                            console.error("Error updating design preference:", error.message, error.details);
+                            Alert.alert("Sync Error", "Could not save design preference. Have you run the SQL migration?");
+                        }
                     });
                 }
             },
@@ -1108,7 +1209,10 @@ export const useSplittyStore = create<SplittyState>()(
                             design_preference: designPreference
                         }
                     }).eq('id', session.user.id).then(({ error }) => {
-                        if (error) console.error("Error updating currency preference:", error);
+                        if (error) {
+                            console.error("Error updating currency preference:", error.message, error.details);
+                            Alert.alert("Sync Error", "Could not save currency preference. Have you run the SQL migration?");
+                        }
                     });
                 }
             },
@@ -1433,25 +1537,57 @@ export const useSplittyStore = create<SplittyState>()(
             },
 
             recurringExpenses: [],
-            addRecurringExpense: (expense) => set((state) => {
+            addRecurringExpense: (expense) => {
+                const newId = Crypto.randomUUID();
                 const now = new Date();
                 const nextDue = new Date(now);
                 if (expense.frequency === 'daily') nextDue.setDate(nextDue.getDate() + 1);
                 if (expense.frequency === 'weekly') nextDue.setDate(nextDue.getDate() + 7);
                 if (expense.frequency === 'monthly') nextDue.setMonth(nextDue.getMonth() + 1);
 
-                return {
-                    recurringExpenses: [...state.recurringExpenses, {
-                        ...expense,
-                        id: Crypto.randomUUID(),
-                        nextDueDate: nextDue.toISOString(),
-                        active: true
-                    }]
+                const newRecurring = {
+                    ...expense,
+                    id: newId,
+                    nextDueDate: nextDue.toISOString(),
+                    active: true
                 };
-            }),
-            deleteRecurringExpense: (id) => set((state) => ({
-                recurringExpenses: state.recurringExpenses.filter(r => r.id !== id)
-            })),
+
+                const { session } = get();
+                if (session?.user) {
+                    supabase.from('recurring_expenses').insert({
+                        id: newId,
+                        user_id: session.user.id,
+                        description: expense.description,
+                        amount: expense.amount,
+                        payer_id: expense.payerId === 'self' ? session.user.id : expense.payerId,
+                        group_id: expense.groupId,
+                        category: expense.category,
+                        frequency: expense.frequency,
+                        next_due_date: newRecurring.nextDueDate,
+                        active: true,
+                        split_with: expense.splitWith,
+                        split_details: expense.splitDetails,
+                        split_type: expense.splitType
+                    }).then(({ error }) => {
+                        if (error) console.error("Error adding recurring expense:", error.message);
+                    });
+                }
+
+                set((state) => ({
+                    recurringExpenses: [...state.recurringExpenses, newRecurring]
+                }));
+            },
+            deleteRecurringExpense: (id) => {
+                const { session } = get();
+                if (session?.user) {
+                    supabase.from('recurring_expenses').delete().eq('id', id).then(({ error }) => {
+                        if (error) console.error("Error deleting recurring expense:", error.message);
+                    });
+                }
+                set((state) => ({
+                    recurringExpenses: state.recurringExpenses.filter(r => r.id !== id)
+                }));
+            },
             checkRecurringExpenses: () => {
                 const { recurringExpenses, addExpense } = get();
                 const now = new Date();

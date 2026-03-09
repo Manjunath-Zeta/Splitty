@@ -6,7 +6,7 @@ create table profiles (
   full_name text,
   avatar_url text,
   phone text,
-  preferences jsonb default '{"is_rollover_enabled": false, "currency": "USD", "design_preference": "existing"}'::jsonb,
+  preferences jsonb default '{"is_rollover_enabled": false, "currency": "USD", "design_preference": "existing", "category_order": [], "hidden_categories": []}'::jsonb,
 
   constraint username_length check (char_length(full_name) >= 3)
 );
@@ -256,3 +256,50 @@ CREATE POLICY "Users can update their own categories." ON categories
 
 CREATE POLICY "Users can delete their own categories." ON categories
     FOR DELETE USING (auth.uid() = user_id);
+
+-- Create Recurring Expenses Table
+CREATE TABLE IF NOT EXISTS recurring_expenses (
+    id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
+    user_id uuid REFERENCES profiles(id) ON DELETE CASCADE NOT NULL,
+    description text NOT NULL,
+    amount numeric NOT NULL,
+    payer_id uuid REFERENCES profiles(id),
+    group_id uuid REFERENCES groups(id),
+    category text DEFAULT 'general',
+    frequency text NOT NULL CHECK (frequency IN ('daily', 'weekly', 'monthly')),
+    next_due_date timestamp with time zone NOT NULL,
+    active boolean DEFAULT true NOT NULL,
+    split_type text DEFAULT 'equal',
+    split_details jsonb DEFAULT '{}'::jsonb,
+    split_with jsonb DEFAULT '[]'::jsonb,
+    created_at timestamp with time zone DEFAULT timezone('utc'::text, now()) NOT NULL
+);
+
+ALTER TABLE recurring_expenses ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Users can view their own recurring expenses." ON recurring_expenses
+    FOR SELECT USING (auth.uid() = user_id);
+
+CREATE POLICY "Users can add their own recurring expenses." ON recurring_expenses
+    FOR INSERT WITH CHECK (auth.uid() = user_id);
+
+CREATE POLICY "Users can update their own recurring expenses." ON recurring_expenses
+    FOR UPDATE USING (auth.uid() = user_id);
+
+CREATE POLICY "Users can delete their own recurring expenses." ON recurring_expenses
+    FOR DELETE USING (auth.uid() = user_id);
+
+-- Create Monthly Budgets Table
+CREATE TABLE IF NOT EXISTS monthly_budgets (
+    user_id uuid REFERENCES profiles(id) ON DELETE CASCADE NOT NULL,
+    month text NOT NULL, -- Format: YYYY-MM
+    category_id text NOT NULL, -- Matches category ID
+    amount numeric NOT NULL,
+    updated_at timestamp with time zone DEFAULT timezone('utc'::text, now()) NOT NULL,
+    PRIMARY KEY (user_id, month, category_id)
+);
+
+ALTER TABLE monthly_budgets ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Users can manage their own monthly budgets." ON monthly_budgets
+    FOR ALL USING (auth.uid() = user_id);
