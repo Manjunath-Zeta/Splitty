@@ -276,7 +276,7 @@ export const useSplittyStore = create<SplittyState>()(
                 };
 
                 // Parallelize fetching for better performance
-                const [profileRes, friendsRes, expensesRes, groupsRes, activitiesRes] = await Promise.all([
+                const [profileRes, friendsRes, expensesRes, groupsRes, activitiesRes, categoriesRes] = await Promise.all([
                     supabase.from('profiles').select('*').eq('id', userId).single(),
                     supabase.from('friends').select('*').order('name'),
                     // Fetch expenses AND their participants in one go
@@ -300,11 +300,19 @@ export const useSplittyStore = create<SplittyState>()(
                         return { groups, members };
                     })(),
                     // Fetch Activity Logs
-                    supabase.from('activity_logs').select('*').order('created_at', { ascending: false }).limit(50)
+                    supabase.from('activity_logs').select('*').order('created_at', { ascending: false }).limit(50),
+                    // Fetch User Categories
+                    supabase.from('categories').select('*').order('created_at', { ascending: true })
                 ]);
 
-                // 1. Handle Profile
+                // 1. Handle Profile & Preferences
                 const { data: profileData, error: profileError } = profileRes;
+                let preferences = {
+                    is_rollover_enabled: false,
+                    currency: 'USD',
+                    design_preference: 'existing',
+                };
+
                 if (!profileError && profileData) {
                     userProfile = {
                         name: profileData.full_name || meta?.full_name || meta?.name || 'New User',
@@ -312,12 +320,42 @@ export const useSplittyStore = create<SplittyState>()(
                         avatar: profileData.avatar_url || meta?.avatar_url || meta?.picture || '',
                         phone: profileData.phone || ''
                     };
+                    if (profileData.preferences) {
+                        preferences = { ...preferences, ...profileData.preferences };
+                    }
                 }
 
                 // Initialize strict types
                 let loadedFriends: Friend[] = [];
                 let loadedGroups: Group[] = [];
                 let loadedExpenses: Expense[] = [];
+                let loadedCategories: Category[] = [];
+
+                // 2. Handle Categories
+                const { data: categoriesData, error: categoriesError } = categoriesRes;
+                if (!categoriesError && categoriesData && categoriesData.length > 0) {
+                    loadedCategories = categoriesData.map((c: any) => ({
+                        id: c.id,
+                        label: c.label,
+                        icon: c.icon,
+                        color: c.color,
+                        defaultBudget: Number(c.default_budget)
+                    }));
+                } else {
+                    // Initialize with default CATEGORIES if none exist
+                    loadedCategories = CATEGORIES;
+                    // Proactively sync defaults for new user
+                    if (session.user && (!categoriesData || categoriesData.length === 0)) {
+                        const uploads = CATEGORIES.map(c => ({
+                            user_id: userId,
+                            label: c.label,
+                            icon: c.icon,
+                            color: c.color,
+                            default_budget: c.defaultBudget || 0
+                        }));
+                        supabase.from('categories').insert(uploads).then();
+                    }
+                }
 
                 // 2. Handle Friends
                 const { data: friendsData, error: friendsError } = friendsRes;
@@ -555,7 +593,11 @@ export const useSplittyStore = create<SplittyState>()(
                     groups: finalGroups,
                     expenses: loadedExpenses,
                     activities: (activitiesRes as any)?.data || [],
-                    unknownFriendNames: newUnknownFriendNames
+                    unknownFriendNames: newUnknownFriendNames,
+                    isRolloverEnabled: preferences.is_rollover_enabled,
+                    currency: preferences.currency,
+                    designPreference: preferences.design_preference as any,
+                    categories: loadedCategories
                 };
 
                 if (categoriesModified) {
@@ -602,6 +644,20 @@ export const useSplittyStore = create<SplittyState>()(
                     }));
                 }
 
+                const { session } = get();
+                if (session?.user) {
+                    supabase.from('categories').insert({
+                        id: newId,
+                        user_id: session.user.id,
+                        label: category.label,
+                        icon: category.icon,
+                        color: category.color,
+                        default_budget: category.defaultBudget || 0
+                    }).then(({ error }) => {
+                        if (error) console.error("Error adding category:", error);
+                    });
+                }
+
                 return {
                     categories: [...state.categories, newCategory],
                     ...(applyToAllMonths ? { budgets: newBudgets } : {})
@@ -623,6 +679,18 @@ export const useSplittyStore = create<SplittyState>()(
                     }));
                 }
 
+                const { session } = get();
+                if (session?.user) {
+                    supabase.from('categories').update({
+                        label: updates.label,
+                        icon: updates.icon,
+                        color: updates.color,
+                        default_budget: updates.defaultBudget
+                    }).eq('id', id).then(({ error }) => {
+                        if (error) console.error("Error updating category:", error);
+                    });
+                }
+
                 return {
                     categories: updatedCategories,
                     ...(applyToAllMonths ? { budgets: newBudgets } : {})
@@ -633,6 +701,13 @@ export const useSplittyStore = create<SplittyState>()(
                 const updatedExpenses = state.expenses.map(e =>
                     e.category === categoryId ? { ...e, category: 'general' } : e
                 );
+
+                const { session } = get();
+                if (session?.user) {
+                    supabase.from('categories').delete().eq('id', categoryId).then(({ error }) => {
+                        if (error) console.error("Error deleting category:", error);
+                    });
+                }
 
                 return {
                     categories: state.categories.filter(c => c.id !== categoryId),
@@ -985,16 +1060,58 @@ export const useSplittyStore = create<SplittyState>()(
                 };
             }),
             isRolloverEnabled: false,
-            setRolloverEnabled: (enabled: boolean) => set({ isRolloverEnabled: enabled }),
+            setRolloverEnabled: (enabled: boolean) => {
+                set({ isRolloverEnabled: enabled });
+                const { session, currency, designPreference } = get();
+                if (session?.user) {
+                    supabase.from('profiles').update({
+                        preferences: {
+                            is_rollover_enabled: enabled,
+                            currency,
+                            design_preference: designPreference
+                        }
+                    }).eq('id', session.user.id).then(({ error }) => {
+                        if (error) console.error("Error updating rollover preference:", error);
+                    });
+                }
+            },
             budgetAlertsSent: {},
             designPreference: 'existing',
-            setDesignPreference: (pref) => set({ designPreference: pref }),
+            setDesignPreference: (pref) => {
+                set({ designPreference: pref });
+                const { session, isRolloverEnabled, currency } = get();
+                if (session?.user) {
+                    supabase.from('profiles').update({
+                        preferences: {
+                            is_rollover_enabled: isRolloverEnabled,
+                            currency,
+                            design_preference: pref
+                        }
+                    }).eq('id', session.user.id).then(({ error }) => {
+                        if (error) console.error("Error updating design preference:", error);
+                    });
+                }
+            },
             signOut: async () => {
                 await supabase.auth.signOut();
                 get().clearData();
             },
             currency: 'USD',
-            setCurrency: (currency) => set(() => ({ currency })),
+            setCurrency: (currency) => {
+                set(() => ({ currency }));
+                const { session, isRolloverEnabled, designPreference } = get();
+                if (session?.user) {
+                    supabase.from('profiles').update({
+                        preferences: {
+                            is_rollover_enabled: isRolloverEnabled,
+                            currency,
+                            design_preference: designPreference
+                        }
+                    }).eq('id', session.user.id).then(({ error }) => {
+                        if (error) console.error("Error updating currency preference:", error);
+                    });
+                }
+            },
             getCurrencySymbol: () => {
                 const currency = get().currency;
                 const symbols: Record<string, string> = { 'USD': '$', 'EUR': '€', 'GBP': '£', 'INR': '₹', 'JPY': '¥' };

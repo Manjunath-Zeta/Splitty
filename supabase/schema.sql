@@ -6,6 +6,7 @@ create table profiles (
   full_name text,
   avatar_url text,
   phone text,
+  preferences jsonb default '{"is_rollover_enabled": false, "currency": "USD", "design_preference": "existing"}'::jsonb,
 
   constraint username_length check (char_length(full_name) >= 3)
 );
@@ -230,3 +231,28 @@ CREATE POLICY "Expenses are viewable by participants." ON expenses
 
 -- Update friends table to support linking to real users
 ALTER TABLE friends ADD COLUMN IF NOT EXISTS linked_user_id uuid REFERENCES profiles(id);
+
+-- Create User Categories Table
+CREATE TABLE IF NOT EXISTS categories (
+    id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
+    user_id uuid REFERENCES profiles(id) ON DELETE CASCADE NOT NULL,
+    label text NOT NULL,
+    icon text NOT NULL,
+    color text NOT NULL,
+    default_budget numeric DEFAULT 0,
+    created_at timestamp with time zone DEFAULT timezone('utc'::text, now()) NOT NULL
+);
+
+ALTER TABLE categories ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Users can view their own categories." ON categories
+    FOR SELECT USING (auth.uid() = user_id);
+
+CREATE POLICY "Users can add their own categories." ON categories
+    FOR INSERT WITH CHECK (auth.uid() = user_id);
+
+CREATE POLICY "Users can update their own categories." ON categories
+    FOR UPDATE USING (auth.uid() = user_id);
+
+CREATE POLICY "Users can delete their own categories." ON categories
+    FOR DELETE USING (auth.uid() = user_id);
