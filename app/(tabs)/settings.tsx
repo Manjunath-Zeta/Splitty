@@ -246,7 +246,7 @@ export default function SettingsScreen() {
                         <Palette size={20} color={colors.textSecondary} />,
                         "Choose Theme",
                         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-                            <View style={{ width: 16, height: 16, borderRadius: 8, backgroundColor: AccentPalettes[accent].primary }} />
+                            <View style={{ width: 16, height: 16, borderRadius: 8, backgroundColor: (AccentPalettes[accent] || AccentPalettes.classic).primary }} />
                             <ChevronRight size={20} color={colors.textSecondary} />
                         </View>,
                         () => setThemeModalVisible(true)

@@ -4,7 +4,7 @@ import { persist, createJSONStorage } from 'zustand/middleware';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Session } from '@supabase/supabase-js';
 import { supabase } from '../lib/supabase';
-import { ThemeName, AppearanceMode, AccentName, getThemeColors, ThemeColors } from '../constants/Colors';
+import { ThemeName, AppearanceMode, AccentName, getThemeColors, ThemeColors, AccentPalettes } from '../constants/Colors';
 import { notificationService } from '../lib/NotificationService';
 import * as Crypto from 'expo-crypto';
 import { CATEGORIES, Category } from '../constants/Categories';
@@ -317,6 +317,10 @@ export const useSplittyStore = create<SplittyState>()(
                     design_preference: 'existing',
                     category_order: [] as string[],
                     hidden_categories: [] as string[],
+                    accent: 'classic' as AccentName,
+                    notifications_enabled: true,
+                    dashboard_view: 'list' as 'tree' | 'list',
+                    unknown_friend_names: {} as Record<string, string>,
                 };
 
                 if (!profileError && profileData) {
@@ -636,13 +640,16 @@ export const useSplittyStore = create<SplittyState>()(
                     recurringExpenses: loadedRecurring,
                     budgets: loadedBudgets,
                     activities: (activitiesRes as any)?.data || [],
-                    unknownFriendNames: newUnknownFriendNames,
                     isRolloverEnabled: preferences.is_rollover_enabled,
                     currency: preferences.currency,
                     designPreference: preferences.design_preference as any,
                     categories: loadedCategories,
                     categoryOrder: preferences.category_order || [],
-                    hiddenBudgetCategories: preferences.hidden_categories || []
+                    hiddenBudgetCategories: preferences.hidden_categories || [],
+                    accent: (AccentPalettes[preferences.accent as AccentName] ? preferences.accent : 'classic') as AccentName,
+                    notificationsEnabled: preferences.notifications_enabled !== undefined ? preferences.notifications_enabled : true,
+                    dashboardViewPreference: preferences.dashboard_view || 'list',
+                    unknownFriendNames: { ...newUnknownFriendNames, ...(preferences.unknown_friend_names || {}) }
                 };
 
                 if (categoriesModified) {
@@ -650,6 +657,17 @@ export const useSplittyStore = create<SplittyState>()(
                 }
 
                 set(finalStateToSet);
+
+                // Proactively sync new unknown names discovered this session
+                if (session.user) {
+                    const hasNewNames = Object.keys(newUnknownFriendNames).some(id => !preferences.unknown_friend_names?.[id]);
+                    if (hasNewNames) {
+                        const mergedNames = { ...preferences.unknown_friend_names, ...newUnknownFriendNames };
+                        supabase.from('profiles').update({
+                            preferences: { ...preferences, unknown_friend_names: mergedNames }
+                        }).eq('id', userId).then();
+                    }
+                }
             },
             friends: [
                 { id: '1', name: 'Alwyn', balance: 450 },
@@ -667,18 +685,15 @@ export const useSplittyStore = create<SplittyState>()(
             unknownFriendNames: {},
             setCategoryOrder: (order) => {
                 set({ categoryOrder: order });
-                const { session, isRolloverEnabled, currency, designPreference, hiddenBudgetCategories } = get();
+                const { session } = get();
                 if (session?.user) {
-                    supabase.from('profiles').update({
-                        preferences: {
-                            is_rollover_enabled: isRolloverEnabled,
-                            currency,
-                            design_preference: designPreference,
-                            category_order: order,
-                            hidden_categories: hiddenBudgetCategories
-                        }
-                    }).eq('id', session.user.id).then(({ error }) => {
-                        if (error) console.error("Error updating category order preference:", error.message);
+                    supabase.from('profiles').select('preferences').eq('id', session.user.id).single().then(({ data }) => {
+                        const prefs = data?.preferences || {};
+                        supabase.from('profiles').update({
+                            preferences: { ...prefs, category_order: order }
+                        }).eq('id', session.user.id).then(({ error }) => {
+                            if (error) console.error("Error updating category order preference:", error.message);
+                        });
                     });
                 }
             },
@@ -688,18 +703,15 @@ export const useSplittyStore = create<SplittyState>()(
                     ? state.hiddenBudgetCategories.filter(id => id !== categoryId)
                     : [...state.hiddenBudgetCategories, categoryId];
 
-                const { session, isRolloverEnabled, currency, designPreference, categoryOrder } = get();
+                const { session } = get();
                 if (session?.user) {
-                    supabase.from('profiles').update({
-                        preferences: {
-                            is_rollover_enabled: isRolloverEnabled,
-                            currency,
-                            design_preference: designPreference,
-                            category_order: categoryOrder,
-                            hidden_categories: nextHidden
-                        }
-                    }).eq('id', session.user.id).then(({ error }) => {
-                        if (error) console.error("Error updating visibility preference:", error.message);
+                    supabase.from('profiles').select('preferences').eq('id', session.user.id).single().then(({ data }) => {
+                        const prefs = data?.preferences || {};
+                        supabase.from('profiles').update({
+                            preferences: { ...prefs, hidden_categories: nextHidden }
+                        }).eq('id', session.user.id).then(({ error }) => {
+                            if (error) console.error("Error updating visibility preference:", error.message);
+                        });
                     });
                 }
 
@@ -822,7 +834,20 @@ export const useSplittyStore = create<SplittyState>()(
             }),
             getCategoryById: (categoryId) => {
                 const { categories } = get();
-                return categories.find(c => c.id === categoryId) || categories.find(c => c.id === 'general') || CATEGORIES[0];
+
+                // 1. Try direct ID match
+                const directMatch = categories.find(c => c.id === categoryId);
+                if (directMatch) return directMatch;
+
+                // 2. Handle legacy IDs (e.g. 'general', 'food') by matching labels in loaded categories
+                const legacy = CATEGORIES.find(c => c.id === categoryId);
+                if (legacy) {
+                    const labelMatch = categories.find(c => c.label.toLowerCase() === legacy.label.toLowerCase());
+                    if (labelMatch) return labelMatch;
+                }
+
+                // 3. Fallback to "General" or first available
+                return categories.find(c => c.label === 'General') || categories.find(c => c.id === 'general') || categories[0] || CATEGORIES[0];
             },
             setCategoryBudget: (month, categoryId, amount) => {
                 const { session } = get();
@@ -912,9 +937,22 @@ export const useSplittyStore = create<SplittyState>()(
                 name: 'Guest',
                 email: '',
             },
-            updateUserProfile: (profile) => set((state) => ({
-                userProfile: { ...state.userProfile, ...profile }
-            })),
+            updateUserProfile: (profile) => {
+                set((state) => ({
+                    userProfile: { ...state.userProfile, ...profile }
+                }));
+
+                const { session } = get();
+                if (session?.user) {
+                    supabase.from('profiles').update({
+                        full_name: profile.name,
+                        avatar_url: profile.avatar,
+                        phone: profile.phone
+                    }).eq('id', session.user.id).then(({ error }) => {
+                        if (error) console.error("Error updating profile:", error.message);
+                    });
+                }
+            },
             addFriend: async (name: string, linkedUserId?: string) => {
                 const newFriend = { id: Crypto.randomUUID(), name, balance: 0, linkedUserId };
                 set((state) => ({
@@ -1158,13 +1196,35 @@ export const useSplittyStore = create<SplittyState>()(
                 isDarkMode: appearance === 'dark',
                 colors: getThemeColors(appearance, state.accent)
             })),
-            setAccent: (accent: AccentName) => set((state) => ({
-                accent,
-                colors: getThemeColors(state.appearance, accent)
-            })),
+            setAccent: (accent) => {
+                set((state) => ({
+                    accent,
+                    colors: getThemeColors(state.appearance, accent)
+                }));
+                const { session } = get();
+                if (session?.user) {
+                    supabase.from('profiles').select('preferences').eq('id', session.user.id).single().then(({ data }) => {
+                        const prefs = data?.preferences || {};
+                        supabase.from('profiles').update({
+                            preferences: { ...prefs, accent }
+                        }).eq('id', session.user.id).then();
+                    });
+                }
+            },
             isDarkMode: false,
             notificationsEnabled: true,
-            setNotificationsEnabled: (enabled: boolean) => set({ notificationsEnabled: enabled }),
+            setNotificationsEnabled: (enabled) => {
+                set({ notificationsEnabled: enabled });
+                const { session } = get();
+                if (session?.user) {
+                    supabase.from('profiles').select('preferences').eq('id', session.user.id).single().then(({ data }) => {
+                        const prefs = data?.preferences || {};
+                        supabase.from('profiles').update({
+                            preferences: { ...prefs, notifications_enabled: enabled }
+                        }).eq('id', session.user.id).then();
+                    });
+                }
+            },
             initNotifications: async () => {
                 const token = await notificationService.registerForPushNotificationsAsync();
                 if (token) {
@@ -1172,7 +1232,18 @@ export const useSplittyStore = create<SplittyState>()(
                 }
             },
             dashboardViewPreference: 'tree',
-            setDashboardViewPreference: (pref) => set({ dashboardViewPreference: pref }),
+            setDashboardViewPreference: (pref) => {
+                set({ dashboardViewPreference: pref });
+                const { session } = get();
+                if (session?.user) {
+                    supabase.from('profiles').select('preferences').eq('id', session.user.id).single().then(({ data }) => {
+                        const prefs = data?.preferences || {};
+                        supabase.from('profiles').update({
+                            preferences: { ...prefs, dashboard_view: pref }
+                        }).eq('id', session.user.id).then();
+                    });
+                }
+            },
             toggleTheme: () => set((state) => {
                 const nextMode: AppearanceMode = state.appearance === 'light' ? 'dark' : 'light';
                 return {
@@ -1184,19 +1255,15 @@ export const useSplittyStore = create<SplittyState>()(
             isRolloverEnabled: false,
             setRolloverEnabled: (enabled: boolean) => {
                 set({ isRolloverEnabled: enabled });
-                const { session, currency, designPreference } = get();
+                const { session } = get();
                 if (session?.user) {
-                    supabase.from('profiles').update({
-                        preferences: {
-                            is_rollover_enabled: enabled,
-                            currency,
-                            design_preference: designPreference
-                        }
-                    }).eq('id', session.user.id).then(({ error }) => {
-                        if (error) {
-                            console.error("Error updating rollover preference:", error.message, error.details);
-                            Alert.alert("Sync Error", "Could not save rollover setting. Have you run the SQL migration?");
-                        }
+                    supabase.from('profiles').select('preferences').eq('id', session.user.id).single().then(({ data }) => {
+                        const prefs = data?.preferences || {};
+                        supabase.from('profiles').update({
+                            preferences: { ...prefs, is_rollover_enabled: enabled }
+                        }).eq('id', session.user.id).then(({ error }) => {
+                            if (error) console.error("Error updating rollover preference:", error.message);
+                        });
                     });
                 }
             },
@@ -1204,19 +1271,15 @@ export const useSplittyStore = create<SplittyState>()(
             designPreference: 'existing',
             setDesignPreference: (pref) => {
                 set({ designPreference: pref });
-                const { session, isRolloverEnabled, currency } = get();
+                const { session } = get();
                 if (session?.user) {
-                    supabase.from('profiles').update({
-                        preferences: {
-                            is_rollover_enabled: isRolloverEnabled,
-                            currency,
-                            design_preference: pref
-                        }
-                    }).eq('id', session.user.id).then(({ error }) => {
-                        if (error) {
-                            console.error("Error updating design preference:", error.message, error.details);
-                            Alert.alert("Sync Error", "Could not save design preference. Have you run the SQL migration?");
-                        }
+                    supabase.from('profiles').select('preferences').eq('id', session.user.id).single().then(({ data }) => {
+                        const prefs = data?.preferences || {};
+                        supabase.from('profiles').update({
+                            preferences: { ...prefs, design_preference: pref }
+                        }).eq('id', session.user.id).then(({ error }) => {
+                            if (error) console.error("Error updating design preference:", error.message);
+                        });
                     });
                 }
             },
@@ -1227,19 +1290,15 @@ export const useSplittyStore = create<SplittyState>()(
             currency: 'USD',
             setCurrency: (currency) => {
                 set(() => ({ currency }));
-                const { session, isRolloverEnabled, designPreference } = get();
+                const { session } = get();
                 if (session?.user) {
-                    supabase.from('profiles').update({
-                        preferences: {
-                            is_rollover_enabled: isRolloverEnabled,
-                            currency,
-                            design_preference: designPreference
-                        }
-                    }).eq('id', session.user.id).then(({ error }) => {
-                        if (error) {
-                            console.error("Error updating currency preference:", error.message, error.details);
-                            Alert.alert("Sync Error", "Could not save currency preference. Have you run the SQL migration?");
-                        }
+                    supabase.from('profiles').select('preferences').eq('id', session.user.id).single().then(({ data }) => {
+                        const prefs = data?.preferences || {};
+                        supabase.from('profiles').update({
+                            preferences: { ...prefs, currency }
+                        }).eq('id', session.user.id).then(({ error }) => {
+                            if (error) console.error("Error updating currency preference:", error.message);
+                        });
                     });
                 }
             },

@@ -52,14 +52,12 @@ export default function ManageCategoriesScreen() {
             setNewColor(category.color);
             setNewIconName(category.icon);
             setNewDefaultBudget(category.defaultBudget ? category.defaultBudget.toString() : '');
-            setApplyToAll(false);
         } else {
             setEditingId(null);
             setNewLabel('');
             setNewColor(PRESET_COLORS[0]);
             setNewIconName(PRESET_ICONS[0]);
             setNewDefaultBudget('');
-            setApplyToAll(false);
         }
         setAddModalVisible(true);
     };

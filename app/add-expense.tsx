@@ -235,7 +235,7 @@ export default function AddExpenseScreen() {
                     <View style={isSkeuomorphic ? [styles.skeuoCardInner, skeuo.outset.dark] : null}>
                         <LinearGradient
                             colors={isSkeuomorphic ? skeuo.surfaceGradient : ['transparent', 'transparent']}
-                            style={[styles.card, !isSkeuomorphic && { backgroundColor: colors.surface }, { borderRadius: 24 }]}
+                            style={[styles.card, { padding: 20, borderRadius: 24 }, !isSkeuomorphic && { backgroundColor: colors.surface }]}
                         >
                             <View style={styles.inputRow}>
                                 <StyledInput
@@ -350,6 +350,7 @@ export default function AddExpenseScreen() {
                                     !isSkeuomorphic && { backgroundColor: colors.background, borderColor: colors.border },
                                     !isSkeuomorphic && category === cat.id && { backgroundColor: cat.color, borderColor: cat.color },
                                     isSkeuomorphic && (category === cat.id ? skeuo.outset.light : skeuo.inset.dark),
+                                    isSkeuomorphic && { borderWidth: 0 },
                                     !isEditing && { opacity: 0.7 }
                                 ]}
                                 onPress={() => setCategory(cat.id)}
@@ -435,7 +436,7 @@ export default function AddExpenseScreen() {
                     />
                 )}
             </ScrollView >
-        </KeyboardAvoidingView>
+        </KeyboardAvoidingView >
     );
 }
 

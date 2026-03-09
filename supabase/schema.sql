@@ -6,7 +6,7 @@ create table profiles (
   full_name text,
   avatar_url text,
   phone text,
-  preferences jsonb default '{"is_rollover_enabled": false, "currency": "USD", "design_preference": "existing", "category_order": [], "hidden_categories": []}'::jsonb,
+  preferences jsonb default '{"is_rollover_enabled": false, "currency": "USD", "design_preference": "existing", "category_order": [], "hidden_categories": [], "accent": "classic", "notifications_enabled": true, "dashboard_view": "list", "unknown_friend_names": {}}'::jsonb,
 
   constraint username_length check (char_length(full_name) >= 3)
 );

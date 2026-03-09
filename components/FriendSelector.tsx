@@ -57,7 +57,7 @@ export const FriendSelector = memo(({ type, friends, groups, selectedIds, onTogg
                 <TouchableOpacity onPress={openModal} disabled={disabled} activeOpacity={0.8}>
                     <View style={[styles.skeuoTriggerWrapper, skeuo.outset.light]}>
                         <View style={[styles.skeuoTriggerInner, skeuo.outset.dark]}>
-                            <LinearGradient colors={skeuo.surfaceGradient} style={styles.triggerButton}>
+                            <LinearGradient colors={skeuo.surfaceGradient} style={[styles.triggerButton, { borderWidth: 0 }]}>
                                 <View style={styles.triggerLeft}>
                                     <Users size={18} color={selectedIds.length > 0 ? colors.primary : colors.textSecondary} />
                                     <View style={{ marginLeft: 10, flex: 1 }}>

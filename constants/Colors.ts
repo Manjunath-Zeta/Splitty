@@ -156,31 +156,31 @@ export const Skeuomorphic = {
     outset: {
       light: {
         shadowColor: 'rgba(255, 255, 255, 0.9)',
-        shadowOffset: { width: -10, height: -10 },
+        shadowOffset: { width: -14, height: -14 },
         shadowOpacity: 1,
-        shadowRadius: 20,
-        elevation: 20,
+        shadowRadius: 28,
+        elevation: 28,
       },
       dark: {
-        shadowColor: 'rgba(0, 0, 0, 0.12)',
-        shadowOffset: { width: 10, height: 10 },
+        shadowColor: 'rgba(0, 0, 0, 0.15)',
+        shadowOffset: { width: 14, height: 14 },
         shadowOpacity: 1,
-        shadowRadius: 20,
+        shadowRadius: 28,
       }
     },
     // Recession: Dark shadow top-left, Light shadow bottom-right (simulated inner shadow)
     inset: {
       dark: {
-        shadowColor: 'rgba(0, 0, 0, 0.06)',
-        shadowOffset: { width: -3, height: -3 },
+        shadowColor: 'rgba(0, 0, 0, 0.08)',
+        shadowOffset: { width: -4, height: -4 },
         shadowOpacity: 1,
-        shadowRadius: 6,
+        shadowRadius: 8,
       },
       light: {
         shadowColor: 'rgba(255, 255, 255, 0.8)',
-        shadowOffset: { width: 3, height: 3 },
+        shadowOffset: { width: 4, height: 4 },
         shadowOpacity: 1,
-        shadowRadius: 6,
+        shadowRadius: 8,
       }
     },
     bgGradient: ['#E1E6F0', '#E9EEF5'] as const,
@@ -202,30 +202,30 @@ export const Skeuomorphic = {
     outset: {
       light: {
         shadowColor: '#2A303C',
-        shadowOffset: { width: -8, height: -8 },
-        shadowOpacity: 0.5,
-        shadowRadius: 16,
-        elevation: 16,
+        shadowOffset: { width: -12, height: -12 },
+        shadowOpacity: 0.7,
+        shadowRadius: 24,
+        elevation: 24,
       },
       dark: {
         shadowColor: '#0A0C10',
-        shadowOffset: { width: 8, height: 8 },
+        shadowOffset: { width: 12, height: 12 },
         shadowOpacity: 1,
-        shadowRadius: 16,
+        shadowRadius: 24,
       }
     },
     inset: {
       dark: {
         shadowColor: '#0A0C10',
-        shadowOffset: { width: -3, height: -3 },
-        shadowOpacity: 0.7,
-        shadowRadius: 5,
+        shadowOffset: { width: -4, height: -4 },
+        shadowOpacity: 0.8,
+        shadowRadius: 6,
       },
       light: {
         shadowColor: '#2A303C',
-        shadowOffset: { width: 3, height: 3 },
-        shadowOpacity: 0.3,
-        shadowRadius: 5,
+        shadowOffset: { width: 4, height: 4 },
+        shadowOpacity: 0.4,
+        shadowRadius: 6,
       }
     },
     bgGradient: ['#121419', '#1A1D23'] as const,

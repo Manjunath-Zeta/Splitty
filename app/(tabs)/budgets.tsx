@@ -192,7 +192,8 @@ export default function BudgetsScreen() {
 
         const filtered = expenses.filter(e => {
             if (e.isSettlement) return false;
-            if (hiddenBudgetCategories.includes(e.category)) return false;
+            const resolvedCat = getCategoryById(e.category);
+            if (hiddenBudgetCategories.includes(resolvedCat.id)) return false;
             const eDate = new Date(e.date);
             return eDate >= startOfMonth && eDate <= endOfMonth;
         });
@@ -206,12 +207,13 @@ export default function BudgetsScreen() {
                 myShare = e.amount / totalPeople;
             }
             if (myShare > 0) {
-                spend[e.category] = (spend[e.category] || 0) + myShare;
+                const resolvedCat = getCategoryById(e.category);
+                spend[resolvedCat.id] = (spend[resolvedCat.id] || 0) + myShare;
             }
         });
 
         return { categorySpend: spend, monthExpenses: filtered };
-    }, [expenses, currentDate, hiddenBudgetCategories]);
+    }, [expenses, currentDate, hiddenBudgetCategories, getCategoryById]);
 
     const currentBudget = useMemo(
         () => budgets.find(b => b.month === monthKey),
@@ -241,24 +243,36 @@ export default function BudgetsScreen() {
                         let myShare = e.splitType === 'unequal' && e.splitDetails
                             ? e.splitDetails['self'] || 0
                             : e.amount / ((e.splitWith?.length || 0) + 1);
-                        if (myShare > 0) pastSpend[e.category] = (pastSpend[e.category] || 0) + myShare;
+                        if (myShare > 0) {
+                            const resolvedCat = getCategoryById(e.category);
+                            pastSpend[resolvedCat.id] = (pastSpend[resolvedCat.id] || 0) + myShare;
+                        }
                     });
 
                 Object.entries(b.categories).forEach(([catId, budgetAmt]) => {
-                    if (hiddenBudgetCategories.includes(catId)) return;
-                    rolloverAmounts[catId] = (rolloverAmounts[catId] || 0) + (budgetAmt - (pastSpend[catId] || 0));
+                    const resolvedCatId = getCategoryById(catId).id;
+                    if (hiddenBudgetCategories.includes(resolvedCatId)) return;
+                    rolloverAmounts[resolvedCatId] = (rolloverAmounts[resolvedCatId] || 0) + (budgetAmt - (pastSpend[resolvedCatId] || 0));
                 });
             }
         });
         return rolloverAmounts;
-    }, [budgets, expenses, currentDate, isRolloverEnabled, hiddenBudgetCategories]);
+    }, [budgets, expenses, currentDate, isRolloverEnabled, hiddenBudgetCategories, getCategoryById]);
 
     // ── Totals ──────────────────────────────────────────────────────────────
     const totalBudget = useMemo(() => {
         let base = 0;
         categories.forEach(cat => {
             if (hiddenBudgetCategories.includes(cat.id)) return;
-            const explicitAmt = currentBudget?.categories[cat.id];
+
+            // Search currentBudget for any ID that resolves to this cat.id
+            let explicitAmt: number | undefined;
+            if (currentBudget) {
+                Object.entries(currentBudget.categories).forEach(([uid, amt]) => {
+                    if (getCategoryById(uid).id === cat.id) explicitAmt = amt;
+                });
+            }
+
             const defaultAmt = cat.defaultBudget || 0;
             base += explicitAmt !== undefined ? explicitAmt : defaultAmt;
         });
@@ -268,7 +282,7 @@ export default function BudgetsScreen() {
                 hiddenBudgetCategories.includes(catId) ? sum : sum + val, 0)
             : 0;
         return base + rolloverTotal;
-    }, [currentBudget, categories, hiddenBudgetCategories, isRolloverEnabled, rolloverData]);
+    }, [currentBudget, categories, hiddenBudgetCategories, isRolloverEnabled, rolloverData, getCategoryById]);
 
     const totalSpent = useMemo(
         () => Object.values(categorySpend).reduce((s, v) => s + v, 0),
@@ -281,7 +295,10 @@ export default function BudgetsScreen() {
         const catSet = new Set<string>();
         Object.keys(categorySpend).forEach(c => { if (!hiddenBudgetCategories.includes(c)) catSet.add(c); });
         if (currentBudget) {
-            Object.keys(currentBudget.categories).forEach(c => { if (!hiddenBudgetCategories.includes(c)) catSet.add(c); });
+            Object.keys(currentBudget.categories).forEach(c => {
+                const rcId = getCategoryById(c).id;
+                if (!hiddenBudgetCategories.includes(rcId)) catSet.add(rcId);
+            });
         }
         if (isRolloverEnabled) {
             Object.keys(rolloverData).forEach(c => { if (!hiddenBudgetCategories.includes(c)) catSet.add(c); });
@@ -292,26 +309,39 @@ export default function BudgetsScreen() {
 
         return Array.from(catSet).map(categoryId => {
             const spent = categorySpend[categoryId] || 0;
-            const explicitAmt = currentBudget?.categories[categoryId];
+
+            // Handle potential multiple budget entries resolving to same category
+            let explicitAmt = 0;
+            let hasExplicit = false;
+            if (currentBudget) {
+                Object.entries(currentBudget.categories).forEach(([uid, amt]) => {
+                    if (getCategoryById(uid).id === categoryId) {
+                        explicitAmt = amt; // Taking last found or summing? Usually budget is per category, so we just take it.
+                        hasExplicit = true;
+                    }
+                });
+            }
+
             const catDef = categories.find(c => c.id === categoryId)?.defaultBudget || 0;
-            const budgetAmt = explicitAmt !== undefined ? explicitAmt : catDef;
+            const budgetAmt = hasExplicit ? explicitAmt : catDef;
             const rolloverAmt = rolloverData[categoryId] || 0;
             const totalBudgetAmt = Math.max(0, budgetAmt + rolloverAmt);
             const percentage = totalBudgetAmt > 0
                 ? Math.min(Math.round((spent / totalBudgetAmt) * 100), 100)
                 : spent > 0 ? 100 : 0;
             return { categoryId, spent, budget: budgetAmt, rollover: rolloverAmt, percentage, monthKey };
-        }).sort((a, b) => {
-            if (categoryOrder?.length > 0) {
-                const ia = categoryOrder.indexOf(a.categoryId);
-                const ib = categoryOrder.indexOf(b.categoryId);
-                if (ia !== -1 && ib !== -1) return ia - ib;
-                if (ia !== -1) return -1;
-                if (ib !== -1) return 1;
-            }
-            return b.spent - a.spent;
-        });
-    }, [categorySpend, currentBudget, categories, categoryOrder, hiddenBudgetCategories, isRolloverEnabled, rolloverData]);
+        })
+            .sort((a, b) => {
+                if (categoryOrder?.length > 0) {
+                    const ia = categoryOrder.indexOf(a.categoryId);
+                    const ib = categoryOrder.indexOf(b.categoryId);
+                    if (ia !== -1 && ib !== -1) return ia - ib;
+                    if (ia !== -1) return -1;
+                    if (ib !== -1) return 1;
+                }
+                return b.spent - a.spent;
+            });
+    }, [categorySpend, currentBudget, categories, categoryOrder, hiddenBudgetCategories, isRolloverEnabled, rolloverData, getCategoryById]);
 
     // ── Recent transactions (last 5) ────────────────────────────────────────
     const recentTransactions = useMemo(
