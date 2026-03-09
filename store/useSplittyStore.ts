@@ -705,19 +705,33 @@ export const useSplittyStore = create<SplittyState>()(
 
                 return { hiddenBudgetCategories: nextHidden };
             }),
-            addCategory: (category, applyToAllMonths) => set((state) => {
+            addCategory: (category, applyToAllMonths) => {
                 const newId = Crypto.randomUUID();
                 const newCategory = { ...category, id: newId };
 
-                let newBudgets = state.budgets;
+                let newBudgets = get().budgets;
                 if (applyToAllMonths && category.defaultBudget !== undefined) {
-                    newBudgets = state.budgets.map(b => ({
+                    newBudgets = get().budgets.map(b => ({
                         ...b,
                         categories: {
                             ...b.categories,
                             [newId]: category.defaultBudget!
                         }
                     }));
+
+                    // Sync to Supabase for all months
+                    const { session } = get();
+                    if (session?.user) {
+                        const budgetInserts = get().budgets.map(b => ({
+                            user_id: session.user.id,
+                            month: b.month,
+                            category_id: newId,
+                            amount: category.defaultBudget!
+                        }));
+                        supabase.from('monthly_budgets').upsert(budgetInserts).then(({ error }) => {
+                            if (error) console.error("Error batch upserting category budget:", error.message);
+                        });
+                    }
                 }
 
                 const { session } = get();
@@ -734,28 +748,41 @@ export const useSplittyStore = create<SplittyState>()(
                     });
                 }
 
-                return {
+                set((state) => ({
                     categories: [...state.categories, newCategory],
                     ...(applyToAllMonths ? { budgets: newBudgets } : {})
-                };
-            }),
-            updateCategory: (id, updates, applyToAllMonths) => set((state) => {
-                const updatedCategories = state.categories.map(c =>
+                }));
+            },
+            updateCategory: (id, updates, applyToAllMonths) => {
+                const { categories, budgets, session } = get();
+                const updatedCategories = categories.map(c =>
                     c.id === id ? { ...c, ...updates } : c
                 );
 
-                let newBudgets = state.budgets;
+                let nextBudgets = budgets;
                 if (applyToAllMonths && updates.defaultBudget !== undefined) {
-                    newBudgets = state.budgets.map(b => ({
+                    nextBudgets = budgets.map(b => ({
                         ...b,
                         categories: {
                             ...b.categories,
                             [id]: updates.defaultBudget!
                         }
                     }));
+
+                    // Sync to Supabase for all months
+                    if (session?.user) {
+                        const budgetUpserts = budgets.map(b => ({
+                            user_id: session.user.id,
+                            month: b.month,
+                            category_id: id,
+                            amount: updates.defaultBudget!
+                        }));
+                        supabase.from('monthly_budgets').upsert(budgetUpserts).then(({ error }) => {
+                            if (error) console.error("Error batch updating category budgets:", error.message);
+                        });
+                    }
                 }
 
-                const { session } = get();
                 if (session?.user) {
                     const categoryToUpdate = updatedCategories.find(c => c.id === id);
                     if (categoryToUpdate) {
@@ -765,16 +792,16 @@ export const useSplittyStore = create<SplittyState>()(
                             color: categoryToUpdate.color,
                             default_budget: categoryToUpdate.defaultBudget
                         }).eq('id', id).then(({ error }) => {
-                            if (error) console.error("Error updating category:", error.message, error.details);
+                            if (error) console.error("Error updating category:", error.message);
                         });
                     }
                 }
 
-                return {
+                set({
                     categories: updatedCategories,
-                    ...(applyToAllMonths ? { budgets: newBudgets } : {})
-                };
-            }),
+                    budgets: nextBudgets
+                });
+            },
             deleteCategory: (categoryId) => set((state) => {
                 // Replace category of any expense using the deleted category with 'general'
                 const updatedExpenses = state.expenses.map(e =>
