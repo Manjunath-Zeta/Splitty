@@ -149,14 +149,14 @@ export default function AuthScreen() {
         try {
             if (isSignUp) {
                 const { error } = await supabase.auth.signUp({
-                    email,
+                    email: email.trim(),
                     password,
                 });
                 if (error) throw error;
                 Alert.alert('Sign Up Successful', 'Please check your email for verification link!');
             } else {
                 const { error } = await supabase.auth.signInWithPassword({
-                    email,
+                    email: email.trim(),
                     password,
                 });
                 if (error) throw error;

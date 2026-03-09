@@ -13,8 +13,8 @@ create table profiles (
 -- See https://supabase.com/docs/guides/auth/row-level-security for more details.
 alter table profiles enable row level security;
 
-create policy "Public profiles are viewable by everyone." on profiles
-  for select using (true);
+create policy "Public profiles are viewable by authenticated users." on profiles
+  for select using (auth.role() = 'authenticated');
 
 create policy "Users can insert their own profile." on profiles
   for insert with check (auth.uid() = id);

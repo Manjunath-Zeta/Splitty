@@ -1593,6 +1593,10 @@ export const useSplittyStore = create<SplittyState>()(
         {
             name: 'splitty-storage',
             storage: createJSONStorage(() => AsyncStorage),
+            partialize: (state) => {
+                const { session, ...rest } = state;
+                return rest;
+            },
         }
     )
 );
