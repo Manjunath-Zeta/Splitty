@@ -278,7 +278,7 @@ export const useSplittyStore = create<SplittyState>()(
                 // Parallelize fetching for better performance
                 const [profileRes, friendsRes, expensesRes, groupsRes, activitiesRes, categoriesRes, recurringRes, budgetsRes] = await Promise.all([
                     supabase.from('profiles').select('*').eq('id', userId).single(),
-                    supabase.from('friends').select('*').order('name'),
+                    supabase.from('friends').select('*').eq('user_id', userId).order('name'),
                     // Fetch expenses AND their participants in one go
                     supabase.from('expenses').select(`
                         *,
@@ -300,9 +300,9 @@ export const useSplittyStore = create<SplittyState>()(
                         return { groups, members };
                     })(),
                     // Fetch Activity Logs
-                    supabase.from('activity_logs').select('*').order('created_at', { ascending: false }).limit(50),
+                    supabase.from('activity_logs').select('*').eq('user_id', userId).order('created_at', { ascending: false }).limit(50),
                     // Fetch User Categories
-                    supabase.from('categories').select('*').order('created_at', { ascending: true }),
+                    supabase.from('categories').select('*').eq('user_id', userId).order('created_at', { ascending: true }),
                     // Fetch Recurring Expenses
                     supabase.from('recurring_expenses').select('*').eq('user_id', userId).order('created_at', { ascending: false }),
                     // Fetch Monthly Budgets
@@ -392,11 +392,12 @@ export const useSplittyStore = create<SplittyState>()(
                             .in('id', linkedUserIds);
 
                         if (linkedProfiles) {
-                            const avatarMap = new Map(linkedProfiles.map((p: any) => [p.id, p.avatar_url]));
+                            const avatarMap = new Map<string, string>(
+                                linkedProfiles.map((p: any) => [p.id, p.avatar_url as string])
+                            );
                             mappedFriends = mappedFriends.map(f => ({
                                 ...f,
-                                // Use linked profile avatar if it exists, otherwise fallback to local avatar_url
-                                avatarUrl: f.linkedUserId ? (avatarMap.get(f.linkedUserId) || f.avatarUrl) : f.avatarUrl
+                                avatarUrl: (f.linkedUserId ? avatarMap.get(f.linkedUserId) : f.avatarUrl) || undefined
                             }));
                         }
                     }

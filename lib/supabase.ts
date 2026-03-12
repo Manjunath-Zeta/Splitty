@@ -43,11 +43,33 @@ const secureStorage = {
     },
 };
 
-export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
-    auth: {
-        storage: secureStorage as any,
-        autoRefreshToken: true,
-        persistSession: true,
-        detectSessionInUrl: Platform.OS === 'web',
-    },
-});
+// Create client with fallback handling to prevent app crash if env vars are missing
+let supabaseInstance;
+try {
+    if (supabaseUrl && supabaseAnonKey) {
+        supabaseInstance = createClient(supabaseUrl, supabaseAnonKey, {
+            auth: {
+                storage: secureStorage as any,
+                autoRefreshToken: true,
+                persistSession: true,
+                detectSessionInUrl: Platform.OS === 'web',
+            },
+        });
+    } else {
+        // Handle missing config gracefully instead of letting createClient throw
+        supabaseInstance = {
+            auth: {
+                getSession: () => Promise.resolve({ data: { session: null }, error: null }),
+                onAuthStateChange: () => ({ data: { subscription: { unsubscribe: () => { } } } }),
+            },
+            from: () => ({
+                select: () => ({ order: () => ({ eq: () => ({ single: () => Promise.resolve({ data: null, error: { message: 'Supabase config missing' } }) }) }) }),
+            }),
+        } as any;
+    }
+} catch (error) {
+    console.error('❌ Failed to initialize Supabase client:', error);
+}
+
+export const supabase = supabaseInstance;
+

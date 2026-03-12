@@ -45,12 +45,9 @@ export const VibrantButton: React.FC<VibrantButtonProps> = ({
                 onPressIn={() => !disabled && setIsPressed(true)}
                 onPressOut={() => !disabled && setIsPressed(false)}
                 disabled={disabled}
-                style={({ pressed }) => [
+                style={[
                     styles.skeuoWrapper,
                     { borderRadius: customRadius as number },
-                    !pressed && !isOutline && skeuo.outset.light,
-                    isOutline && !pressed && skeuo.inset.dark,
-                    pressed && skeuo.inset.light,
                     style,
                     disabled && styles.disabled
                 ]}
@@ -58,9 +55,11 @@ export const VibrantButton: React.FC<VibrantButtonProps> = ({
                 {({ pressed }) => (
                     <View style={[
                         styles.skeuoOuterDark,
-                        { borderRadius: customRadius as number },
-                        !pressed && !isOutline && skeuo.outset.dark,
-                        isOutline && !pressed && skeuo.inset.light,
+                        { 
+                            borderRadius: customRadius as number,
+                            backgroundColor: isOutline ? 'transparent' : (isDark ? 'rgba(30, 35, 43, 0.95)' : 'rgba(255, 255, 255, 0.95)')
+                        },
+                        !pressed && !isOutline && skeuo.outset.light,
                         pressed && skeuo.inset.dark,
                         pressed && styles.skeuoPressed
                     ]}>

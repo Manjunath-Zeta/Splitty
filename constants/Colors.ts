@@ -1,7 +1,7 @@
 // Base palettes define structural colors (background, surface, text)
 export const BasePalettes = {
   light: {
-    background: '#F8FAFC',
+    background: '#FFFFFF',
     surface: '#FFFFFF',
     text: '#0F172A',
     textSecondary: '#64748B',
@@ -147,7 +147,7 @@ export const GlassTheme = {
  */
 export const Skeuomorphic = {
   light: {
-    background: '#E9EEF5',
+    background: '#FAFBFC',
     surface: '#EEF2F8',
     text: '#2E3A4A',
     textSecondary: '#6B7788',

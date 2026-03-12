@@ -19,18 +19,20 @@ export const StyledInput: React.FC<StyledInputProps> = ({ label, style, labelSty
         return (
             <View style={[styles.container, containerStyle]}>
                 {label && <Text style={[styles.label, { color: colors.textSecondary }, labelStyle]}>{label}</Text>}
-                <View style={[styles.skeuoInsetWrapper, skeuo.inset.dark]}>
-                    <View style={[styles.skeuoInsetInner, skeuo.inset.light]}>
-                        <TextInput
-                            style={[styles.input, {
-                                color: colors.text,
-                                backgroundColor: 'transparent',
-                                borderWidth: 0,
-                            }, style]}
-                            placeholderTextColor={colors.textSecondary}
-                            {...props}
-                        />
-                    </View>
+                <View style={[
+                    styles.skeuoInsetWrapper, 
+                    { backgroundColor: isDark ? 'rgba(0,0,0,0.2)' : 'rgba(0,0,0,0.05)' },
+                    skeuo.inset.dark
+                ]}>
+                    <TextInput
+                        style={[styles.input, {
+                            color: colors.text,
+                            backgroundColor: 'transparent',
+                            borderWidth: 0,
+                        }, style]}
+                        placeholderTextColor={colors.textSecondary}
+                        {...props}
+                    />
                 </View>
             </View>
         );

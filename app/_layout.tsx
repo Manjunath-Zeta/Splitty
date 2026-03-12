@@ -7,6 +7,13 @@ import { StatusBar } from 'expo-status-bar';
 import { useSplittyStore } from '../store/useSplittyStore';
 import { supabase } from '../lib/supabase';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
+import { SafeAreaProvider } from 'react-native-safe-area-context';
+import * as SplashScreen from 'expo-splash-screen';
+
+// Prevent the splash screen from auto-hiding before asset loading is complete.
+SplashScreen.preventAutoHideAsync().catch(() => {
+    /* reloading the app might cause some errors here, safe to ignore */
+});
 
 export default function RootLayout() {
     const router = useRouter();
@@ -28,15 +35,14 @@ export default function RootLayout() {
         }
 
         // Auth Initial Session
-        supabase.auth.getSession().then(({ data: { session } }) => {
+        supabase.auth.getSession().then(({ data: { session } }: any) => {
             console.log('RootLayout: Session fetched', !!session);
             setSession(session);
             setIsReady(true);
         });
 
         // Auth Listener
-        const { data: { subscription: authSubscription } } = supabase.auth.onAuthStateChange((event, session) => {
-            console.log('RootLayout: Auth event', event, !!session);
+        const { data: { subscription: authSubscription } } = supabase.auth.onAuthStateChange((event: any, session: any) => {
             setSession(session);
         });
 
@@ -45,17 +51,30 @@ export default function RootLayout() {
 
     // Handle Auth Routing
     useEffect(() => {
+        console.log('RootLayout: useEffect triggered', { isReady, rootNavigationStateReady: !!rootNavigationState?.key, session: !!session, segments });
         if (!isReady || !rootNavigationState?.key) return;
 
-        const inAuthGroup = segments[0] === 'auth';
+        // Once navigation is ready AND auth is ready, we can hide the splash screen
+        // Added a small delay to ensure the screen has time to paint
+        setTimeout(() => {
+            SplashScreen.hideAsync().catch(() => { });
+        }, 500);
 
-        if (session && inAuthGroup) {
-            // First time they are authenticated, ensure we get their profile/data
+        const inAuthGroup = segments[0] === 'auth';
+        const isAtRoot = segments.length === 0 || segments[0] === 'index';
+        const isInsideTabs = segments[0] === '(tabs)';
+        const isOnProtectedScreen = segments[0] === 'add-expense' || 
+                                   segments[0] === 'set-budget' || 
+                                   segments[0] === 'manage-categories';
+
+        // Use a small delay but only if we AREN'T already where we're supposed to be
+        // This avoids the "double jump" and modal closing
+        if (session && (inAuthGroup || isAtRoot)) {
+            console.log('RootLayout: REDIRECT TRIGGERED -> /(tabs)');
             fetchData();
-            console.log('RootLayout: Redirecting to Tabs. Session Active.');
             router.replace('/(tabs)');
         } else if (!session && !inAuthGroup) {
-            console.log('RootLayout: Redirecting to Auth. No session.');
+            console.log('RootLayout: REDIRECT TRIGGERED -> /auth');
             router.replace('/auth');
         }
     }, [session, segments, rootNavigationState, isReady]);
@@ -109,8 +128,17 @@ export default function RootLayout() {
 
     const isConfigMissing = !process.env.EXPO_PUBLIC_SUPABASE_URL || !process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY;
 
+    if (!isReady) {
+        return (
+            <View style={{ flex: 1, backgroundColor: '#FFFFFF', justifyContent: 'center', alignItems: 'center' }}>
+                <StatusBar style="dark" />
+                <Text style={{ color: '#0F172A', fontWeight: 'bold' }}>Loading Splitty...</Text>
+            </View>
+        );
+    }
+
     return (
-        <>
+        <SafeAreaProvider style={{ flex: 1 }}>
             <StatusBar style={isDark ? 'light' : 'dark'} />
             {isConfigMissing && (
                 <View style={{ backgroundColor: '#EF4444', padding: 10, paddingTop: 50 }}>
@@ -166,6 +194,6 @@ export default function RootLayout() {
                     />
                 </Stack>
             </GestureHandlerRootView>
-        </>
+        </SafeAreaProvider>
     );
 }

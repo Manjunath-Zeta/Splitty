@@ -326,6 +326,7 @@ const styles = StyleSheet.create({
     },
     container: {
         padding: 20,
+        paddingBottom: 160, // Increased to ensure content scrolls well past FAB
     },
     header: {
         marginBottom: 30,
@@ -473,7 +474,7 @@ const styles = StyleSheet.create({
     },
     fab: {
         position: 'absolute',
-        bottom: 110,
+        bottom: 80, // Lowered further to sit closer to the tab bar
         right: 24,
         width: 64,
         height: 64,
