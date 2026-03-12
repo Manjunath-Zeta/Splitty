@@ -79,3 +79,33 @@ Always enforce `user_id` filtering at the store level. Never assume the database
 - **Verification**: When fixing UI issues, use the `browser_subagent` to capture screenshots of specific states.
 - **Step-by-Step**: For complex state refactors, do one selector at a time and verify the "popup" speed or transition responsiveness.
 - **Documentation**: Update this `agent.md` whenever a new core pattern (e.g., a new service layer or complex animation) is introduced.
+
+---
+
+## ⚙️ Agent Workflow
+When given a task:
+1. **Understand the problem**: Fully grasp the intent and impact.
+2. **Locate relevant files**: Audit the codebase for all affected areas.
+3. **Plan minimal changes**: Design the most efficient and least intrusive solution.
+4. **Implement solution**: Write clean, consistent code following project patterns.
+5. **Verify build success**: Ensure the app builds and functions as expected.
+6. **Summarize changes**: Always explain what was changed and why.
+
+---
+
+## 🚫 Things to Avoid
+Keep the codebase stable and clean by avoiding:
+- **Unnecessary dependencies**: Don't add libraries for simple tasks.
+- **Major architectural changes**: Respect the existing structure unless a refactor is explicitly requested.
+- **Code duplication**: Centralize logic in the store or helper utilities.
+- **Large unreviewed refactors**: Break changes into manageable, logical blocks.
+
+---
+
+## ❓ When Unsure
+If requirements are unclear:
+1. **Ask for clarification**: Don't proceed on assumptions for critical behavior.
+2. **Propose options**: Give the user choices when there are multiple valid approaches.
+3. **Do not guess**: Avoid making "best guesses" for core security or architectural logic.
+
+**End goal**: Maintain a stable, clean, and maintainable codebase.
