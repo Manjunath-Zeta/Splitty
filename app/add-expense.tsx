@@ -56,6 +56,7 @@ export default function AddExpenseScreen() {
     const [frequency, setFrequency] = useState<Frequency>('monthly');
 
     const [billUrl, setBillUrl] = useState<string | null>(null);
+    const [billSource, setBillSource] = useState<'camera' | 'gallery' | null>(null);
     const [isUploading, setIsUploading] = useState(false);
     const [showTagsInput, setShowTagsInput] = useState(false);
     const [isFullScreenVisible, setIsFullScreenVisible] = useState(false);
@@ -111,6 +112,7 @@ export default function AddExpenseScreen() {
                 }
                 if (expense.billUrl) {
                     setBillUrl(expense.billUrl);
+                    setBillSource('gallery'); // Default to gallery for existing expenses
                 }
 
                 if (expense.isPersonal) {
@@ -244,12 +246,17 @@ export default function AddExpenseScreen() {
                 });
 
             if (!result.canceled) {
+                const localUri = result.assets[0].uri;
                 setIsUploading(true);
-                const publicUrl = await uploadBill(result.assets[0].uri);
+                setBillUrl(localUri); // Show local preview immediately
+                setBillSource(useCamera ? 'camera' : 'gallery'); // Track the source
+                
+                const publicUrl = await uploadBill(localUri);
                 if (publicUrl) {
                     setBillUrl(publicUrl);
                 } else {
-                    Alert.alert("Upload Failed", "Failed to upload the bill image.");
+                    Alert.alert("Upload Failed", "Failed to upload the bill image to the cloud.");
+                    setBillUrl(null);
                 }
                 setIsUploading(false);
             }
@@ -325,34 +332,45 @@ export default function AddExpenseScreen() {
                                             <TouchableOpacity 
                                                 style={[styles.iconButton, showTagsInput && { backgroundColor: colors.primary + '20', borderColor: colors.primary }]} 
                                                 onPress={() => setShowTagsInput(!showTagsInput)}
-                                                disabled={!isEditing}
                                             >
                                                 <Tag size={20} color={showTagsInput ? colors.primary : colors.textSecondary} />
                                             </TouchableOpacity>
                                             <TouchableOpacity 
-                                                style={[styles.iconButton, billUrl && { backgroundColor: colors.primary + '20', borderColor: colors.primary }]} 
+                                                style={[styles.iconButton, (billUrl && billSource === 'gallery') && { backgroundColor: colors.primary + '20', borderColor: colors.primary }]} 
                                                 onPress={() => pickImage(false)}
-                                                disabled={!isEditing || isUploading}
+                                                disabled={!isEditing}
                                             >
-                                                {isUploading ? <Activity size={20} color={colors.primary} /> : <ImageIcon size={20} color={billUrl ? colors.primary : colors.textSecondary} />}
+                                                <ImageIcon size={20} color={(billUrl && billSource === 'gallery') ? colors.primary : colors.textSecondary} />
                                             </TouchableOpacity>
                                             <TouchableOpacity 
-                                                style={styles.iconButton} 
+                                                style={[styles.iconButton, (billUrl && billSource === 'camera') && { backgroundColor: colors.primary + '20', borderColor: colors.primary }]} 
                                                 onPress={() => pickImage(true)}
-                                                disabled={!isEditing || isUploading}
+                                                disabled={!isEditing}
                                             >
-                                                <Camera size={20} color={colors.textSecondary} />
+                                                <Camera size={20} color={(billUrl && billSource === 'camera') ? colors.primary : colors.textSecondary} />
                                             </TouchableOpacity>
                                         </View>
                                         
-                                        {billUrl && (
+                                        {(billUrl || isUploading) && (
                                             <TouchableOpacity 
-                                                onPress={() => isEditing && setBillUrl(null)} 
+                                                onPress={() => {
+                                                    if (isEditing && !isUploading) {
+                                                        setBillUrl(null);
+                                                        setBillSource(null);
+                                                    }
+                                                }} 
                                                 style={[styles.billPreview, { backgroundColor: colors.primary + '15' }]}
+                                                disabled={!isEditing || isUploading}
                                             >
-                                                <FileText size={16} color={colors.primary} />
-                                                <Text style={[styles.billText, { color: colors.primary }]} numberOfLines={1}>Bill Attached</Text>
-                                                {isEditing && <X size={14} color={colors.primary} />}
+                                                {isUploading ? (
+                                                    <Activity size={16} color={colors.primary} />
+                                                ) : (
+                                                    <FileText size={16} color={colors.primary} />
+                                                )}
+                                                <Text style={[styles.billText, { color: colors.primary }]} numberOfLines={1}>
+                                                    {isUploading ? 'Uploading...' : 'Bill Attached'}
+                                                </Text>
+                                                {isEditing && !isUploading && <X size={14} color={colors.primary} />}
                                             </TouchableOpacity>
                                         )}
                                     </View>
@@ -363,7 +381,16 @@ export default function AddExpenseScreen() {
                                             onPress={() => setIsFullScreenVisible(true)}
                                             activeOpacity={0.9}
                                         >
-                                            <Image source={{ uri: billUrl }} style={styles.thumbnail} />
+                                            <Image 
+                                                source={{ uri: billUrl }} 
+                                                style={styles.thumbnail} 
+                                                resizeMode="cover"
+                                            />
+                                            {isUploading && (
+                                                <View style={[StyleSheet.absoluteFill, { backgroundColor: 'rgba(0,0,0,0.3)', justifyContent: 'center', alignItems: 'center' }]}>
+                                                    <Activity size="small" color="white" />
+                                                </View>
+                                            )}
                                             {!isEditing && (
                                                 <Text style={[styles.viewModeHint, { color: colors.textSecondary }]}>Tap to view full bill</Text>
                                             )}

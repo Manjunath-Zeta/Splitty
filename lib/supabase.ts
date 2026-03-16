@@ -21,7 +21,12 @@ const secureStorage = {
                 return null;
             }
         }
-        return await SecureStore.getItemAsync(key);
+        try {
+            return await SecureStore.getItemAsync(key);
+        } catch (error) {
+            console.warn('⚠️ SecureStore.getItemAsync failed:', error);
+            return null;
+        }
     },
     setItem: async (key: string, value: string) => {
         if (Platform.OS === 'web') {
@@ -30,7 +35,11 @@ const secureStorage = {
             } catch (e) { }
             return;
         }
-        return await SecureStore.setItemAsync(key, value);
+        try {
+            return await SecureStore.setItemAsync(key, value);
+        } catch (error) {
+            console.warn('⚠️ SecureStore.setItemAsync failed:', error);
+        }
     },
     removeItem: async (key: string) => {
         if (Platform.OS === 'web') {
@@ -39,7 +48,11 @@ const secureStorage = {
             } catch (e) { }
             return;
         }
-        return await SecureStore.deleteItemAsync(key);
+        try {
+            return await SecureStore.deleteItemAsync(key);
+        } catch (error) {
+            console.warn('⚠️ SecureStore.deleteItemAsync failed:', error);
+        }
     },
 };
 

@@ -1294,18 +1294,21 @@ export const useSplittyStore = create<SplittyState>()(
                     const { session } = get();
                     if (!session?.user) return null;
 
-                    const response = await fetch(uri);
-                    const blob = await response.blob();
-                    
                     const fileExt = uri.split('.').pop() || 'jpg';
                     const fileName = `${session.user.id}/${Date.now()}.${fileExt}`;
                     const filePath = `${fileName}`;
 
+                    // More robust way to handle file upload in React Native
+                    const formData = new FormData();
+                    formData.append('file', {
+                        uri: uri,
+                        name: fileName,
+                        type: `image/${fileExt === 'png' ? 'png' : 'jpeg'}`,
+                    } as any);
+
                     const { error } = await supabase.storage
                         .from('bills')
-                        .upload(filePath, blob, {
-                            contentType: response.headers.get('content-type') || 'image/jpeg'
-                        });
+                        .upload(filePath, formData);
 
                     if (error) throw error;
 
