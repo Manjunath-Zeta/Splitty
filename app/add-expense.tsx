@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert, Platform, KeyboardAvoidingView } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert, Platform, KeyboardAvoidingView, Image, Modal } from 'react-native';
 import { BasePalettes } from '../constants/Colors';
 import { GlassCard } from '../components/GlassCard';
 import { StyledInput } from '../components/StyledInput';
@@ -10,6 +10,8 @@ import { useRouter, useLocalSearchParams, Stack } from 'expo-router';
 import { Frequency } from '../store/useSplittyStore';
 import { Skeuomorphic } from '../constants/Colors';
 import { LinearGradient } from 'expo-linear-gradient';
+import * as ImagePicker from 'expo-image-picker';
+import { Camera, Image as ImageIcon, Tag, Activity, FileText } from 'lucide-react-native';
 
 import { FriendSelector } from '../components/FriendSelector';
 import { SplitDetails } from '../components/SplitDetails';
@@ -52,6 +54,12 @@ export default function AddExpenseScreen() {
     // Recurring State
     const [isRecurring, setIsRecurring] = useState(false);
     const [frequency, setFrequency] = useState<Frequency>('monthly');
+
+    const [billUrl, setBillUrl] = useState<string | null>(null);
+    const [isUploading, setIsUploading] = useState(false);
+    const [showTagsInput, setShowTagsInput] = useState(false);
+    const [isFullScreenVisible, setIsFullScreenVisible] = useState(false);
+    const uploadBill = useSplittyStore(state => state.uploadBill);
 
     // Determine participants
     const getParticipants = () => {
@@ -99,6 +107,10 @@ export default function AddExpenseScreen() {
                 setSplitType(expense.splitType || 'equal');
                 if (expense.tags && expense.tags.length > 0) {
                     setTagsInput(expense.tags.join(', '));
+                    setShowTagsInput(true);
+                }
+                if (expense.billUrl) {
+                    setBillUrl(expense.billUrl);
                 }
 
                 if (expense.isPersonal) {
@@ -187,7 +199,8 @@ export default function AddExpenseScreen() {
             splitType,
             splitDetails: splitType === 'unequal' ? splitDetails : undefined,
             isPersonal: type === 'personal',
-            tags: tagsArray
+            tags: tagsArray,
+            billUrl: billUrl || undefined
         };
 
         if (id) {
@@ -205,6 +218,45 @@ export default function AddExpenseScreen() {
         }
 
         router.back();
+    };
+
+    const pickImage = async (useCamera: boolean) => {
+        try {
+            const permissionResult = useCamera 
+                ? await ImagePicker.requestCameraPermissionsAsync() 
+                : await ImagePicker.requestMediaLibraryPermissionsAsync();
+
+            if (permissionResult.granted === false) {
+                Alert.alert("Permission Required", `You need to allow ${useCamera ? 'camera' : 'media library'} access to add a bill.`);
+                return;
+            }
+
+            const result = useCamera
+                ? await ImagePicker.launchCameraAsync({
+                    mediaTypes: ImagePicker.MediaTypeOptions.Images,
+                    allowsEditing: true,
+                    quality: 0.7,
+                })
+                : await ImagePicker.launchImageLibraryAsync({
+                    mediaTypes: ImagePicker.MediaTypeOptions.Images,
+                    allowsEditing: true,
+                    quality: 0.7,
+                });
+
+            if (!result.canceled) {
+                setIsUploading(true);
+                const publicUrl = await uploadBill(result.assets[0].uri);
+                if (publicUrl) {
+                    setBillUrl(publicUrl);
+                } else {
+                    Alert.alert("Upload Failed", "Failed to upload the bill image.");
+                }
+                setIsUploading(false);
+            }
+        } catch (error) {
+            console.error("Error picking image:", error);
+            setIsUploading(false);
+        }
     };
 
     const participants = getParticipants();
@@ -268,17 +320,70 @@ export default function AddExpenseScreen() {
                                         style={isSkeuomorphic ? { backgroundColor: 'transparent' } : null}
                                     />
                                 </View>
-                                <View style={{ marginTop: 16 }}>
-                                    <StyledInput
-                                        label="Tags (Optional)"
-                                        placeholder="e.g. food, trip, birthday"
-                                        value={tagsInput}
-                                        onChangeText={setTagsInput}
-                                        containerStyle={{ marginBottom: 0 }}
-                                        editable={isEditing}
-                                        style={isSkeuomorphic ? { backgroundColor: 'transparent' } : null}
-                                    />
-                                </View>
+                                    <View style={styles.actionRow}>
+                                        <View style={{ flexDirection: 'row', gap: 12 }}>
+                                            <TouchableOpacity 
+                                                style={[styles.iconButton, showTagsInput && { backgroundColor: colors.primary + '20', borderColor: colors.primary }]} 
+                                                onPress={() => setShowTagsInput(!showTagsInput)}
+                                                disabled={!isEditing}
+                                            >
+                                                <Tag size={20} color={showTagsInput ? colors.primary : colors.textSecondary} />
+                                            </TouchableOpacity>
+                                            <TouchableOpacity 
+                                                style={[styles.iconButton, billUrl && { backgroundColor: colors.primary + '20', borderColor: colors.primary }]} 
+                                                onPress={() => pickImage(false)}
+                                                disabled={!isEditing || isUploading}
+                                            >
+                                                {isUploading ? <Activity size={20} color={colors.primary} /> : <ImageIcon size={20} color={billUrl ? colors.primary : colors.textSecondary} />}
+                                            </TouchableOpacity>
+                                            <TouchableOpacity 
+                                                style={styles.iconButton} 
+                                                onPress={() => pickImage(true)}
+                                                disabled={!isEditing || isUploading}
+                                            >
+                                                <Camera size={20} color={colors.textSecondary} />
+                                            </TouchableOpacity>
+                                        </View>
+                                        
+                                        {billUrl && (
+                                            <TouchableOpacity 
+                                                onPress={() => isEditing && setBillUrl(null)} 
+                                                style={[styles.billPreview, { backgroundColor: colors.primary + '15' }]}
+                                            >
+                                                <FileText size={16} color={colors.primary} />
+                                                <Text style={[styles.billText, { color: colors.primary }]} numberOfLines={1}>Bill Attached</Text>
+                                                {isEditing && <X size={14} color={colors.primary} />}
+                                            </TouchableOpacity>
+                                        )}
+                                    </View>
+
+                                    {billUrl && (
+                                        <TouchableOpacity 
+                                            style={styles.imageContainer} 
+                                            onPress={() => setIsFullScreenVisible(true)}
+                                            activeOpacity={0.9}
+                                        >
+                                            <Image source={{ uri: billUrl }} style={styles.thumbnail} />
+                                            {!isEditing && (
+                                                <Text style={[styles.viewModeHint, { color: colors.textSecondary }]}>Tap to view full bill</Text>
+                                            )}
+                                        </TouchableOpacity>
+                                    )}
+
+                                    {showTagsInput && (
+                                        <View style={{ marginTop: 12 }}>
+                                            <StyledInput
+                                                label="Tags"
+                                                placeholder="food, trip, birthday"
+                                                value={tagsInput}
+                                                onChangeText={setTagsInput}
+                                                containerStyle={{ marginBottom: 0 }}
+                                                editable={isEditing}
+                                                style={isSkeuomorphic ? { backgroundColor: 'transparent' } : null}
+                                                autoFocus
+                                            />
+                                        </View>
+                                    )}
                             </LinearGradient>
                         </View>
                     </View>
@@ -445,6 +550,24 @@ export default function AddExpenseScreen() {
                         />
                     )}
                 </ScrollView >
+
+                <Modal visible={isFullScreenVisible} transparent={true} animationType="fade">
+                    <View style={{ flex: 1, backgroundColor: 'black', justifyContent: 'center', alignItems: 'center' }}>
+                        <TouchableOpacity 
+                            style={{ position: 'absolute', top: 50, right: 20, zIndex: 10, padding: 10 }}
+                            onPress={() => setIsFullScreenVisible(false)}
+                        >
+                            <X size={30} color="white" />
+                        </TouchableOpacity>
+                        {billUrl && (
+                            <Image 
+                                source={{ uri: billUrl }} 
+                                style={{ width: '100%', height: '80%' }} 
+                                resizeMode="contain" 
+                            />
+                        )}
+                    </View>
+                </Modal>
             </KeyboardAvoidingView >
     );
 }
@@ -617,5 +740,58 @@ const styles = StyleSheet.create({
         paddingHorizontal: 12,
         paddingVertical: 6,
         borderRadius: 18,
-    }
+    },
+    actionRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        marginTop: 16,
+    },
+    iconButton: {
+        width: 44,
+        height: 44,
+        borderRadius: 22,
+        alignItems: 'center',
+        justifyContent: 'center',
+        borderWidth: 1,
+        borderColor: 'rgba(150,150,150,0.1)',
+        backgroundColor: 'rgba(150,150,150,0.05)',
+    },
+    billPreview: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        paddingHorizontal: 12,
+        paddingVertical: 8,
+        borderRadius: 16,
+        gap: 8,
+        flex: 1,
+        marginLeft: 16,
+    },
+    billText: {
+        fontSize: 13,
+        fontWeight: '600',
+        flex: 1,
+    },
+    imageContainer: {
+        marginTop: 16,
+        borderRadius: 12,
+        overflow: 'hidden',
+        height: 120,
+        width: '100%',
+    },
+    thumbnail: {
+        width: '100%',
+        height: '100%',
+    },
+    viewModeHint: {
+        position: 'absolute',
+        bottom: 8,
+        right: 12,
+        fontSize: 10,
+        backgroundColor: 'rgba(0,0,0,0.5)',
+        paddingHorizontal: 6,
+        paddingVertical: 2,
+        borderRadius: 4,
+        color: 'white',
+    },
 });

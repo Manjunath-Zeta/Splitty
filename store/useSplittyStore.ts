@@ -68,6 +68,7 @@ export interface Expense {
     createdBy?: string;
     isPersonal?: boolean;
     tags?: string[];
+    billUrl?: string;
 }
 
 export interface MonthlyBudget {
@@ -90,6 +91,7 @@ export interface RecurringExpense {
     frequency: Frequency;
     nextDueDate: string; // ISO Date string
     active: boolean;
+    billUrl?: string;
 }
 
 export interface ActivityLog {
@@ -185,6 +187,7 @@ interface SplittyState {
     budgetAlertsSent: Record<string, boolean>;
     designPreference: 'existing' | 'skeuomorphic';
     setDesignPreference: (pref: 'existing' | 'skeuomorphic') => void;
+    uploadBill: (uri: string) => Promise<string | null>;
 }
 
 const calculateBalances = (expenses: Expense[], friends: Friend[], groups: Group[]) => {
@@ -505,7 +508,8 @@ export const useSplittyStore = create<SplittyState>()(
                             category: e.category,
                             isSettlement: e.is_settlement,
                             isPersonal: e.is_personal,
-                            createdBy: e.created_by
+                            createdBy: e.created_by,
+                            billUrl: e.bill_url
                         };
                     });
                     console.log(`✅ fetchData complete. Loaded ${mappedExpenses.length} expenses.`);
@@ -1095,7 +1099,8 @@ export const useSplittyStore = create<SplittyState>()(
                             split_type: updatedExpense.splitType,
                             split_details: realSplitDetails,
                             split_with: realSplitWith,
-                            is_personal: updatedExpense.isPersonal
+                            is_personal: updatedExpense.isPersonal,
+                            bill_url: updatedExpense.billUrl
                         })
                             .eq('id', id)
                             .then(async ({ error }) => {
@@ -1284,6 +1289,36 @@ export const useSplittyStore = create<SplittyState>()(
                     });
                 }
             },
+            uploadBill: async (uri: string) => {
+                try {
+                    const { session } = get();
+                    if (!session?.user) return null;
+
+                    const response = await fetch(uri);
+                    const blob = await response.blob();
+                    
+                    const fileExt = uri.split('.').pop() || 'jpg';
+                    const fileName = `${session.user.id}/${Date.now()}.${fileExt}`;
+                    const filePath = `${fileName}`;
+
+                    const { error } = await supabase.storage
+                        .from('bills')
+                        .upload(filePath, blob, {
+                            contentType: response.headers.get('content-type') || 'image/jpeg'
+                        });
+
+                    if (error) throw error;
+
+                    const { data } = supabase.storage
+                        .from('bills')
+                        .getPublicUrl(filePath);
+
+                    return data.publicUrl;
+                } catch (error) {
+                    console.error('Error uploading bill:', error);
+                    return null;
+                }
+            },
             signOut: async () => {
                 await supabase.auth.signOut();
                 get().clearData();
@@ -1412,7 +1447,8 @@ export const useSplittyStore = create<SplittyState>()(
                             split_details: realSplitDetails,
                             split_with: realSplitWith, // Persist real UUIDs
                             is_personal: newExpense.isPersonal,
-                            created_by: session.user.id
+                            created_by: session.user.id,
+                            bill_url: newExpense.billUrl
                         }).then(async ({ error }) => {
                             if (error) {
                                 console.error("Expense sync error details:", error);
