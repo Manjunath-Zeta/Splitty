@@ -1,32 +1,31 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, Switch, TouchableOpacity, Alert, SafeAreaView, Image, Modal } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, Switch, Pressable, Alert, Modal } from 'react-native';
+import { Image } from 'expo-image';
 import { AccentPalettes, AccentName, AppearanceMode, Skeuomorphic } from '../../constants/Colors';
 import { LinearGradient } from 'expo-linear-gradient';
 import { supabase } from '../../lib/supabase';
 import { GlassCard } from '../../components/GlassCard';
 import { useSplittyStore } from '../../store/useSplittyStore';
-import { User, Bell, Trash2, LogOut, ChevronRight, CreditCard, DollarSign, Activity, Palette, X, Tag } from 'lucide-react-native';
+import { User, Bell, Trash2, LogOut, ChevronRight, CreditCard, DollarSign, Activity, Palette, X, Tag, BarChart2 } from 'lucide-react-native';
 import { useRouter } from 'expo-router';
 
 export default function SettingsScreen() {
-    const {
-        clearData,
-        appearance,
-        setAppearance,
-        accent,
-        setAccent,
-        colors,
-        currency,
-        setCurrency,
-        userProfile,
-        notificationsEnabled,
-        setNotificationsEnabled,
-        isRolloverEnabled,
-        setRolloverEnabled,
-        signOut,
-        designPreference,
-        setDesignPreference
-    } = useSplittyStore();
+    const clearData = useSplittyStore(s => s.clearData);
+    const appearance = useSplittyStore(s => s.appearance);
+    const setAppearance = useSplittyStore(s => s.setAppearance);
+    const accent = useSplittyStore(s => s.accent);
+    const setAccent = useSplittyStore(s => s.setAccent);
+    const colors = useSplittyStore(s => s.colors);
+    const currency = useSplittyStore(s => s.currency);
+    const setCurrency = useSplittyStore(s => s.setCurrency);
+    const userProfile = useSplittyStore(s => s.userProfile);
+    const notificationsEnabled = useSplittyStore(s => s.notificationsEnabled);
+    const setNotificationsEnabled = useSplittyStore(s => s.setNotificationsEnabled);
+    const isRolloverEnabled = useSplittyStore(s => s.isRolloverEnabled);
+    const setRolloverEnabled = useSplittyStore(s => s.setRolloverEnabled);
+    const signOut = useSplittyStore(s => s.signOut);
+    const designPreference = useSplittyStore(s => s.designPreference);
+    const setDesignPreference = useSplittyStore(s => s.setDesignPreference);
     const router = useRouter();
 
     const isDark = appearance === 'dark';
@@ -111,18 +110,17 @@ export default function SettingsScreen() {
     };
 
     const renderSettingItem = (icon: React.ReactNode, label: string, rightElement: React.ReactNode, onPress?: () => void) => (
-        <TouchableOpacity
-            style={styles.settingItem}
+        <Pressable
+            style={({ pressed }) => [styles.settingItem, { opacity: onPress && pressed ? 0.7 : 1 }]}
             onPress={onPress}
             disabled={!onPress}
-            activeOpacity={onPress ? 0.7 : 1}
         >
             <View style={styles.settingLeft}>
                 {icon}
                 <Text style={[styles.settingLabel, { color: colors.text }]}>{label}</Text>
             </View>
             {rightElement}
-        </TouchableOpacity>
+        </Pressable>
     );
 
     const renderCard = (title: string, children: React.ReactNode) => {
@@ -151,7 +149,7 @@ export default function SettingsScreen() {
     };
 
     return (
-        <SafeAreaView style={[styles.safeArea, { backgroundColor: isSkeuomorphic ? skeuo.background : colors.background }]}>
+        <View style={[styles.safeArea, { backgroundColor: isSkeuomorphic ? skeuo.background : colors.background }]}>
             <ScrollView contentContainerStyle={styles.container}>
                 <Text style={[styles.headerTitle, { color: colors.text }]}>Settings</Text>
 
@@ -172,12 +170,12 @@ export default function SettingsScreen() {
                                         <Text style={[styles.profileName, { color: colors.text }]}>{userProfile.name}</Text>
                                         <Text style={[styles.profileEmail, { color: colors.textSecondary }]}>{userProfile.email}</Text>
                                     </View>
-                                    <TouchableOpacity
+                                    <Pressable
                                         style={[styles.editButton, { borderColor: colors.border }]}
                                         onPress={() => router.push('/profile-edit')}
                                     >
                                         <Text style={[styles.editButtonText, { color: colors.text }]}>Edit</Text>
-                                    </TouchableOpacity>
+                                    </Pressable>
                                 </LinearGradient>
                             </View>
                         </View>
@@ -194,12 +192,12 @@ export default function SettingsScreen() {
                                 <Text style={[styles.profileName, { color: colors.text }]}>{userProfile.name}</Text>
                                 <Text style={[styles.profileEmail, { color: colors.textSecondary }]}>{userProfile.email}</Text>
                             </View>
-                            <TouchableOpacity
+                            <Pressable
                                 style={[styles.editButton, { backgroundColor: colors.surface, borderColor: colors.border }]}
                                 onPress={() => router.push('/profile-edit')}
                             >
                                 <Text style={[styles.editButtonText, { color: colors.text }]}>Edit</Text>
-                            </TouchableOpacity>
+                            </Pressable>
                         </GlassCard>
                     )}
                 </View>
@@ -255,6 +253,13 @@ export default function SettingsScreen() {
 
                 {renderCard("General", (
                     <>
+                        {renderSettingItem(
+                            <BarChart2 size={20} color={colors.textSecondary} />,
+                            "View Analytics",
+                            <ChevronRight size={20} color={colors.textSecondary} />,
+                            () => router.push('/analytics')
+                        )}
+                        <View style={[styles.separator, { backgroundColor: colors.border }]} />
                         {renderSettingItem(
                             <Activity size={20} color={colors.textSecondary} />,
                             "Activity Log",
@@ -345,13 +350,13 @@ export default function SettingsScreen() {
                     <View style={[styles.modalContent, { backgroundColor: colors.background }]}>
                         <View style={styles.modalHeader}>
                             <Text style={[styles.modalTitle, { color: colors.text }]}>Choose Accent Theme</Text>
-                            <TouchableOpacity onPress={() => setThemeModalVisible(false)} style={styles.modalCloseButton}>
+                            <Pressable onPress={() => setThemeModalVisible(false)} style={styles.modalCloseButton}>
                                 <X size={24} color={colors.textSecondary} />
-                            </TouchableOpacity>
+                            </Pressable>
                         </View>
                         <ScrollView contentContainerStyle={styles.modalGrid} showsVerticalScrollIndicator={false}>
                             {accentOptions.map((opt) => (
-                                <TouchableOpacity
+                                <Pressable
                                     key={opt.name}
                                     style={[
                                         styles.themeOptionModal,
@@ -365,14 +370,14 @@ export default function SettingsScreen() {
                                 >
                                     <View style={[styles.themePreviewModal, { backgroundColor: opt.preview }]} />
                                     <Text style={[styles.themeLabelModal, { color: accent === opt.name ? colors.primary : colors.text }]}>{opt.label}</Text>
-                                </TouchableOpacity>
+                                </Pressable>
                             ))}
                             <View style={{ width: '100%', height: 20 }} />
                         </ScrollView>
                     </View>
                 </View>
             </Modal>
-        </SafeAreaView>
+        </View>
     );
 }
 

@@ -21,7 +21,8 @@ export const CircularProgress = ({
     size = 200,
     strokeWidth = 16,
 }: CircularProgressProps) => {
-    const { colors, formatCurrency } = useSplittyStore();
+    const colors = useSplittyStore(s => s.colors);
+    const formatCurrency = useSplittyStore(s => s.formatCurrency);
 
     const defaultColor = color || colors.primary;
     const radius = (size - strokeWidth) / 2;

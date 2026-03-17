@@ -1,5 +1,12 @@
 import React from 'react';
-import { View, Text, StyleSheet, ScrollView, SafeAreaView, TouchableOpacity, Dimensions } from 'react-native';
+import {
+    View,
+    Text,
+    StyleSheet,
+    ScrollView,
+    Dimensions,
+    Pressable
+} from 'react-native';
 import { useRouter, Stack } from 'expo-router';
 import { useSplittyStore } from '../store/useSplittyStore';
 import { Skeuomorphic } from '../constants/Colors';
@@ -11,7 +18,17 @@ import { LinearGradient } from 'expo-linear-gradient';
 
 export default function AnalyticsScreen() {
     const router = useRouter();
-    const { expenses, categories, getCategoryById, friends, groups, appearance, colors, formatCurrency, userProfile, unknownFriendNames, designPreference } = useSplittyStore();
+    const expenses = useSplittyStore(s => s.expenses);
+    const categories = useSplittyStore(s => s.categories);
+    const getCategoryById = useSplittyStore(s => s.getCategoryById);
+    const friends = useSplittyStore(s => s.friends);
+    const groups = useSplittyStore(s => s.groups);
+    const appearance = useSplittyStore(s => s.appearance);
+    const colors = useSplittyStore(s => s.colors);
+    const formatCurrency = useSplittyStore(s => s.formatCurrency);
+    const userProfile = useSplittyStore(s => s.userProfile);
+    const unknownFriendNames = useSplittyStore(s => s.unknownFriendNames);
+    const designPreference = useSplittyStore(s => s.designPreference);
     const isDark = appearance === 'dark';
     const isSkeuomorphic = designPreference === 'skeuomorphic';
     const skeuo = isDark ? Skeuomorphic.dark : Skeuomorphic.light;
@@ -112,21 +129,21 @@ export default function AnalyticsScreen() {
     }).sort((a, b) => b.amount - a.amount).slice(0, 5);
 
     return (
-        <SafeAreaView style={[styles.safeArea, { backgroundColor: isSkeuomorphic ? skeuo.background : colors.background }]}>
+        <View style={[styles.safeArea, { backgroundColor: isSkeuomorphic ? skeuo.background : colors.background }]}>
             <Stack.Screen options={{ headerShown: false }} />
             <View style={styles.header}>
                 {isSkeuomorphic ? (
                     <View style={[styles.skeuoIconWrapper, skeuo.outset.light]}>
                         <View style={[styles.skeuoIconInner, skeuo.outset.dark]}>
-                            <TouchableOpacity onPress={() => router.back()} style={[styles.backButtonSkeuo, { backgroundColor: skeuo.background }]}>
+                            <Pressable onPress={() => router.back()} style={[styles.backButtonSkeuo, { backgroundColor: skeuo.background }]}>
                                 <ArrowLeft size={24} color={colors.text} />
-                            </TouchableOpacity>
+                            </Pressable>
                         </View>
                     </View>
                 ) : (
-                    <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
+                    <Pressable onPress={() => router.back()} style={styles.backButton}>
                         <ArrowLeft size={24} color={colors.text} />
-                    </TouchableOpacity>
+                    </Pressable>
                 )}
                 <Text style={[styles.headerTitle, { color: colors.text }]}>Analytics</Text>
                 <View style={{ width: 44 }} />
@@ -406,7 +423,7 @@ export default function AnalyticsScreen() {
 
                 <View style={{ height: 120 }} />
             </ScrollView>
-        </SafeAreaView>
+        </View>
     );
 }
 

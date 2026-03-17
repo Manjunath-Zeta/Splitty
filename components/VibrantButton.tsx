@@ -23,7 +23,9 @@ export const VibrantButton: React.FC<VibrantButtonProps> = ({
     disabled = false,
     leftIcon
 }) => {
-    const { colors, designPreference, appearance } = useSplittyStore();
+    const colors = useSplittyStore(s => s.colors);
+    const designPreference = useSplittyStore(s => s.designPreference);
+    const appearance = useSplittyStore(s => s.appearance);
     const [isPressed, setIsPressed] = useState(false);
 
     const isSkeuomorphic = designPreference === 'skeuomorphic';

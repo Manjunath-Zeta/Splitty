@@ -1,5 +1,11 @@
 import React from 'react';
-import { View, Text, StyleSheet, SafeAreaView, TouchableOpacity, Dimensions } from 'react-native';
+import {
+    View,
+    Text,
+    StyleSheet,
+    Dimensions,
+    Pressable
+} from 'react-native';
 import { useRouter, Stack } from 'expo-router';
 import { useSplittyStore } from '../store/useSplittyStore';
 import { DebtTree } from '../components/DebtTree';
@@ -13,7 +19,10 @@ import Zoom from 'react-native-zoom-reanimated';
 
 export default function DebtTreeScreen() {
     const router = useRouter();
-    const { colors, groups, appearance, designPreference } = useSplittyStore();
+    const colors = useSplittyStore(s => s.colors);
+    const groups = useSplittyStore(s => s.groups);
+    const appearance = useSplittyStore(s => s.appearance);
+    const designPreference = useSplittyStore(s => s.designPreference);
     const isDark = appearance === 'dark';
     const isSkeuomorphic = designPreference === 'skeuomorphic';
     const skeuo = isDark ? Skeuomorphic.dark : Skeuomorphic.light;
@@ -21,21 +30,21 @@ export default function DebtTreeScreen() {
     const [selectedGroupId, setSelectedGroupId] = React.useState<string | null>(null);
 
     return (
-        <SafeAreaView style={[styles.safeArea, { backgroundColor: isSkeuomorphic ? skeuo.background : colors.background }]}>
+        <View style={[styles.safeArea, { backgroundColor: isSkeuomorphic ? skeuo.background : colors.background }]}>
             <Stack.Screen options={{ headerShown: false }} />
             <View style={[styles.header, !isSkeuomorphic && { borderBottomWidth: 1, borderBottomColor: colors.border }]}>
                 {isSkeuomorphic ? (
                     <View style={[styles.skeuoIconWrapper, skeuo.outset.light]}>
                         <View style={[styles.skeuoIconInner, skeuo.outset.dark]}>
-                            <TouchableOpacity onPress={() => router.back()} style={[styles.backButtonSkeuo, { backgroundColor: skeuo.background }]}>
+                            <Pressable onPress={() => router.back()} style={[styles.backButtonSkeuo, { backgroundColor: skeuo.background }]}>
                                 <ChevronLeft size={28} color={colors.text} />
-                            </TouchableOpacity>
+                            </Pressable>
                         </View>
                     </View>
                 ) : (
-                    <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
+                    <Pressable onPress={() => router.back()} style={styles.backButton}>
                         <ChevronLeft size={28} color={colors.text} />
-                    </TouchableOpacity>
+                    </Pressable>
                 )}
                 <Text style={[styles.headerTitle, { color: colors.text }]}>Debt Flow Map</Text>
                 <View style={{ width: 44 }} />
@@ -43,7 +52,7 @@ export default function DebtTreeScreen() {
 
             <View style={[styles.filterContainer, !isSkeuomorphic && { borderBottomWidth: 1, borderBottomColor: colors.border }]}>
                 <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 16, gap: 12 }}>
-                    <TouchableOpacity
+                    <Pressable
                         style={[
                             styles.filterChip,
                             {
@@ -65,10 +74,10 @@ export default function DebtTreeScreen() {
                         ) : (
                             <Text style={[styles.filterChipText, { color: selectedGroupId === null ? '#FFF' : colors.primary }]}>All</Text>
                         )}
-                    </TouchableOpacity>
+                    </Pressable>
 
                     {groups.map(g => (
-                        <TouchableOpacity
+                        <Pressable
                             key={g.id}
                             style={[
                                 styles.filterChip,
@@ -91,7 +100,7 @@ export default function DebtTreeScreen() {
                             ) : (
                                 <Text style={[styles.filterChipText, { color: selectedGroupId === g.id ? '#FFF' : colors.primary }]}>{g.name}</Text>
                             )}
-                        </TouchableOpacity>
+                        </Pressable>
                     ))}
                 </ScrollView>
             </View>
@@ -121,7 +130,7 @@ export default function DebtTreeScreen() {
                     </Text>
                 </View>
             )}
-        </SafeAreaView>
+        </View>
     );
 }
 

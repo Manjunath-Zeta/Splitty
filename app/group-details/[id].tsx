@@ -1,5 +1,12 @@
 import React, { useMemo } from 'react';
-import { View, Text, StyleSheet, SafeAreaView, TouchableOpacity, Alert, ScrollView } from 'react-native';
+import {
+    View,
+    Text,
+    StyleSheet,
+    Alert,
+    ScrollView,
+    Pressable
+} from 'react-native';
 import { useLocalSearchParams, useRouter, Stack } from 'expo-router';
 import { useSplittyStore } from '../../store/useSplittyStore';
 import { GlassCard } from '../../components/GlassCard';
@@ -14,11 +21,18 @@ import { VibrantButton } from '../../components/VibrantButton';
 export default function GroupDetailsScreen() {
     const { id } = useLocalSearchParams<{ id: string }>();
     const router = useRouter();
-    const {
-        groups, expenses, friends, colors, formatCurrency,
-        deleteExpense, settleUp, userProfile, unknownFriendNames, getCategoryById,
-        appearance, designPreference
-    } = useSplittyStore();
+    const groups = useSplittyStore(s => s.groups);
+    const expenses = useSplittyStore(s => s.expenses);
+    const friends = useSplittyStore(s => s.friends);
+    const colors = useSplittyStore(s => s.colors);
+    const formatCurrency = useSplittyStore(s => s.formatCurrency);
+    const deleteExpense = useSplittyStore(s => s.deleteExpense);
+    const settleUp = useSplittyStore(s => s.settleUp);
+    const userProfile = useSplittyStore(s => s.userProfile);
+    const unknownFriendNames = useSplittyStore(s => s.unknownFriendNames);
+    const getCategoryById = useSplittyStore(s => s.getCategoryById);
+    const appearance = useSplittyStore(s => s.appearance);
+    const designPreference = useSplittyStore(s => s.designPreference);
 
     const isDark = appearance === 'dark';
     const isSkeuomorphic = designPreference === 'skeuomorphic';
@@ -128,14 +142,14 @@ export default function GroupDetailsScreen() {
         return (
             <>
                 <Stack.Screen options={{ headerShown: false }} />
-                <SafeAreaView style={[styles.safeArea, { backgroundColor: colors.background }]}>
+                <View style={[styles.safeArea, { backgroundColor: colors.background }]}>
                     <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
                         <Text style={{ color: colors.textSecondary }}>Group not found.</Text>
-                        <TouchableOpacity onPress={() => router.back()} style={{ marginTop: 20 }}>
+                        <Pressable onPress={() => router.back()} style={{ marginTop: 20 }}>
                             <Text style={{ color: colors.primary }}>Go Back</Text>
-                        </TouchableOpacity>
+                        </Pressable>
                     </View>
-                </SafeAreaView>
+                </View>
             </>
         );
     }
@@ -143,7 +157,7 @@ export default function GroupDetailsScreen() {
     const nonSelfMembers = group.members.filter(m => m !== 'self');
 
     return (
-        <SafeAreaView style={[styles.safeArea, { backgroundColor: isSkeuomorphic ? skeuo.background : colors.background }]}>
+        <View style={[styles.safeArea, { backgroundColor: isSkeuomorphic ? skeuo.background : colors.background }]}>
             <Stack.Screen options={{ headerShown: false }} />
             <ScrollView contentContainerStyle={styles.container}>
                 {/* Header */}
@@ -151,15 +165,15 @@ export default function GroupDetailsScreen() {
                     {isSkeuomorphic ? (
                         <View style={[styles.skeuoIconWrapper, skeuo.outset.light]}>
                             <View style={[styles.skeuoIconInner, skeuo.outset.dark]}>
-                                <TouchableOpacity onPress={() => router.back()} style={[styles.backButtonSkeuo, { backgroundColor: skeuo.background }]}>
+                                <Pressable onPress={() => router.back()} style={[styles.backButtonSkeuo, { backgroundColor: skeuo.background }]}>
                                     <ArrowLeft size={24} color={colors.text} />
-                                </TouchableOpacity>
+                                </Pressable>
                             </View>
                         </View>
                     ) : (
-                        <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
+                        <Pressable onPress={() => router.back()} style={styles.backButton}>
                             <ArrowLeft size={24} color={colors.text} />
-                        </TouchableOpacity>
+                        </Pressable>
                     )}
                     <Text style={[styles.headerTitle, { color: colors.text }]}>Group Details</Text>
                     <View style={{ width: 44 }} />
@@ -444,9 +458,8 @@ export default function GroupDetailsScreen() {
                 <Text style={[styles.sectionTitle, { color: colors.text, marginTop: 24 }]}>Expenses</Text>
                 {sortedExpenses.length > 0 ? (
                     sortedExpenses.map(expense => (
-                        <TouchableOpacity
+                        <Pressable
                             key={expense.id}
-                            activeOpacity={0.7}
                             onPress={() => router.push({ pathname: '/add-expense', params: { id: expense.id } })}
                         >
                             {isSkeuomorphic ? (
@@ -502,16 +515,16 @@ export default function GroupDetailsScreen() {
                                     </View>
                                     <View style={styles.activityRight}>
                                         <Text style={[styles.activityAmount, { color: colors.text }]}>{formatCurrency(expense.amount)}</Text>
-                                        <TouchableOpacity
+                                        <Pressable
                                             onPress={(e) => { e.stopPropagation(); handleDeleteExpense(expense.id); }}
                                             hitSlop={10}
                                         >
                                             <Trash2 size={18} color={colors.error} />
-                                        </TouchableOpacity>
+                                        </Pressable>
                                     </View>
                                 </GlassCard>
                             )}
-                        </TouchableOpacity>
+                        </Pressable>
                     ))
                 ) : (
                     <GlassCard style={[styles.emptyCard, { backgroundColor: colors.surface }]}>
@@ -529,7 +542,7 @@ export default function GroupDetailsScreen() {
                 leftIcon={<Plus size={32} color="#FFF" />}
                 variant="primary"
             />
-        </SafeAreaView>
+        </View>
     );
 }
 

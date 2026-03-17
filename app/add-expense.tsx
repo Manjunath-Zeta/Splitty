@@ -1,5 +1,16 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert, Platform, KeyboardAvoidingView, Image, Modal } from 'react-native';
+import {
+    View,
+    Text,
+    StyleSheet,
+    ScrollView,
+    Alert,
+    Platform,
+    KeyboardAvoidingView,
+    Image,
+    Modal,
+    Pressable
+} from 'react-native';
 import { BasePalettes } from '../constants/Colors';
 import { GlassCard } from '../components/GlassCard';
 import { StyledInput } from '../components/StyledInput';
@@ -283,17 +294,17 @@ export default function AddExpenseScreen() {
                 <ScrollView style={styles.container} contentContainerStyle={{ paddingBottom: 100 }} keyboardShouldPersistTaps="handled">
                     <Stack.Screen options={{ headerShown: false }} />
                     <View style={styles.customHeader}>
-                        <TouchableOpacity onPress={() => router.back()} style={styles.closeButton}>
+                        <Pressable onPress={() => router.back()} style={styles.closeButton}>
                             <X size={24} color={colors.text} />
-                        </TouchableOpacity>
+                        </Pressable>
                         <Text style={[styles.screenTitle, { color: colors.text }]}>
                             {id ? (isEditing ? 'Edit Expense' : 'Expense Details') : 'New Expense'}
                         </Text>
 
                         {id && !isEditing ? (
-                            <TouchableOpacity onPress={() => setIsEditing(true)} style={styles.closeButton}>
+                            <Pressable onPress={() => setIsEditing(true)} style={styles.closeButton}>
                                 <Edit2 size={24} color={colors.primary} />
-                            </TouchableOpacity>
+                            </Pressable>
                         ) : (
                             <View style={{ width: 24 }} />
                         )}
@@ -329,30 +340,30 @@ export default function AddExpenseScreen() {
                                 </View>
                                     <View style={styles.actionRow}>
                                         <View style={{ flexDirection: 'row', gap: 12 }}>
-                                            <TouchableOpacity 
+                                            <Pressable 
                                                 style={[styles.iconButton, showTagsInput && { backgroundColor: colors.primary + '20', borderColor: colors.primary }]} 
                                                 onPress={() => setShowTagsInput(!showTagsInput)}
                                             >
                                                 <Tag size={20} color={showTagsInput ? colors.primary : colors.textSecondary} />
-                                            </TouchableOpacity>
-                                            <TouchableOpacity 
+                                            </Pressable>
+                                            <Pressable 
                                                 style={[styles.iconButton, (billUrl && billSource === 'gallery') && { backgroundColor: colors.primary + '20', borderColor: colors.primary }]} 
                                                 onPress={() => pickImage(false)}
                                                 disabled={!isEditing}
                                             >
                                                 <ImageIcon size={20} color={(billUrl && billSource === 'gallery') ? colors.primary : colors.textSecondary} />
-                                            </TouchableOpacity>
-                                            <TouchableOpacity 
+                                            </Pressable>
+                                            <Pressable 
                                                 style={[styles.iconButton, (billUrl && billSource === 'camera') && { backgroundColor: colors.primary + '20', borderColor: colors.primary }]} 
                                                 onPress={() => pickImage(true)}
                                                 disabled={!isEditing}
                                             >
                                                 <Camera size={20} color={(billUrl && billSource === 'camera') ? colors.primary : colors.textSecondary} />
-                                            </TouchableOpacity>
+                                            </Pressable>
                                         </View>
                                         
                                         {(billUrl || isUploading) && (
-                                            <TouchableOpacity 
+                                            <Pressable 
                                                 onPress={() => {
                                                     if (isEditing && !isUploading) {
                                                         setBillUrl(null);
@@ -371,15 +382,14 @@ export default function AddExpenseScreen() {
                                                     {isUploading ? 'Uploading...' : 'Bill Attached'}
                                                 </Text>
                                                 {isEditing && !isUploading && <X size={14} color={colors.primary} />}
-                                            </TouchableOpacity>
+                                            </Pressable>
                                         )}
                                     </View>
 
                                     {billUrl && (
-                                        <TouchableOpacity 
+                                        <Pressable 
                                             style={styles.imageContainer} 
                                             onPress={() => setIsFullScreenVisible(true)}
-                                            activeOpacity={0.9}
                                         >
                                             <Image 
                                                 source={{ uri: billUrl }} 
@@ -394,7 +404,7 @@ export default function AddExpenseScreen() {
                                             {!isEditing && (
                                                 <Text style={[styles.viewModeHint, { color: colors.textSecondary }]}>Tap to view full bill</Text>
                                             )}
-                                        </TouchableOpacity>
+                                        </Pressable>
                                     )}
 
                                     {showTagsInput && (
@@ -419,7 +429,7 @@ export default function AddExpenseScreen() {
 
                     <View style={isSkeuomorphic ? [styles.skeuoTabContainer, skeuo.inset.dark] : [styles.tabContainer, { backgroundColor: colors.surface }]}>
                         <View style={isSkeuomorphic ? [styles.skeuoTabInner, skeuo.inset.light] : { flexDirection: 'row', flex: 1 }}>
-                            <TouchableOpacity
+                            <Pressable
                                 style={[
                                     styles.tab,
                                     type === 'individual' && { backgroundColor: isSkeuomorphic ? 'transparent' : colors.primary },
@@ -433,8 +443,8 @@ export default function AddExpenseScreen() {
                                     <Landmark size={20} color={type === 'individual' ? (isSkeuomorphic ? colors.primary : 'white') : colors.textSecondary} />
                                     <Text style={[styles.tabText, { color: type === 'individual' ? (isSkeuomorphic ? colors.primary : 'white') : colors.textSecondary }]}>Friends</Text>
                                 </View>
-                            </TouchableOpacity>
-                            <TouchableOpacity
+                            </Pressable>
+                            <Pressable
                                 style={[
                                     styles.tab,
                                     type === 'group' && { backgroundColor: isSkeuomorphic ? 'transparent' : colors.primary },
@@ -448,8 +458,8 @@ export default function AddExpenseScreen() {
                                     <Users size={20} color={type === 'group' ? (isSkeuomorphic ? colors.primary : 'white') : colors.textSecondary} />
                                     <Text style={[styles.tabText, { color: type === 'group' ? (isSkeuomorphic ? colors.primary : 'white') : colors.textSecondary }]}>Groups</Text>
                                 </View>
-                            </TouchableOpacity>
-                            <TouchableOpacity
+                            </Pressable>
+                            <Pressable
                                 style={[
                                     styles.tab,
                                     type === 'personal' && { backgroundColor: isSkeuomorphic ? 'transparent' : colors.primary },
@@ -463,7 +473,7 @@ export default function AddExpenseScreen() {
                                     <User size={20} color={type === 'personal' ? (isSkeuomorphic ? colors.primary : 'white') : colors.textSecondary} />
                                     <Text style={[styles.tabText, { color: type === 'personal' ? (isSkeuomorphic ? colors.primary : 'white') : colors.textSecondary }]}>Personal</Text>
                                 </View>
-                            </TouchableOpacity>
+                            </Pressable>
                         </View>
                     </View>
 
@@ -484,7 +494,7 @@ export default function AddExpenseScreen() {
                     <View style={{ marginBottom: 24 }}>
                         <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.chipScroll}>
                             {(categories || []).slice(0, 50).map(cat => (
-                                <TouchableOpacity
+                                <Pressable
                                     key={cat.id}
                                     style={[
                                         styles.chip,
@@ -508,7 +518,7 @@ export default function AddExpenseScreen() {
                                             {cat.label}
                                         </Text>
                                     </View>
-                                </TouchableOpacity>
+                                </Pressable>
                             ))}
                         </ScrollView>
                     </View>
@@ -533,10 +543,9 @@ export default function AddExpenseScreen() {
 
                     {!id && (
                         <View style={styles.recurringContainer}>
-                            <TouchableOpacity
+                            <Pressable
                                 style={styles.recurringRow}
                                 onPress={() => setIsRecurring(!isRecurring)}
-                                activeOpacity={0.8}
                             >
                                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
                                     <Repeat size={20} color={isRecurring ? colors.primary : colors.textSecondary} />
@@ -545,12 +554,12 @@ export default function AddExpenseScreen() {
                                 <View style={[styles.checkbox, { borderColor: colors.textSecondary }, isRecurring && { backgroundColor: colors.primary, borderColor: colors.primary }]}>
                                     {isRecurring && <Check size={14} color="white" />}
                                 </View>
-                            </TouchableOpacity>
+                            </Pressable>
 
                             {isRecurring && (
                                 <View style={styles.frequencyRow}>
                                     {(['daily', 'weekly', 'monthly'] as Frequency[]).map((freq) => (
-                                        <TouchableOpacity
+                                        <Pressable
                                             key={freq}
                                             style={[
                                                 styles.freqChip,
@@ -562,7 +571,7 @@ export default function AddExpenseScreen() {
                                             <Text style={[styles.freqText, { color: colors.textSecondary }, frequency === freq && { color: 'white', fontWeight: '600' }]}>
                                                 {freq.charAt(0).toUpperCase() + freq.slice(1)}
                                             </Text>
-                                        </TouchableOpacity>
+                                        </Pressable>
                                     ))}
                                 </View>
                             )}
@@ -580,12 +589,12 @@ export default function AddExpenseScreen() {
 
                 <Modal visible={isFullScreenVisible} transparent={true} animationType="fade">
                     <View style={{ flex: 1, backgroundColor: 'black', justifyContent: 'center', alignItems: 'center' }}>
-                        <TouchableOpacity 
+                        <Pressable 
                             style={{ position: 'absolute', top: 50, right: 20, zIndex: 10, padding: 10 }}
                             onPress={() => setIsFullScreenVisible(false)}
                         >
                             <X size={30} color="white" />
-                        </TouchableOpacity>
+                        </Pressable>
                         {billUrl && (
                             <Image 
                                 source={{ uri: billUrl }} 

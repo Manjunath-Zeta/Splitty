@@ -10,7 +10,9 @@ interface StyledInputProps extends TextInputProps {
 }
 
 export const StyledInput: React.FC<StyledInputProps> = ({ label, style, labelStyle, containerStyle, ...props }) => {
-    const { colors, designPreference, appearance } = useSplittyStore();
+    const colors = useSplittyStore(s => s.colors);
+    const designPreference = useSplittyStore(s => s.designPreference);
+    const appearance = useSplittyStore(s => s.appearance);
     const isSkeuomorphic = designPreference === 'skeuomorphic';
     const isDark = appearance === 'dark';
     const skeuo = isDark ? Skeuomorphic.dark : Skeuomorphic.light;

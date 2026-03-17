@@ -1,5 +1,11 @@
 import React, { memo } from 'react';
-import { View, Text, TouchableOpacity, ScrollView, StyleSheet } from 'react-native';
+import {
+    View,
+    Text,
+    ScrollView,
+    StyleSheet,
+    Pressable
+} from 'react-native';
 import { Check } from 'lucide-react-native';
 import { useSplittyStore } from '../store/useSplittyStore';
 import { Skeuomorphic } from '../constants/Colors';
@@ -56,7 +62,7 @@ export const SplitDetails = memo(({
                         <Text style={[styles.label, { color: colors.textSecondary }]}>Paid by</Text>
                         <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.chipScroll}>
                             {participants.map(pId => (
-                                <TouchableOpacity
+                                <Pressable
                                     key={pId}
                                     style={[
                                         styles.chip,
@@ -78,7 +84,7 @@ export const SplitDetails = memo(({
                                         </Text>
                                         {payerId === pId && <Check size={14} color={isSkeuomorphic ? colors.primary : "white"} style={{ marginLeft: 4 }} />}
                                     </View>
-                                </TouchableOpacity>
+                                </Pressable>
                             ))}
                         </ScrollView>
 
@@ -86,7 +92,7 @@ export const SplitDetails = memo(({
                         <Text style={[styles.label, { marginTop: 16, color: colors.textSecondary }]}>Split distribution</Text>
                         <View style={isSkeuomorphic ? [styles.skeuoToggleContainer, skeuo.inset.dark] : [styles.splitToggle, { backgroundColor: colors.background }]}>
                             <View style={isSkeuomorphic ? [styles.skeuoToggleInner, skeuo.inset.light] : { flexDirection: 'row', flex: 1 }}>
-                                <TouchableOpacity
+                                <Pressable
                                     style={[
                                         styles.toggleOption,
                                         !isSkeuomorphic && splitType === 'equal' && { backgroundColor: colors.surface },
@@ -98,8 +104,8 @@ export const SplitDetails = memo(({
                                     <View style={isSkeuomorphic && splitType === 'equal' ? [styles.skeuoActiveToggleInner, skeuo.outset.dark] : null}>
                                         <Text style={[styles.toggleText, { color: colors.textSecondary }, splitType === 'equal' && { color: colors.text, fontWeight: '600' }]}>Equally</Text>
                                     </View>
-                                </TouchableOpacity>
-                                <TouchableOpacity
+                                </Pressable>
+                                <Pressable
                                     style={[
                                         styles.toggleOption,
                                         !isSkeuomorphic && splitType === 'unequal' && { backgroundColor: colors.surface },
@@ -111,7 +117,7 @@ export const SplitDetails = memo(({
                                     <View style={isSkeuomorphic && splitType === 'unequal' ? [styles.skeuoActiveToggleInner, skeuo.outset.dark] : null}>
                                         <Text style={[styles.toggleText, { color: colors.textSecondary }, splitType === 'unequal' && { color: colors.text, fontWeight: '600' }]}>Unequal</Text>
                                     </View>
-                                </TouchableOpacity>
+                                </Pressable>
                             </View>
                         </View>
 

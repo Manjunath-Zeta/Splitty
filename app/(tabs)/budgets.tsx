@@ -1,7 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import {
-    View, Text, StyleSheet, ScrollView, SafeAreaView,
-    TouchableOpacity, FlatList, Dimensions, Platform
+    View, Text, StyleSheet, ScrollView,
+    Pressable, FlatList, Dimensions, Platform
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { ChevronLeft, ChevronRight, BarChart2 } from 'lucide-react-native';
@@ -64,7 +64,8 @@ const CategoryTile = ({
     item: any; index: number; monthKey: string; colors: any; isDarkMode: boolean;
 }) => {
     const router = useRouter();
-    const { getCategoryById, designPreference } = useSplittyStore();
+    const getCategoryById = useSplittyStore(s => s.getCategoryById);
+    const designPreference = useSplittyStore(s => s.designPreference);
     const catData = getCategoryById(item.categoryId);
     const isOver = item.percentage >= 100;
     const isWarning = item.percentage >= 85 && !isOver;
@@ -76,9 +77,8 @@ const CategoryTile = ({
 
     if (isSkeuomorphic) {
         return (
-            <TouchableOpacity
-                style={[styles.skeuoTileWrapper, skeuo.outset.light]}
-                activeOpacity={0.75}
+            <Pressable
+                style={({ pressed }) => [[styles.skeuoTileWrapper, skeuo.outset.light], { opacity: pressed ? 0.75 : 1 }]}
                 onPress={() => {
                     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
                     router.push(`/budget-category/${monthKey}/${item.categoryId}`);
@@ -101,14 +101,13 @@ const CategoryTile = ({
                         <Text style={[styles.tilePercent, { color: ringColor }]}>{item.percentage}%</Text>
                     </LinearGradient>
                 </View>
-            </TouchableOpacity>
+            </Pressable>
         );
     }
 
     return (
-        <TouchableOpacity
-            style={[styles.categoryTile, { backgroundColor: colors.surface, borderColor: colors.border }]}
-            activeOpacity={0.75}
+        <Pressable
+            style={({ pressed }) => [[styles.categoryTile, { backgroundColor: colors.surface, borderColor: colors.border }], { opacity: pressed ? 0.75 : 1 }]}
             onPress={() => {
                 Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
                 router.push(`/budget-category/${monthKey}/${item.categoryId}`);
@@ -122,13 +121,14 @@ const CategoryTile = ({
             </View>
             <Text style={[styles.tileName, { color: colors.text }]} numberOfLines={1}>{catData.label}</Text>
             <Text style={[styles.tilePercent, { color: ringColor }]}>{item.percentage}% spent</Text>
-        </TouchableOpacity>
+        </Pressable>
     );
 };
 
 // ─── Transaction Row ──────────────────────────────────────────────────────────
 const TransactionRow = ({ expense, colors, isDarkMode }: { expense: any; colors: any; isDarkMode: boolean }) => {
-    const { getCategoryById, formatCurrency } = useSplittyStore();
+    const getCategoryById = useSplittyStore(s => s.getCategoryById);
+    const formatCurrency = useSplittyStore(s => s.formatCurrency);
     const catData = getCategoryById(expense.category);
 
     let myShare = 0;
@@ -166,10 +166,17 @@ const TransactionRow = ({ expense, colors, isDarkMode }: { expense: any; colors:
 // ─── Main Screen ──────────────────────────────────────────────────────────────
 export default function BudgetsScreen() {
     const router = useRouter();
-    const {
-        colors, isDarkMode, budgets, expenses, categories, formatCurrency, getCategoryById,
-        categoryOrder, hiddenBudgetCategories, isRolloverEnabled, designPreference
-    } = useSplittyStore();
+    const colors = useSplittyStore(s => s.colors);
+    const isDarkMode = useSplittyStore(s => s.isDarkMode);
+    const budgets = useSplittyStore(s => s.budgets);
+    const expenses = useSplittyStore(s => s.expenses);
+    const categories = useSplittyStore(s => s.categories);
+    const formatCurrency = useSplittyStore(s => s.formatCurrency);
+    const getCategoryById = useSplittyStore(s => s.getCategoryById);
+    const categoryOrder = useSplittyStore(s => s.categoryOrder);
+    const hiddenBudgetCategories = useSplittyStore(s => s.hiddenBudgetCategories);
+    const isRolloverEnabled = useSplittyStore(s => s.isRolloverEnabled);
+    const designPreference = useSplittyStore(s => s.designPreference);
     const [currentDate, setCurrentDate] = useState(new Date());
 
     const monthKey = `${currentDate.getFullYear()}-${String(currentDate.getMonth() + 1).padStart(2, '0')}`;
@@ -355,16 +362,16 @@ export default function BudgetsScreen() {
     const spentPct = hasBudget ? Math.min((totalSpent / totalBudget) * 100, 100) : 0;
 
     return (
-        <SafeAreaView style={[styles.safe, { backgroundColor: designPreference === 'skeuomorphic' ? (isDarkMode ? Skeuomorphic.dark.background : Skeuomorphic.light.background) : colors.background }]}>
+        <View style={[styles.safe, { backgroundColor: designPreference === 'skeuomorphic' ? (isDarkMode ? Skeuomorphic.dark.background : Skeuomorphic.light.background) : colors.background }]}>
             {/* ── Month Navigator ── */}
             <View style={styles.header}>
-                <TouchableOpacity onPress={handlePrevMonth} style={styles.navBtn}>
+                <Pressable onPress={handlePrevMonth} style={styles.navBtn}>
                     <ChevronLeft color={colors.text} size={22} />
-                </TouchableOpacity>
+                </Pressable>
                 <Text style={[styles.headerTitle, { color: colors.text }]}>{monthName}</Text>
-                <TouchableOpacity onPress={handleNextMonth} style={styles.navBtn}>
+                <Pressable onPress={handleNextMonth} style={styles.navBtn}>
                     <ChevronRight color={colors.text} size={22} />
-                </TouchableOpacity>
+                </Pressable>
             </View>
 
             <ScrollView
@@ -450,9 +457,9 @@ export default function BudgetsScreen() {
                 <View style={styles.section}>
                     <View style={styles.sectionHeader}>
                         <Text style={[styles.sectionTitle, { color: colors.text }]}>Budget Categories</Text>
-                        <TouchableOpacity onPress={() => router.push({ pathname: '/set-budget', params: { month: monthKey } })}>
+                        <Pressable onPress={() => router.push({ pathname: '/set-budget', params: { month: monthKey } })}>
                             <Text style={[styles.sectionLink, { color: colors.primary }]}>Edit Budget</Text>
-                        </TouchableOpacity>
+                        </Pressable>
                     </View>
 
                     {activeCategories.length > 0 ? (
@@ -467,12 +474,12 @@ export default function BudgetsScreen() {
                             )}
                         />
                     ) : (
-                        <TouchableOpacity
+                        <Pressable
                             style={[styles.emptyCategories, { backgroundColor: colors.surface, borderColor: colors.border }]}
                             onPress={() => router.push({ pathname: '/set-budget', params: { month: monthKey } })}
                         >
                             <Text style={[styles.emptyCatText, { color: colors.primary }]}>Tap to set a budget →</Text>
-                        </TouchableOpacity>
+                        </Pressable>
                     )}
                 </View>
 
@@ -481,9 +488,9 @@ export default function BudgetsScreen() {
                     <View style={styles.section}>
                         <View style={styles.sectionHeader}>
                             <Text style={[styles.sectionTitle, { color: colors.text }]}>Recent Transactions</Text>
-                            <TouchableOpacity onPress={() => router.push('/activity')}>
+                            <Pressable onPress={() => router.push('/activity')}>
                                 <Text style={[styles.sectionLink, { color: colors.primary }]}>View All</Text>
-                            </TouchableOpacity>
+                            </Pressable>
                         </View>
 
                         {designPreference === 'skeuomorphic' ? (
@@ -518,7 +525,7 @@ export default function BudgetsScreen() {
 
                 <View style={{ height: 48 }} />
             </ScrollView>
-        </SafeAreaView>
+        </View>
     );
 }
 

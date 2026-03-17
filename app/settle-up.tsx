@@ -1,5 +1,15 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert, SafeAreaView, TextInput, KeyboardAvoidingView, Platform } from 'react-native';
+import {
+    View,
+    Text,
+    StyleSheet,
+    ScrollView,
+    Alert,
+    TextInput,
+    KeyboardAvoidingView,
+    Platform,
+    Pressable
+} from 'react-native';
 import { useRouter, Stack } from 'expo-router';
 import { useSplittyStore } from '../store/useSplittyStore';
 import { GlassCard } from '../components/GlassCard';
@@ -10,7 +20,12 @@ import { LinearGradient } from 'expo-linear-gradient';
 
 export default function SettleUpScreen() {
     const router = useRouter();
-    const { friends, colors, appearance, formatCurrency, settleUp, designPreference } = useSplittyStore();
+    const friends = useSplittyStore(s => s.friends);
+    const colors = useSplittyStore(s => s.colors);
+    const appearance = useSplittyStore(s => s.appearance);
+    const formatCurrency = useSplittyStore(s => s.formatCurrency);
+    const settleUp = useSplittyStore(s => s.settleUp);
+    const designPreference = useSplittyStore(s => s.designPreference);
     const [selectedFriendId, setSelectedFriendId] = useState<string | null>(null);
     const [amount, setAmount] = useState<string>('');
     const [isPaying, setIsPaying] = useState<boolean>(true); // true = User pays Friend; false = Friend pays User
@@ -58,15 +73,15 @@ export default function SettleUpScreen() {
             {isSkeuomorphic ? (
                 <View style={[styles.skeuoIconWrapper, skeuo.outset.light]}>
                     <View style={[styles.skeuoIconInner, skeuo.outset.dark]}>
-                        <TouchableOpacity style={[styles.backButtonSkeuo, { backgroundColor: skeuo.background }]} onPress={onBack}>
+                        <Pressable style={[styles.backButtonSkeuo, { backgroundColor: skeuo.background }]} onPress={onBack}>
                             <ChevronLeft size={28} color={colors.text} />
-                        </TouchableOpacity>
+                        </Pressable>
                     </View>
                 </View>
             ) : (
-                <TouchableOpacity style={styles.backButton} onPress={onBack}>
+                <Pressable style={styles.backButton} onPress={onBack}>
                     <ChevronLeft size={28} color={colors.text} />
-                </TouchableOpacity>
+                </Pressable>
             )}
             <Text style={[styles.headerTitle, { color: colors.text }]}>{title}</Text>
             <View style={{ width: 44 }} />
@@ -78,7 +93,7 @@ export default function SettleUpScreen() {
         if (!friend) return null;
 
         return (
-            <SafeAreaView style={[styles.safeArea, { backgroundColor: isSkeuomorphic ? skeuo.background : colors.background }]}>
+            <View style={[styles.safeArea, { backgroundColor: isSkeuomorphic ? skeuo.background : colors.background }]}>
                 <Stack.Screen options={{ headerShown: false }} />
                 <KeyboardAvoidingView
                     style={{ flex: 1 }}
@@ -145,12 +160,12 @@ export default function SettleUpScreen() {
                         />
                     </View>
                 </KeyboardAvoidingView>
-            </SafeAreaView>
+            </View>
         );
     }
 
     return (
-        <SafeAreaView style={[styles.safeArea, { backgroundColor: isSkeuomorphic ? skeuo.background : colors.background }]}>
+        <View style={[styles.safeArea, { backgroundColor: isSkeuomorphic ? skeuo.background : colors.background }]}>
             <Stack.Screen options={{ headerShown: false }} />
             <Header title="Settle Up" onBack={() => router.back()} />
 
@@ -171,7 +186,7 @@ export default function SettleUpScreen() {
                                 <View style={[styles.skeuoCardInner, skeuo.outset.dark]}>
                                     <LinearGradient colors={skeuo.surfaceGradient} style={styles.skeuoListCard}>
                                         {friendsWithBalances.map((friend, index) => (
-                                            <TouchableOpacity
+                                            <Pressable
                                                 key={friend.id}
                                                 style={[
                                                     styles.friendItem,
@@ -194,7 +209,7 @@ export default function SettleUpScreen() {
                                                         {formatCurrency(friend.balance)}
                                                     </Text>
                                                 </View>
-                                            </TouchableOpacity>
+                                            </Pressable>
                                         ))}
                                     </LinearGradient>
                                 </View>
@@ -202,7 +217,7 @@ export default function SettleUpScreen() {
                         ) : (
                             <GlassCard style={[styles.listCard, { backgroundColor: colors.surface }]}>
                                 {friendsWithBalances.map((friend, index) => (
-                                    <TouchableOpacity
+                                    <Pressable
                                         key={friend.id}
                                         style={[
                                             styles.friendItem,
@@ -225,7 +240,7 @@ export default function SettleUpScreen() {
                                                 {formatCurrency(friend.balance)}
                                             </Text>
                                         </View>
-                                    </TouchableOpacity>
+                                    </Pressable>
                                 ))}
                             </GlassCard>
                         )}
@@ -233,7 +248,7 @@ export default function SettleUpScreen() {
                 )}
                 <View style={{ height: 120 }} />
             </ScrollView>
-        </SafeAreaView>
+        </View>
     );
 }
 

@@ -1,20 +1,35 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Alert, ActivityIndicator, Platform, ScrollView, KeyboardAvoidingView, Dimensions } from 'react-native';
+import {
+    View,
+    Text,
+    StyleSheet,
+    Alert,
+    ActivityIndicator,
+    Platform,
+    ScrollView,
+    KeyboardAvoidingView,
+    Dimensions,
+    Pressable
+} from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import * as WebBrowser from 'expo-web-browser';
+import * as AppleAuthentication from 'expo-apple-authentication';
 import { supabase } from '../lib/supabase';
 import { useSplittyStore } from '../store/useSplittyStore';
 import { StyledInput } from '../components/StyledInput';
 import { VibrantButton } from '../components/VibrantButton';
 import { GoogleIcon } from '../components/GoogleIcon';
+import { Apple } from 'lucide-react-native';
 
 WebBrowser.maybeCompleteAuthSession();
 
 const { height: SCREEN_HEIGHT } = Dimensions.get('window');
 
 export default function AuthScreen() {
-    const { colors, designPreference, appearance } = useSplittyStore();
+    const colors = useSplittyStore(s => s.colors);
+    const designPreference = useSplittyStore(s => s.designPreference);
+    const appearance = useSplittyStore(s => s.appearance);
     const router = useRouter();
     
     const [loading, setLoading] = useState(false);
@@ -63,6 +78,34 @@ export default function AuthScreen() {
         }
     };
 
+    const handleAppleSignIn = async () => {
+        try {
+            const credential = await AppleAuthentication.signInAsync({
+                requestedScopes: [
+                    AppleAuthentication.AppleAuthenticationScope.FULL_NAME,
+                    AppleAuthentication.AppleAuthenticationScope.EMAIL,
+                ],
+            });
+            
+            if (credential.identityToken) {
+                const { error, data } = await supabase.auth.signInWithIdToken({
+                    provider: 'apple',
+                    token: credential.identityToken,
+                });
+                
+                if (error) throw error;
+            } else {
+                throw new Error('No identityToken.');
+            }
+        } catch (e: any) {
+            if (e.code === 'ERR_REQUEST_CANCELED') {
+                // handle that the user canceled the sign-in flow
+            } else {
+                Alert.alert('Apple Sign-In Error', e.message);
+            }
+        }
+    };
+
     const handleAuth = async () => {
         if (authMethod === 'phone') {
             setLoading(true);
@@ -103,7 +146,7 @@ export default function AuthScreen() {
 
     return (
         <View style={[styles.mainContainer, { backgroundColor: colors.background }]}>
-            <SafeAreaView style={{ flex: 1 }}>
+            <View style={{ flex: 1 }}>
                 <KeyboardAvoidingView 
                     style={{ flex: 1 }} 
                     behavior={Platform.OS === 'ios' ? 'padding' : undefined}
@@ -118,18 +161,18 @@ export default function AuthScreen() {
                             </Text>
 
                             <View style={styles.methodToggle}>
-                                <TouchableOpacity 
+                                <Pressable 
                                     style={[styles.methodBtn, authMethod === 'email' && { backgroundColor: colors.primary }]}
                                     onPress={() => { setAuthMethod('email'); setShowVerification(false); }}
                                 >
                                     <Text style={{ color: authMethod === 'email' ? 'white' : colors.textSecondary }}>Email</Text>
-                                </TouchableOpacity>
-                                <TouchableOpacity 
+                                </Pressable>
+                                <Pressable 
                                     style={[styles.methodBtn, authMethod === 'phone' && { backgroundColor: colors.primary }]}
                                     onPress={() => { setAuthMethod('phone'); setShowVerification(false); }}
                                 >
                                     <Text style={{ color: authMethod === 'phone' ? 'white' : colors.textSecondary }}>Phone</Text>
-                                </TouchableOpacity>
+                                </Pressable>
                             </View>
 
                             <View style={styles.inputs}>
@@ -157,9 +200,9 @@ export default function AuthScreen() {
                             />
 
                             {authMethod === 'email' && (
-                                <TouchableOpacity onPress={() => setIsSignUp(!isSignUp)} style={{ marginTop: 20, alignItems: 'center' }}>
+                                <Pressable onPress={() => setIsSignUp(!isSignUp)} style={{ marginTop: 20, alignItems: 'center' }}>
                                     <Text style={{ color: colors.primary }}>{isSignUp ? 'Already have an account?' : "Need an account?"}</Text>
-                                </TouchableOpacity>
+                                </Pressable>
                             )}
 
                             <View style={styles.divider}>
@@ -168,8 +211,19 @@ export default function AuthScreen() {
                                 <View style={[styles.line, { backgroundColor: colors.border }]} />
                             </View>
 
+                            {Platform.OS === 'ios' && (
+                                <VibrantButton 
+                                    title="Sign in with Apple" 
+                                    onPress={handleAppleSignIn} 
+                                    style={{ backgroundColor: '#000000', marginBottom: 12 }}
+                                    textStyle={{ color: '#FFFFFF' }}
+                                    leftIcon={<Apple color="#FFFFFF" size={20} />} 
+                                    disabled={loading}
+                                />
+                            )}
+
                             <VibrantButton 
-                                title="Google" 
+                                title="Sign in with Google" 
                                 onPress={handleGoogleSignIn} 
                                 variant="outline" 
                                 leftIcon={<GoogleIcon />} 
@@ -178,7 +232,7 @@ export default function AuthScreen() {
                         </View>
                     </ScrollView>
                 </KeyboardAvoidingView>
-            </SafeAreaView>
+            </View>
         </View>
     );
 }

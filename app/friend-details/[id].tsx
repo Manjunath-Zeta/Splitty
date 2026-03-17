@@ -1,5 +1,18 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, SafeAreaView, TouchableOpacity, Alert, ScrollView, Image, Linking, Modal, TextInput, KeyboardAvoidingView, Platform } from 'react-native';
+import {
+    View,
+    Text,
+    StyleSheet,
+    Alert,
+    ScrollView,
+    Image,
+    Linking,
+    Modal,
+    TextInput,
+    KeyboardAvoidingView,
+    Platform,
+    Pressable
+} from 'react-native';
 import { useLocalSearchParams, useRouter, Stack } from 'expo-router';
 import { useSplittyStore } from '../../store/useSplittyStore';
 import { GlassCard } from '../../components/GlassCard';
@@ -23,7 +36,16 @@ interface LinkedProfile {
 export default function FriendDetailsScreen() {
     const { id } = useLocalSearchParams<{ id: string }>();
     const router = useRouter();
-    const { friends, expenses, groups, appearance, colors, formatCurrency, deleteExpense, deleteFriend, getCategoryById, designPreference } = useSplittyStore();
+    const friends = useSplittyStore(s => s.friends);
+    const expenses = useSplittyStore(s => s.expenses);
+    const groups = useSplittyStore(s => s.groups);
+    const appearance = useSplittyStore(s => s.appearance);
+    const colors = useSplittyStore(s => s.colors);
+    const formatCurrency = useSplittyStore(s => s.formatCurrency);
+    const deleteExpense = useSplittyStore(s => s.deleteExpense);
+    const deleteFriend = useSplittyStore(s => s.deleteFriend);
+    const getCategoryById = useSplittyStore(s => s.getCategoryById);
+    const designPreference = useSplittyStore(s => s.designPreference);
     const isDark = appearance === 'dark';
     const isSkeuomorphic = designPreference === 'skeuomorphic';
     const skeuo = isDark ? Skeuomorphic.dark : Skeuomorphic.light;
@@ -70,14 +92,14 @@ export default function FriendDetailsScreen() {
         return (
             <>
                 <Stack.Screen options={{ headerShown: false }} />
-                <SafeAreaView style={[styles.safeArea, { backgroundColor: colors.background }]}>
+                <View style={[styles.safeArea, { backgroundColor: colors.background }]}>
                     <View style={[styles.container, { justifyContent: 'center', alignItems: 'center' }]}>
                         <Text style={{ color: colors.textSecondary }}>Friend not found.</Text>
-                        <TouchableOpacity onPress={() => router.back()} style={{ marginTop: 20 }}>
+                        <Pressable onPress={() => router.back()} style={{ marginTop: 20 }}>
                             <Text style={{ color: colors.primary }}>Go Back</Text>
-                        </TouchableOpacity>
+                        </Pressable>
                     </View>
-                </SafeAreaView>
+                </View>
             </>
         );
     }
@@ -187,15 +209,15 @@ export default function FriendDetailsScreen() {
                 {isSkeuomorphic ? (
                     <View style={[styles.skeuoIconWrapper, skeuo.outset.light]}>
                         <View style={[styles.skeuoIconInner, skeuo.outset.dark]}>
-                            <TouchableOpacity onPress={() => router.back()} style={[styles.backButtonSkeuo, { backgroundColor: skeuo.background }]}>
+                            <Pressable onPress={() => router.back()} style={[styles.backButtonSkeuo, { backgroundColor: skeuo.background }]}>
                                 <ArrowLeft size={24} color={colors.text} />
-                            </TouchableOpacity>
+                            </Pressable>
                         </View>
                     </View>
                 ) : (
-                    <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
+                    <Pressable onPress={() => router.back()} style={styles.backButton}>
                         <ArrowLeft size={24} color={colors.text} />
-                    </TouchableOpacity>
+                    </Pressable>
                 )}
                 <Text style={[styles.headerTitle, { color: colors.text }]}>Friend Details</Text>
                 <View style={{ width: 44 }} />
@@ -237,10 +259,9 @@ export default function FriendDetailsScreen() {
                             {(displayEmail || displayPhone) && (
                                 <View style={[styles.contactSection, { borderTopColor: colors.border }]}>
                                     {displayEmail && (
-                                        <TouchableOpacity
+                                        <Pressable
                                             style={styles.contactRow}
                                             onPress={() => Linking.openURL(`mailto:${displayEmail}`)}
-                                            activeOpacity={0.7}
                                         >
                                             <View style={[styles.contactIcon, { backgroundColor: colors.primary + '15' }]}>
                                                 <Mail size={16} color={colors.primary} />
@@ -250,13 +271,12 @@ export default function FriendDetailsScreen() {
                                                 <Text style={[styles.contactValue, { color: colors.text }]}>{displayEmail}</Text>
                                             </View>
                                             <ChevronRight size={16} color={colors.textSecondary} />
-                                        </TouchableOpacity>
+                                        </Pressable>
                                     )}
                                     {displayPhone && (
-                                        <TouchableOpacity
+                                        <Pressable
                                             style={[styles.contactRow, displayEmail && { borderTopWidth: 1, borderTopColor: colors.border }]}
                                             onPress={() => Linking.openURL(`tel:${displayPhone}`)}
-                                            activeOpacity={0.7}
                                         >
                                             <View style={[styles.contactIcon, { backgroundColor: colors.success + '15' }]}>
                                                 <Phone size={16} color={colors.success} />
@@ -266,7 +286,7 @@ export default function FriendDetailsScreen() {
                                                 <Text style={[styles.contactValue, { color: colors.text }]}>{displayPhone}</Text>
                                             </View>
                                             <ChevronRight size={16} color={colors.textSecondary} />
-                                        </TouchableOpacity>
+                                        </Pressable>
                                     )}
                                 </View>
                             )}
@@ -296,9 +316,9 @@ export default function FriendDetailsScreen() {
                     <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
                         <Text style={[styles.friendName, { color: colors.text, marginBottom: 0 }]}>{friend.name}</Text>
                         {!isLinked && (
-                            <TouchableOpacity onPress={openEditModal} style={styles.editIconBtn}>
+                            <Pressable onPress={openEditModal} style={styles.editIconBtn}>
                                 <Edit2 size={16} color={colors.primary} />
-                            </TouchableOpacity>
+                            </Pressable>
                         )}
                     </View>
                     <View style={{ height: 8 }} />
@@ -313,10 +333,9 @@ export default function FriendDetailsScreen() {
                     {(displayEmail || displayPhone) && (
                         <View style={[styles.contactSection, { borderTopColor: colors.border }]}>
                             {displayEmail && (
-                                <TouchableOpacity
+                                <Pressable
                                     style={styles.contactRow}
                                     onPress={() => Linking.openURL(`mailto:${displayEmail}`)}
-                                    activeOpacity={0.7}
                                 >
                                     <View style={[styles.contactIcon, { backgroundColor: colors.primary + '15' }]}>
                                         <Mail size={16} color={colors.primary} />
@@ -326,13 +345,12 @@ export default function FriendDetailsScreen() {
                                         <Text style={[styles.contactValue, { color: colors.text }]}>{displayEmail}</Text>
                                     </View>
                                     <ChevronRight size={16} color={colors.textSecondary} />
-                                </TouchableOpacity>
+                                </Pressable>
                             )}
                             {displayPhone && (
-                                <TouchableOpacity
+                                <Pressable
                                     style={[styles.contactRow, displayEmail && { borderTopWidth: 1, borderTopColor: colors.border }]}
                                     onPress={() => Linking.openURL(`tel:${displayPhone}`)}
-                                    activeOpacity={0.7}
                                 >
                                     <View style={[styles.contactIcon, { backgroundColor: colors.success + '15' }]}>
                                         <Phone size={16} color={colors.success} />
@@ -342,7 +360,7 @@ export default function FriendDetailsScreen() {
                                         <Text style={[styles.contactValue, { color: colors.text }]}>{displayPhone}</Text>
                                     </View>
                                     <ChevronRight size={16} color={colors.textSecondary} />
-                                </TouchableOpacity>
+                                </Pressable>
                             )}
                         </View>
                     )}
@@ -366,9 +384,8 @@ export default function FriendDetailsScreen() {
                 sortedExpenses.map(expense => {
                     const groupName = getGroupName(expense.groupId);
                     return (
-                        <TouchableOpacity
+                        <Pressable
                             key={expense.id}
-                            activeOpacity={0.7}
                             onPress={() => router.push({ pathname: '/add-expense', params: { id: expense.id } })}
                         >
                             {isSkeuomorphic ? (
@@ -452,7 +469,7 @@ export default function FriendDetailsScreen() {
                                     </View>
                                 </GlassCard>
                             )}
-                        </TouchableOpacity>
+                        </Pressable>
                     );
                 })
             ) : (
@@ -478,7 +495,7 @@ export default function FriendDetailsScreen() {
     );
 
     return (
-        <SafeAreaView style={[styles.safeArea, { backgroundColor: isSkeuomorphic ? skeuo.background : colors.background }]}>
+        <View style={[styles.safeArea, { backgroundColor: isSkeuomorphic ? skeuo.background : colors.background }]}>
             <Stack.Screen options={{ headerShown: false }} />
             <Content />
 
@@ -494,16 +511,16 @@ export default function FriendDetailsScreen() {
                 >
                     <View style={[styles.modalContent, { backgroundColor: colors.background }]}>
                         <View style={styles.modalHeader}>
-                            <TouchableOpacity onPress={() => setIsEditing(false)} style={styles.modalCloseBtn}>
+                            <Pressable onPress={() => setIsEditing(false)} style={styles.modalCloseBtn}>
                                 <X size={24} color={colors.text} />
-                            </TouchableOpacity>
+                            </Pressable>
                             <Text style={[styles.modalTitle, { color: colors.text }]}>Edit Profile</Text>
                             <View style={{ width: 24 }} />
                         </View>
 
                         <ScrollView contentContainerStyle={styles.modalBody} keyboardShouldPersistTaps="handled">
                             <View style={{ alignItems: 'center', marginBottom: 24 }}>
-                                <TouchableOpacity onPress={handlePickImage} activeOpacity={0.8} style={styles.editAvatarPicker}>
+                                <Pressable onPress={handlePickImage} style={styles.editAvatarPicker}>
                                     <InitialsAvatar
                                         name={editName || friend.name}
                                         avatarUrl={editAvatarUrl}
@@ -513,7 +530,7 @@ export default function FriendDetailsScreen() {
                                     <View style={[styles.cameraBadge, { backgroundColor: colors.primary }]}>
                                         <Camera size={16} color="#FFF" />
                                     </View>
-                                </TouchableOpacity>
+                                </Pressable>
                                 <Text style={[styles.editAvatarHint, { color: colors.textSecondary }]}>Tap to change photo</Text>
                             </View>
 
@@ -528,13 +545,13 @@ export default function FriendDetailsScreen() {
                                 onSubmitEditing={handleSaveProfile}
                             />
 
-                            <TouchableOpacity
+                            <Pressable
                                 style={[styles.saveButton, { backgroundColor: colors.primary, opacity: isSaving ? 0.7 : 1 }]}
                                 onPress={handleSaveProfile}
                                 disabled={isSaving}
                             >
                                 <Text style={styles.saveButtonText}>{isSaving ? 'Saving...' : 'Save Changes'}</Text>
-                            </TouchableOpacity>
+                            </Pressable>
                         </ScrollView>
                     </View>
                 </KeyboardAvoidingView>
@@ -545,7 +562,7 @@ export default function FriendDetailsScreen() {
                 leftIcon={<Plus size={32} color="#FFF" />}
                 variant="primary"
             />
-        </SafeAreaView>
+        </View>
     );
 }
 

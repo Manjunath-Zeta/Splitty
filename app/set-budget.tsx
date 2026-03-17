@@ -1,5 +1,15 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, ScrollView, SafeAreaView, TouchableOpacity, TextInput, KeyboardAvoidingView, Platform, Alert } from 'react-native';
+import {
+    View,
+    Text,
+    StyleSheet,
+    ScrollView,
+    TextInput,
+    KeyboardAvoidingView,
+    Platform,
+    Alert,
+    Pressable
+} from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { X, Sparkles, CheckCircle2, Eye, EyeOff } from 'lucide-react-native';
 import { useSplittyStore } from '../store/useSplittyStore';
@@ -14,21 +24,19 @@ import { LinearGradient } from 'expo-linear-gradient';
 export default function SetBudgetScreen() {
     const router = useRouter();
     const { month } = useLocalSearchParams<{ month: string }>();
-    const {
-        colors,
-        budgets,
-        setCategoryBudget,
-        autoFillBudget,
-        formatCurrency,
-        getCurrencySymbol,
-        categories,
-        categoryOrder,
-        setCategoryOrder,
-        hiddenBudgetCategories,
-        toggleCategoryBudgetVisibility,
-        designPreference,
-        appearance
-    } = useSplittyStore();
+    const colors = useSplittyStore(s => s.colors);
+    const budgets = useSplittyStore(s => s.budgets);
+    const setCategoryBudget = useSplittyStore(s => s.setCategoryBudget);
+    const autoFillBudget = useSplittyStore(s => s.autoFillBudget);
+    const formatCurrency = useSplittyStore(s => s.formatCurrency);
+    const getCurrencySymbol = useSplittyStore(s => s.getCurrencySymbol);
+    const categories = useSplittyStore(s => s.categories);
+    const categoryOrder = useSplittyStore(s => s.categoryOrder);
+    const setCategoryOrder = useSplittyStore(s => s.setCategoryOrder);
+    const hiddenBudgetCategories = useSplittyStore(s => s.hiddenBudgetCategories);
+    const toggleCategoryBudgetVisibility = useSplittyStore(s => s.toggleCategoryBudgetVisibility);
+    const designPreference = useSplittyStore(s => s.designPreference);
+    const appearance = useSplittyStore(s => s.appearance);
 
     const isSkeuomorphic = designPreference === 'skeuomorphic';
     const isDark = appearance === 'dark';
@@ -118,19 +126,19 @@ export default function SetBudgetScreen() {
     const currency = getCurrencySymbol();
 
     return (
-        <SafeAreaView style={[styles.safeArea, { backgroundColor: colors.background }]}>
+        <View style={[styles.safeArea, { backgroundColor: colors.background }]}>
             <KeyboardAvoidingView
                 style={styles.keyboardView}
                 behavior={Platform.OS === 'ios' ? 'padding' : undefined}
             >
                 <View style={styles.header}>
-                    <TouchableOpacity onPress={() => router.back()} style={styles.closeButton}>
+                    <Pressable onPress={() => router.back()} style={styles.closeButton}>
                         <X color={colors.text} size={28} />
-                    </TouchableOpacity>
+                    </Pressable>
                     <Text style={[styles.headerTitle, { color: colors.text }]}>Set Category Budgets</Text>
-                    <TouchableOpacity onPress={handleSave} style={styles.saveButton}>
+                    <Pressable onPress={handleSave} style={styles.saveButton}>
                         <CheckCircle2 color={colors.primary} size={28} />
-                    </TouchableOpacity>
+                    </Pressable>
                 </View>
 
                 <ScrollView contentContainerStyle={styles.container}>
@@ -192,7 +200,7 @@ export default function SetBudgetScreen() {
                                             <CategoryIcon name={category.icon} color={category.color} size={24} />
                                         </View>
                                         <Text style={[styles.catName, { color: colors.text }]}>{category.label}</Text>
-                                        <TouchableOpacity
+                                        <Pressable
                                             style={styles.visibilityToggle}
                                             onPress={() => {
                                                 Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
@@ -204,7 +212,7 @@ export default function SetBudgetScreen() {
                                             ) : (
                                                 <Eye color={colors.textSecondary} size={20} />
                                             )}
-                                        </TouchableOpacity>
+                                        </Pressable>
                                     </View>
                                     <View style={[
                                         isSkeuomorphic ? styles.skeuoInputWrapper : styles.inputWrapper,
@@ -278,7 +286,7 @@ export default function SetBudgetScreen() {
                     </View>
                 )}
             </KeyboardAvoidingView>
-        </SafeAreaView>
+        </View>
     );
 }
 

@@ -1,5 +1,13 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert, SafeAreaView, Image } from 'react-native';
+import {
+    View,
+    Text,
+    StyleSheet,
+    ScrollView,
+    Alert,
+    Image,
+    Pressable
+} from 'react-native';
 import { useRouter, Stack } from 'expo-router';
 import * as ImagePicker from 'expo-image-picker';
 import { useSplittyStore } from '../store/useSplittyStore';
@@ -12,7 +20,11 @@ import { ArrowLeft, User, Mail, Phone } from 'lucide-react-native';
 
 export default function ProfileEditScreen() {
     const router = useRouter();
-    const { userProfile, updateUserProfile, appearance, colors, designPreference } = useSplittyStore();
+    const userProfile = useSplittyStore(s => s.userProfile);
+    const updateUserProfile = useSplittyStore(s => s.updateUserProfile);
+    const appearance = useSplittyStore(s => s.appearance);
+    const colors = useSplittyStore(s => s.colors);
+    const designPreference = useSplittyStore(s => s.designPreference);
     const isDark = appearance === 'dark';
     const isSkeuomorphic = designPreference === 'skeuomorphic';
     const skeuo = isDark ? Skeuomorphic.dark : Skeuomorphic.light;
@@ -46,21 +58,21 @@ export default function ProfileEditScreen() {
     };
 
     return (
-        <SafeAreaView style={[styles.safeArea, { backgroundColor: isSkeuomorphic ? skeuo.background : colors.background }]}>
+        <View style={[styles.safeArea, { backgroundColor: isSkeuomorphic ? skeuo.background : colors.background }]}>
             <Stack.Screen options={{ headerShown: false }} />
             <View style={styles.header}>
                 {isSkeuomorphic ? (
                     <View style={[styles.skeuoIconWrapper, skeuo.outset.light]}>
                         <View style={[styles.skeuoIconInner, skeuo.outset.dark]}>
-                            <TouchableOpacity onPress={() => router.back()} style={[styles.backButton, { backgroundColor: skeuo.background }]}>
+                            <Pressable onPress={() => router.back()} style={[styles.backButton, { backgroundColor: skeuo.background }]}>
                                 <ArrowLeft size={24} color={colors.text} />
-                            </TouchableOpacity>
+                            </Pressable>
                         </View>
                     </View>
                 ) : (
-                    <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
+                    <Pressable onPress={() => router.back()} style={styles.backButton}>
                         <ArrowLeft size={24} color={colors.text} />
-                    </TouchableOpacity>
+                    </Pressable>
                 )}
                 <Text style={[styles.headerTitle, { color: colors.text }]}>Edit Profile</Text>
                 <View style={{ width: 44 }} />
@@ -68,7 +80,7 @@ export default function ProfileEditScreen() {
 
             <ScrollView contentContainerStyle={styles.container}>
                 <View style={styles.avatarSection}>
-                    <TouchableOpacity onPress={pickImage} activeOpacity={0.8}>
+                    <Pressable onPress={pickImage}>
                         {isSkeuomorphic ? (
                             <View style={[styles.skeuoAvatarOuter, skeuo.outset.light]}>
                                 <View style={[styles.skeuoAvatarInner, skeuo.outset.dark]}>
@@ -91,7 +103,7 @@ export default function ProfileEditScreen() {
                             </View>
                         )}
                         <Text style={[styles.changePhotoText, { color: colors.primary }]}>Change Photo</Text>
-                    </TouchableOpacity>
+                    </Pressable>
                 </View>
 
                 {isSkeuomorphic ? (
@@ -193,7 +205,7 @@ export default function ProfileEditScreen() {
                 />
                 <View style={{ height: 120 }} />
             </ScrollView>
-        </SafeAreaView>
+        </View>
     );
 }
 

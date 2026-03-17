@@ -168,7 +168,7 @@ export function DraggableCategoryList({
     renderItemContent,
     itemHeight = 90
 }: DraggableCategoryProps) {
-    const { colors } = useSplittyStore();
+    const colors = useSplittyStore(s => s.colors);
     const [containerHeight, setContainerHeight] = useState(0);
     const scrollViewRef = useAnimatedRef<ScrollView>();
     const scrollY = useSharedValue(0);

@@ -1119,7 +1119,7 @@ export const useSplittyStore = create<SplittyState>()(
                                         const allParticipants = new Set([...realSplitWith, realPayerId]);
                                         if (realPayerId === session.user.id) allParticipants.add(session.user.id);
 
-                                        for (const realId of allParticipants) {
+                                        for (const realId of Array.from(allParticipants)) {
                                             let amount = 0;
                                             if (updatedExpense.splitType === 'unequal') {
                                                 amount = realSplitDetails[realId] || 0;
@@ -1233,7 +1233,16 @@ export const useSplittyStore = create<SplittyState>()(
             },
             initNotifications: async () => {
                 const token = await notificationService.registerForPushNotificationsAsync();
-                if (token) {
+                const { session } = get();
+                if (token && session?.user) {
+                    supabase.from('profiles').select('preferences').eq('id', session.user.id).single().then(({ data }) => {
+                        const prefs = data?.preferences || {};
+                        if (prefs.push_token !== token) {
+                           supabase.from('profiles').update({
+                               preferences: { ...prefs, push_token: token }
+                           }).eq('id', session.user.id).then();
+                        }
+                    });
                     console.log('Push Data: Local Notifications Ready');
                 }
             },
@@ -1464,7 +1473,7 @@ export const useSplittyStore = create<SplittyState>()(
                                 const allParticipants = new Set([...realSplitWith, realPayerId]);
                                 if (realPayerId === session.user.id) allParticipants.add(session.user.id);
 
-                                for (const realId of allParticipants) {
+                                for (const realId of Array.from(allParticipants)) {
                                     let amount = 0;
 
                                     // Calculate amount based on split type logic if needed, 

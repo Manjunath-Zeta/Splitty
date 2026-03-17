@@ -1,6 +1,10 @@
 import React from 'react';
 import * as LucideIcons from 'lucide-react-native';
-import { ViewStyle, StyleProp } from 'react-native';
+import {
+    ViewStyle,
+    StyleProp,
+    View
+} from 'react-native';
 
 interface Props {
     name: string;

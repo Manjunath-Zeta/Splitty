@@ -1,5 +1,11 @@
 import React, { useMemo } from 'react';
-import { View, Text, StyleSheet, SafeAreaView, ScrollView, TouchableOpacity } from 'react-native';
+import {
+    View,
+    Text,
+    StyleSheet,
+    ScrollView,
+    Pressable
+} from 'react-native';
 import { useLocalSearchParams, useRouter, Stack } from 'expo-router';
 import { ChevronLeft } from 'lucide-react-native';
 import { useSplittyStore } from '../../../store/useSplittyStore';
@@ -11,7 +17,13 @@ import { LinearGradient } from 'expo-linear-gradient';
 export default function BudgetCategorySceen() {
     const router = useRouter();
     const { month, categoryId } = useLocalSearchParams<{ month: string, categoryId: string }>();
-    const { colors, expenses, formatCurrency, friends, getCategoryById, designPreference, appearance } = useSplittyStore();
+    const colors = useSplittyStore(s => s.colors);
+    const expenses = useSplittyStore(s => s.expenses);
+    const formatCurrency = useSplittyStore(s => s.formatCurrency);
+    const friends = useSplittyStore(s => s.friends);
+    const getCategoryById = useSplittyStore(s => s.getCategoryById);
+    const designPreference = useSplittyStore(s => s.designPreference);
+    const appearance = useSplittyStore(s => s.appearance);
 
     const isSkeuomorphic = designPreference === 'skeuomorphic';
     const isDark = appearance === 'dark';
@@ -60,15 +72,15 @@ export default function BudgetCategorySceen() {
             {isSkeuomorphic ? (
                 <View style={[styles.skeuoIconWrapper, skeuo.outset.light]}>
                     <View style={[styles.skeuoIconInner, skeuo.outset.dark]}>
-                        <TouchableOpacity onPress={() => router.back()} style={[styles.backButtonSkeuo, { backgroundColor: skeuo.background }]}>
+                        <Pressable onPress={() => router.back()} style={[styles.backButtonSkeuo, { backgroundColor: skeuo.background }]}>
                             <ChevronLeft color={colors.text} size={28} />
-                        </TouchableOpacity>
+                        </Pressable>
                     </View>
                 </View>
             ) : (
-                <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
+                <Pressable onPress={() => router.back()} style={styles.backButton}>
                     <ChevronLeft color={colors.text} size={28} />
-                </TouchableOpacity>
+                </Pressable>
             )}
             <View style={styles.headerTitleContainer}>
                 <View style={[styles.iconWrapper, { backgroundColor: catData.color + '20' }]}>
@@ -81,7 +93,7 @@ export default function BudgetCategorySceen() {
     );
 
     return (
-        <SafeAreaView style={[styles.safeArea, { backgroundColor: isSkeuomorphic ? skeuo.background : colors.background }]}>
+        <View style={[styles.safeArea, { backgroundColor: isSkeuomorphic ? skeuo.background : colors.background }]}>
             <Stack.Screen options={{ headerShown: false }} />
             <Header />
 
@@ -163,7 +175,7 @@ export default function BudgetCategorySceen() {
 
                 <View style={{ height: 40 }} />
             </ScrollView>
-        </SafeAreaView>
+        </View>
     );
 }
 

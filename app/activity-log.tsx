@@ -1,5 +1,14 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, FlatList, Image, TouchableOpacity, RefreshControl, Alert } from 'react-native';
+import {
+    View,
+    Text,
+    StyleSheet,
+    FlatList,
+    Image,
+    RefreshControl,
+    Alert,
+    Pressable
+} from 'react-native';
 import { Stack, useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { ArrowLeft, Clock, Activity, Users } from 'lucide-react-native';
@@ -10,7 +19,13 @@ import { Skeuomorphic } from '../constants/Colors';
 import { LinearGradient } from 'expo-linear-gradient';
 
 export default function ActivityLogScreen() {
-    const { colors, appearance, activities, expenses, fetchData, formatCurrency, designPreference } = useSplittyStore();
+    const colors = useSplittyStore(s => s.colors);
+    const appearance = useSplittyStore(s => s.appearance);
+    const activities = useSplittyStore(s => s.activities);
+    const expenses = useSplittyStore(s => s.expenses);
+    const fetchData = useSplittyStore(s => s.fetchData);
+    const formatCurrency = useSplittyStore(s => s.formatCurrency);
+    const designPreference = useSplittyStore(s => s.designPreference);
     const insets = useSafeAreaInsets();
     const router = useRouter();
     const [refreshing, setRefreshing] = useState(false);
@@ -136,7 +151,7 @@ export default function ActivityLogScreen() {
 
         if (isSkeuomorphic) {
             return (
-                <TouchableOpacity activeOpacity={0.7} onPress={handlePress} style={styles.skeuoCardWrapper}>
+                <Pressable onPress={handlePress} style={styles.skeuoCardWrapper}>
                     <View style={[styles.skeuoCardOuter, skeuo.outset.light]}>
                         <View style={[styles.skeuoCardInner, skeuo.outset.dark]}>
                             <LinearGradient colors={skeuo.surfaceGradient} style={styles.card}>
@@ -144,16 +159,16 @@ export default function ActivityLogScreen() {
                             </LinearGradient>
                         </View>
                     </View>
-                </TouchableOpacity>
+                </Pressable>
             );
         }
 
         return (
-            <TouchableOpacity activeOpacity={0.7} onPress={handlePress}>
+            <Pressable onPress={handlePress}>
                 <GlassCard style={styles.card}>
                     <CardContent />
                 </GlassCard>
-            </TouchableOpacity>
+            </Pressable>
         );
     };
 
@@ -167,21 +182,21 @@ export default function ActivityLogScreen() {
                 {isSkeuomorphic ? (
                     <View style={[styles.skeuoIconWrapper, skeuo.outset.light]}>
                         <View style={[styles.skeuoIconInner, skeuo.outset.dark]}>
-                            <TouchableOpacity
+                            <Pressable
                                 onPress={() => router.back()}
                                 style={[styles.backButton, { backgroundColor: skeuo.background }]}
                             >
                                 <ArrowLeft size={24} color={colors.text} />
-                            </TouchableOpacity>
+                            </Pressable>
                         </View>
                     </View>
                 ) : (
-                    <TouchableOpacity
+                    <Pressable
                         onPress={() => router.back()}
                         style={[styles.backButton, { backgroundColor: colors.surface }]}
                     >
                         <ArrowLeft size={24} color={colors.text} />
-                    </TouchableOpacity>
+                    </Pressable>
                 )}
                 <Text style={[styles.headerTitle, { color: colors.text }]}>Activity Log</Text>
                 <View style={{ width: 40 }} />

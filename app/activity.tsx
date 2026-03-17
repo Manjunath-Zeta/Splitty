@@ -1,5 +1,14 @@
 import React, { useState, useMemo, useCallback } from 'react';
-import { View, Text, StyleSheet, FlatList, SafeAreaView, TouchableOpacity, Alert, TextInput, RefreshControl } from 'react-native';
+import {
+    View,
+    Text,
+    StyleSheet,
+    FlatList,
+    Alert,
+    TextInput,
+    RefreshControl,
+    Pressable
+} from 'react-native';
 import { useRouter, Stack } from 'expo-router';
 import { useSplittyStore } from '../store/useSplittyStore';
 import { GlassCard } from '../components/GlassCard';
@@ -96,15 +105,15 @@ export default function ActivityScreen() {
             {isSkeuomorphic ? (
                 <View style={[styles.skeuoIconWrapper, skeuo.outset.light]}>
                     <View style={[styles.skeuoIconInner, skeuo.outset.dark]}>
-                        <TouchableOpacity onPress={() => router.back()} style={[styles.backButtonSkeuo, { backgroundColor: skeuo.background }]}>
+                        <Pressable onPress={() => router.back()} style={[styles.backButtonSkeuo, { backgroundColor: skeuo.background }]}>
                             <ArrowLeft size={24} color={colors.text} />
-                        </TouchableOpacity>
+                        </Pressable>
                     </View>
                 </View>
             ) : (
-                <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
+                <Pressable onPress={() => router.back()} style={styles.backButton}>
                     <ArrowLeft size={24} color={colors.text} />
-                </TouchableOpacity>
+                </Pressable>
             )}
             <Text style={[styles.headerTitle, { color: colors.text }]}>All Activity</Text>
             <View style={{ width: 44 }} />
@@ -112,8 +121,7 @@ export default function ActivityScreen() {
     );
 
     const renderItem = useCallback(({ item }: { item: typeof filteredExpenses[0] }) => (
-        <TouchableOpacity
-            activeOpacity={0.7}
+        <Pressable
             onPress={() => router.push({ pathname: '/add-expense', params: { id: item.id } })}
         >
             {isSkeuomorphic ? (
@@ -219,11 +227,11 @@ export default function ActivityScreen() {
                     </View>
                 </GlassCard>
             )}
-        </TouchableOpacity>
+        </Pressable>
     ), [colors, formatCurrency, handleDelete, router, isSkeuomorphic, skeuo, isDark]);
 
     return (
-        <SafeAreaView style={[styles.safeArea, { backgroundColor: isSkeuomorphic ? skeuo.background : colors.background }]}>
+        <View style={[styles.safeArea, { backgroundColor: isSkeuomorphic ? skeuo.background : colors.background }]}>
             <Stack.Screen options={{ headerShown: false }} />
 
             <Header />
@@ -265,7 +273,7 @@ export default function ActivityScreen() {
                         keyExtractor={(item) => item}
                         contentContainerStyle={{ paddingHorizontal: 20 }}
                         renderItem={({ item }) => (
-                            <TouchableOpacity
+                            <Pressable
                                 style={[
                                     styles.filterChip,
                                     !isSkeuomorphic && { borderColor: colors.border, backgroundColor: colors.surface },
@@ -286,7 +294,7 @@ export default function ActivityScreen() {
                                         #{item}
                                     </Text>
                                 </View>
-                            </TouchableOpacity>
+                            </Pressable>
                         )}
                     />
                 </View>
@@ -314,7 +322,7 @@ export default function ActivityScreen() {
                 windowSize={7}
                 initialNumToRender={10}
             />
-        </SafeAreaView>
+        </View>
     );
 }
 

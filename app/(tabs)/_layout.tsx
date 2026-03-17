@@ -6,7 +6,9 @@ import { Skeuomorphic } from '../../constants/Colors';
 import { LinearGradient } from 'expo-linear-gradient';
 
 export default function TabsLayout() {
-    const { appearance, colors, designPreference } = useSplittyStore();
+    const appearance = useSplittyStore(s => s.appearance);
+    const colors = useSplittyStore(s => s.colors);
+    const designPreference = useSplittyStore(s => s.designPreference);
     const isDark = appearance === 'dark';
     const isSkeuomorphic = designPreference === 'skeuomorphic';
     const skeuo = isDark ? Skeuomorphic.dark : Skeuomorphic.light;

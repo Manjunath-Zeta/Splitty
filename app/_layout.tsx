@@ -18,7 +18,10 @@ SplashScreen.preventAutoHideAsync().catch(() => {
 export default function RootLayout() {
     const router = useRouter();
     const segments = useSegments();
-    const { setSession, fetchData, subscribeToChanges, initNotifications } = useSplittyStore();
+    const setSession = useSplittyStore(s => s.setSession);
+    const fetchData = useSplittyStore(s => s.fetchData);
+    const subscribeToChanges = useSplittyStore(s => s.subscribeToChanges);
+    const initNotifications = useSplittyStore(s => s.initNotifications);
     const session = useSplittyStore(state => state.session);
 
     const rootNavigationState = useRootNavigationState();

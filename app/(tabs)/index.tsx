@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useCallback } from 'react';
-import { View, Text, StyleSheet, ScrollView, SafeAreaView, TouchableOpacity, Alert, RefreshControl } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, Pressable, Alert, RefreshControl } from 'react-native';
 import { GlassCard } from '../../components/GlassCard';
 import { VibrantButton } from '../../components/VibrantButton';
 import { useRouter } from 'expo-router';
@@ -72,7 +72,7 @@ export default function DashboardScreen() {
     }, [fetchData]);
 
     return (
-        <SafeAreaView style={[styles.safeArea, { backgroundColor: isSkeuomorphic ? skeuo.background : colors.background }]}>
+        <View style={[styles.safeArea, { flex: 1, backgroundColor: isSkeuomorphic ? skeuo.background : colors.background }]}>
             <ScrollView
                 contentContainerStyle={styles.container}
                 refreshControl={
@@ -139,17 +139,16 @@ export default function DashboardScreen() {
                                             .sort((a, b) => b.balance - a.balance)
                                             .slice(0, 3)
                                             .map(friend => (
-                                                <TouchableOpacity
+                                                <Pressable
                                                     key={friend.id}
                                                     style={styles.breakdownItem}
                                                     onPress={() => router.push({ pathname: '/friend-details/[id]', params: { id: friend.id } })}
-                                                    activeOpacity={0.7}
                                                 >
                                                     <Text style={[styles.breakdownName, { color: colors.text }]}>{friend.name}</Text>
                                                     <Text style={[styles.breakdownAmount, { color: colors.success }]}>
                                                         {formatCurrency(friend.balance)}
                                                     </Text>
-                                                </TouchableOpacity>
+                                                </Pressable>
                                             ))}
                                     </LinearGradient>
                                 </View>
@@ -169,17 +168,16 @@ export default function DashboardScreen() {
                                             .sort((a, b) => Math.abs(a.balance) - Math.abs(b.balance))
                                             .slice(0, 3)
                                             .map(friend => (
-                                                <TouchableOpacity
+                                                <Pressable
                                                     key={friend.id}
                                                     style={styles.breakdownItem}
                                                     onPress={() => router.push({ pathname: '/friend-details/[id]', params: { id: friend.id } })}
-                                                    activeOpacity={0.7}
                                                 >
                                                     <Text style={[styles.breakdownName, { color: colors.text }]}>{friend.name}</Text>
                                                     <Text style={[styles.breakdownAmount, { color: colors.accent }]}>
                                                         {formatCurrency(Math.abs(friend.balance))}
                                                     </Text>
-                                                </TouchableOpacity>
+                                                </Pressable>
                                             ))}
                                     </LinearGradient>
                                 </View>
@@ -188,19 +186,13 @@ export default function DashboardScreen() {
                     </View>
                 )}
 
-                <VibrantButton
-                    title="View Analytics"
-                    onPress={() => router.push('/analytics')}
-                    variant="outline"
-                    style={[styles.analyticsButton, isSkeuomorphic && { borderRadius: skeuo.radii.button }]}
-                />
 
                 <View style={styles.section}>
                     <View style={styles.sectionHeader}>
                         <Text style={[styles.sectionTitle, { color: colors.text }]}>Recent Activity</Text>
-                        <TouchableOpacity onPress={() => router.push('/activity')}>
+                        <Pressable onPress={() => router.push('/activity')}>
                             <Text style={[styles.seeAll, { color: colors.primary }]}>See All</Text>
-                        </TouchableOpacity>
+                        </Pressable>
                     </View>
 
                     {recentExpenses.length > 0 ? (
@@ -210,8 +202,7 @@ export default function DashboardScreen() {
                                     <View style={[styles.skeuoActivityGroupContent, { backgroundColor: skeuo.background }]}>
                                         {recentExpenses.map((expense: any, index: number) => (
                                             <React.Fragment key={expense.id}>
-                                                <TouchableOpacity
-                                                    activeOpacity={0.7}
+                                                <Pressable
                                                     onPress={() => router.push({ pathname: '/add-expense', params: { id: expense.id } })}
                                                     style={styles.activityItem}
                                                 >
@@ -243,7 +234,7 @@ export default function DashboardScreen() {
                                                             leftIcon={<Trash2 size={18} color={colors.error} />}
                                                         />
                                                     </View>
-                                                </TouchableOpacity>
+                                                </Pressable>
                                                 {index < recentExpenses.length - 1 && (
                                                     <View style={[styles.separator, { backgroundColor: colors.border + '20' }]} />
                                                 )}
@@ -254,9 +245,8 @@ export default function DashboardScreen() {
                             </View>
                         ) : (
                             recentExpenses.map((expense: any) => (
-                                <TouchableOpacity
+                                <Pressable
                                     key={expense.id}
-                                    activeOpacity={0.7}
                                     onPress={() => router.push({ pathname: '/add-expense', params: { id: expense.id } })}
                                 >
                                     <GlassCard
@@ -295,7 +285,7 @@ export default function DashboardScreen() {
                                             />
                                         </View>
                                     </GlassCard>
-                                </TouchableOpacity>
+                                </Pressable>
                             ))
                         )
                     ) : (
@@ -316,7 +306,7 @@ export default function DashboardScreen() {
                 style={[styles.fab, isSkeuomorphic && { borderRadius: skeuo.radii.fab }]}
                 leftIcon={<Plus size={32} color={isSkeuomorphic ? colors.primary : "white"} />}
             />
-        </SafeAreaView >
+        </View >
     );
 }
 
@@ -474,7 +464,7 @@ const styles = StyleSheet.create({
     },
     fab: {
         position: 'absolute',
-        bottom: 80, // Lowered further to sit closer to the tab bar
+        bottom: 110, // Raised to clear the tab bar and safe area inset
         right: 24,
         width: 64,
         height: 64,

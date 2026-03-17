@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, SafeAreaView, TouchableOpacity, Alert, TextInput, Modal, KeyboardAvoidingView, Platform, Switch } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, Alert, TextInput, Modal, KeyboardAvoidingView, Platform, Switch, Pressable } from 'react-native';
 import { useRouter } from 'expo-router';
 import { ChevronLeft, Plus, Trash2, Tag, X, DollarSign, RefreshCw } from 'lucide-react-native';
 import { useSplittyStore } from '../store/useSplittyStore';
@@ -30,7 +30,14 @@ const PRESET_ICONS = [
 
 export default function ManageCategoriesScreen() {
     const router = useRouter();
-    const { colors, appearance, categories, deleteCategory, addCategory, updateCategory, getCurrencySymbol, designPreference } = useSplittyStore();
+    const colors = useSplittyStore(s => s.colors);
+    const appearance = useSplittyStore(s => s.appearance);
+    const categories = useSplittyStore(s => s.categories);
+    const deleteCategory = useSplittyStore(s => s.deleteCategory);
+    const addCategory = useSplittyStore(s => s.addCategory);
+    const updateCategory = useSplittyStore(s => s.updateCategory);
+    const getCurrencySymbol = useSplittyStore(s => s.getCurrencySymbol);
+    const designPreference = useSplittyStore(s => s.designPreference);
     const currency = getCurrencySymbol();
 
     const isDark = appearance === 'dark';
@@ -107,11 +114,11 @@ export default function ManageCategoriesScreen() {
     };
 
     return (
-        <SafeAreaView style={[styles.safeArea, { backgroundColor: isSkeuomorphic ? skeuo.background : colors.background }]}>
+        <View style={[styles.safeArea, { backgroundColor: isSkeuomorphic ? skeuo.background : colors.background }]}>
             <View style={styles.header}>
-                <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
+                <Pressable onPress={() => router.back()} style={styles.backButton}>
                     <ChevronLeft color={colors.text} size={28} />
-                </TouchableOpacity>
+                </Pressable>
                 <Text style={[styles.headerTitle, { color: colors.text }]}>Manage Categories</Text>
                 <VibrantButton
                     onPress={() => setAddModalVisible(true)}
@@ -155,10 +162,9 @@ export default function ManageCategoriesScreen() {
 
                         if (isSkeuomorphic) {
                             return (
-                                <TouchableOpacity
+                                <Pressable
                                     key={cat.id}
                                     onPress={() => openModal(cat)}
-                                    activeOpacity={0.7}
                                     style={styles.skeuoCategoryWrapper}
                                 >
                                     <View style={[styles.skeuoCardOuter, skeuo.outset.light]}>
@@ -168,20 +174,19 @@ export default function ManageCategoriesScreen() {
                                             </LinearGradient>
                                         </View>
                                     </View>
-                                </TouchableOpacity>
+                                </Pressable>
                             );
                         }
 
                         return (
-                            <TouchableOpacity
+                            <Pressable
                                 key={cat.id}
                                 onPress={() => openModal(cat)}
-                                activeOpacity={0.7}
                             >
                                 <GlassCard style={[styles.categoryCard, { backgroundColor: colors.surface }]}>
                                     <CardContent />
                                 </GlassCard>
-                            </TouchableOpacity>
+                            </Pressable>
                         );
                     })}
                 </View>
@@ -204,9 +209,9 @@ export default function ManageCategoriesScreen() {
                             <Text style={[styles.modalTitle, { color: colors.text }]}>
                                 {editingId ? 'Edit Category' : 'New Category'}
                             </Text>
-                            <TouchableOpacity onPress={() => setAddModalVisible(false)} style={styles.modalCloseButton}>
+                            <Pressable onPress={() => setAddModalVisible(false)} style={styles.modalCloseButton}>
                                 <X size={24} color={colors.textSecondary} />
-                            </TouchableOpacity>
+                            </Pressable>
                         </View>
 
                         <ScrollView contentContainerStyle={styles.modalBody}>
@@ -316,7 +321,7 @@ export default function ManageCategoriesScreen() {
                                 <Text style={[styles.inputLabel, { color: colors.textSecondary }]}>Color Theme</Text>
                                 <View style={styles.colorGrid}>
                                     {PRESET_COLORS.map(color => (
-                                        <TouchableOpacity
+                                        <Pressable
                                             key={color}
                                             style={[
                                                 styles.colorCircle,
@@ -333,7 +338,7 @@ export default function ManageCategoriesScreen() {
                                 <Text style={[styles.inputLabel, { color: colors.textSecondary }]}>Icon</Text>
                                 <View style={styles.iconGrid}>
                                     {PRESET_ICONS.map(iconName => (
-                                        <TouchableOpacity
+                                        <Pressable
                                             key={iconName}
                                             style={[
                                                 styles.iconSelectBtn,
@@ -343,7 +348,7 @@ export default function ManageCategoriesScreen() {
                                             onPress={() => setNewIconName(iconName)}
                                         >
                                             {React.createElement((IconComponents as any)[iconName], { color: newIconName === iconName ? colors.primary : colors.text, size: 24 })}
-                                        </TouchableOpacity>
+                                        </Pressable>
                                     ))}
                                 </View>
                             </View>
@@ -358,7 +363,7 @@ export default function ManageCategoriesScreen() {
                 </KeyboardAvoidingView>
             </Modal >
 
-        </SafeAreaView >
+        </View>
     );
 }
 

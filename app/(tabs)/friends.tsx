@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, FlatList, SafeAreaView, TouchableOpacity, Alert, Image, RefreshControl } from 'react-native';
+import { View, Text, StyleSheet, FlatList, Pressable, Alert, RefreshControl, ScrollView } from 'react-native';
+import { Image } from 'expo-image';
 import { useRouter } from 'expo-router';
 import { Themes, ThemeName, Colors } from '../../constants/Colors';
 import { GlassCard } from '../../components/GlassCard';
@@ -15,7 +16,14 @@ import { LinearGradient } from 'expo-linear-gradient';
 
 export default function FriendsScreen() {
     const router = useRouter();
-    const { friends, addFriend, appearance, colors, formatCurrency, settleUp, fetchData, designPreference } = useSplittyStore();
+    const friends = useSplittyStore(s => s.friends);
+    const addFriend = useSplittyStore(s => s.addFriend);
+    const appearance = useSplittyStore(s => s.appearance);
+    const colors = useSplittyStore(s => s.colors);
+    const formatCurrency = useSplittyStore(s => s.formatCurrency);
+    const settleUp = useSplittyStore(s => s.settleUp);
+    const fetchData = useSplittyStore(s => s.fetchData);
+    const designPreference = useSplittyStore(s => s.designPreference);
     const [inputValue, setInputValue] = useState('');
     const [loading, setLoading] = useState(false);
     const [refreshing, setRefreshing] = useState(false);
@@ -118,7 +126,7 @@ export default function FriendsScreen() {
     };
 
     return (
-        <SafeAreaView style={[styles.safeArea, { backgroundColor: isSkeuomorphic ? skeuo.background : colors.background }]}>
+        <View style={[styles.safeArea, { backgroundColor: isSkeuomorphic ? skeuo.background : colors.background }]}>
             <View style={styles.container}>
                 <View style={isSkeuomorphic ? [styles.skeuoAddWrapper, skeuo.outset.light] : null}>
                     <View style={isSkeuomorphic ? [styles.skeuoAddInner, skeuo.outset.dark] : null}>
@@ -164,9 +172,8 @@ export default function FriendsScreen() {
                                         keyExtractor={(item) => item.id}
                                         renderItem={({ item, index }) => (
                                             <React.Fragment key={item.id}>
-                                                <TouchableOpacity
-                                                    style={styles.friendCard}
-                                                    activeOpacity={0.8}
+                                                <Pressable
+                                                    style={({ pressed }) => [styles.friendCard, { opacity: pressed ? 0.8 : 1 }]}
                                                     onPress={() => router.push({ pathname: '/friend-details/[id]', params: { id: item.id } })}
                                                 >
                                                     <View style={{ marginRight: 16 }}>
@@ -199,7 +206,7 @@ export default function FriendsScreen() {
                                                             />
                                                         )}
                                                     </View>
-                                                </TouchableOpacity>
+                                                </Pressable>
                                                 {index < friends.length - 1 && (
                                                     <View style={[styles.separator, { backgroundColor: colors.border + '20' }]} />
                                                 )}
@@ -225,9 +232,8 @@ export default function FriendsScreen() {
                             data={friends}
                             keyExtractor={(item) => item.id}
                             renderItem={({ item }) => (
-                                <TouchableOpacity
-                                    style={[styles.cardWrapper, { backgroundColor: colors.surface }]}
-                                    activeOpacity={0.8}
+                                <Pressable
+                                    style={({ pressed }) => [[styles.cardWrapper, { backgroundColor: colors.surface }], { opacity: pressed ? 0.8 : 1 }]}
                                     onPress={() => router.push({ pathname: '/friend-details/[id]', params: { id: item.id } })}
                                 >
                                     <View style={styles.friendCard}>
@@ -262,7 +268,7 @@ export default function FriendsScreen() {
                                             )}
                                         </View>
                                     </View>
-                                </TouchableOpacity>
+                                </Pressable>
                             )}
                             ListEmptyComponent={
                                 <Text style={[styles.emptyText, { color: colors.textSecondary }]}>No friends added yet.</Text>
@@ -279,7 +285,7 @@ export default function FriendsScreen() {
                     )}
                 </View>
             </View >
-        </SafeAreaView >
+        </View>
     );
 }
 

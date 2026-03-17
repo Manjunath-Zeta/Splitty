@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useCallback } from 'react';
-import { View, Text, StyleSheet, FlatList, SafeAreaView, TouchableOpacity, Alert, RefreshControl } from 'react-native';
+import { View, Text, StyleSheet, FlatList, Pressable, Alert, RefreshControl, ScrollView } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Themes, ThemeName, Colors } from '../../constants/Colors';
 import { GlassCard } from '../../components/GlassCard';
@@ -12,7 +12,16 @@ import { LinearGradient } from 'expo-linear-gradient';
 
 export default function GroupsScreen() {
     const router = useRouter();
-    const { groups, friends, addGroup, editGroup, deleteGroup, appearance, colors, formatCurrency, fetchData, designPreference } = useSplittyStore();
+    const groups = useSplittyStore(s => s.groups);
+    const friends = useSplittyStore(s => s.friends);
+    const addGroup = useSplittyStore(s => s.addGroup);
+    const editGroup = useSplittyStore(s => s.editGroup);
+    const deleteGroup = useSplittyStore(s => s.deleteGroup);
+    const appearance = useSplittyStore(s => s.appearance);
+    const colors = useSplittyStore(s => s.colors);
+    const formatCurrency = useSplittyStore(s => s.formatCurrency);
+    const fetchData = useSplittyStore(s => s.fetchData);
+    const designPreference = useSplittyStore(s => s.designPreference);
     const [groupName, setGroupName] = useState('');
     const [selectedMembers, setSelectedMembers] = useState<string[]>([]);
     const [showAdd, setShowAdd] = useState(false);
@@ -80,7 +89,7 @@ export default function GroupsScreen() {
     };
 
     return (
-        <SafeAreaView style={[styles.safeArea, { backgroundColor: isSkeuomorphic ? skeuo.background : colors.background }]}>
+        <View style={[styles.safeArea, { backgroundColor: isSkeuomorphic ? skeuo.background : colors.background }]}>
             <View style={styles.container}>
                 {!showAdd ? (
                     <VibrantButton
@@ -110,7 +119,7 @@ export default function GroupsScreen() {
                                     {friends.map(friend => {
                                         const isSelected = selectedMembers.includes(friend.id);
                                         return (
-                                            <TouchableOpacity
+                                            <Pressable
                                                 key={friend.id}
                                                 style={[
                                                     styles.memberChip,
@@ -131,7 +140,7 @@ export default function GroupsScreen() {
                                                         {friend.name}
                                                     </Text>
                                                 </View>
-                                            </TouchableOpacity>
+                                            </Pressable>
                                         );
                                     })}
                                 </View>
@@ -172,9 +181,8 @@ export default function GroupsScreen() {
                                         }
                                         renderItem={({ item, index }) => (
                                             <React.Fragment key={item.id}>
-                                                <TouchableOpacity
+                                                <Pressable
                                                     onPress={() => router.push({ pathname: '/group-details/[id]', params: { id: item.id } })}
-                                                    activeOpacity={0.8}
                                                     style={styles.groupCard}
                                                 >
                                                     <View style={[styles.groupIcon, { backgroundColor: isDark ? 'rgba(255,255,255,0.1)' : colors.inputBackground }]}>
@@ -208,7 +216,7 @@ export default function GroupsScreen() {
                                                             />
                                                         </View>
                                                     </View>
-                                                </TouchableOpacity>
+                                                </Pressable>
                                                 {index < groups.length - 1 && (
                                                     <View style={[styles.separator, { backgroundColor: colors.border + '20' }]} />
                                                 )}
@@ -233,10 +241,9 @@ export default function GroupsScreen() {
                                 />
                             }
                             renderItem={({ item }) => (
-                                <TouchableOpacity
+                                <Pressable
                                     key={item.id}
                                     onPress={() => router.push({ pathname: '/group-details/[id]', params: { id: item.id } })}
-                                    activeOpacity={0.8}
                                 >
                                     <View style={[styles.groupCard, { backgroundColor: colors.surface, marginBottom: 12, borderRadius: 16, padding: 12 }]}>
                                         <View style={[styles.groupIcon, { backgroundColor: isDark ? 'rgba(255,255,255,0.1)' : colors.inputBackground }]}>
@@ -271,7 +278,7 @@ export default function GroupsScreen() {
                                             </View>
                                         </View>
                                     </View>
-                                </TouchableOpacity>
+                                </Pressable>
                             )}
                             ListEmptyComponent={
                                 <Text style={[styles.emptyText, { color: colors.textSecondary }]}>No groups yet.</Text>
@@ -280,7 +287,7 @@ export default function GroupsScreen() {
                     )}
                 </View>
             </View>
-        </SafeAreaView>
+        </View>
     );
 }
 

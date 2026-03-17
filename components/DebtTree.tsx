@@ -1,5 +1,13 @@
 import React from 'react';
-import { View, Text, StyleSheet, ScrollView, Dimensions, TouchableOpacity, Alert } from 'react-native';
+import {
+    View,
+    Text,
+    StyleSheet,
+    ScrollView,
+    Dimensions,
+    Alert,
+    Pressable
+} from 'react-native';
 import Svg, { Path, Defs, LinearGradient, Stop } from 'react-native-svg';
 import Animated, { useSharedValue, useAnimatedProps, withRepeat, withTiming, Easing } from 'react-native-reanimated';
 import { useSplittyStore } from '../store/useSplittyStore';
@@ -14,7 +22,11 @@ const VERTICAL_SPACING = 60;
 
 export const DebtTree = ({ filterGroupId }: { filterGroupId?: string | null }) => {
     const router = useRouter();
-    const { friends: allFriends, userProfile, formatCurrency, colors, groups } = useSplittyStore();
+    const allFriends = useSplittyStore(s => s.friends);
+    const userProfile = useSplittyStore(s => s.userProfile);
+    const formatCurrency = useSplittyStore(s => s.formatCurrency);
+    const colors = useSplittyStore(s => s.colors);
+    const groups = useSplittyStore(s => s.groups);
 
     let friends = allFriends;
     if (filterGroupId) {
@@ -78,8 +90,7 @@ export const DebtTree = ({ filterGroupId }: { filterGroupId?: string | null }) =
         };
 
         return (
-            <TouchableOpacity
-                activeOpacity={id ? 0.7 : 1}
+            <Pressable
                 onPress={() => id ? router.push({ pathname: '/friend-details/[id]', params: { id } }) : null}
                 onLongPress={handleLongPress}
                 delayLongPress={400}
@@ -106,7 +117,7 @@ export const DebtTree = ({ filterGroupId }: { filterGroupId?: string | null }) =
                         You
                     </Text>
                 )}
-            </TouchableOpacity>
+            </Pressable>
         );
     };
 

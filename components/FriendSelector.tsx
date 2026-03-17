@@ -1,7 +1,12 @@
 import React, { memo, useState, useMemo } from 'react';
 import {
-    View, Text, TouchableOpacity, StyleSheet, Modal,
-    SafeAreaView, FlatList, TextInput
+    View,
+    Text,
+    StyleSheet,
+    Modal,
+    FlatList,
+    TextInput,
+    Pressable
 } from 'react-native';
 import { Check, Search, X, Users, ChevronRight } from 'lucide-react-native';
 import { Friend, Group, useSplittyStore } from '../store/useSplittyStore';
@@ -54,7 +59,7 @@ export const FriendSelector = memo(({ type, friends, groups, selectedIds, onTogg
     return (
         <>
             {isSkeuomorphic ? (
-                <TouchableOpacity onPress={openModal} disabled={disabled} activeOpacity={0.8}>
+                <Pressable onPress={openModal} disabled={disabled}>
                     <View style={[styles.skeuoTriggerWrapper, skeuo.outset.light]}>
                         <View style={[styles.skeuoTriggerInner, skeuo.outset.dark]}>
                             <LinearGradient colors={skeuo.surfaceGradient} style={[styles.triggerButton, { borderWidth: 0 }]}>
@@ -85,9 +90,9 @@ export const FriendSelector = memo(({ type, friends, groups, selectedIds, onTogg
                             </LinearGradient>
                         </View>
                     </View>
-                </TouchableOpacity>
+                </Pressable>
             ) : (
-                <TouchableOpacity
+                <Pressable
                     style={[
                         styles.triggerButton,
                         {
@@ -98,7 +103,6 @@ export const FriendSelector = memo(({ type, friends, groups, selectedIds, onTogg
                     ]}
                     onPress={openModal}
                     disabled={disabled}
-                    activeOpacity={0.7}
                 >
                     <View style={styles.triggerLeft}>
                         <Users size={18} color={selectedIds.length > 0 ? colors.primary : colors.textSecondary} />
@@ -124,7 +128,7 @@ export const FriendSelector = memo(({ type, friends, groups, selectedIds, onTogg
                         </View>
                     </View>
                     <ChevronRight size={18} color={colors.textSecondary} />
-                </TouchableOpacity>
+                </Pressable>
             )}
 
             {/* Modal */}
@@ -134,13 +138,13 @@ export const FriendSelector = memo(({ type, friends, groups, selectedIds, onTogg
                 presentationStyle="pageSheet"
                 onRequestClose={() => setModalVisible(false)}
             >
-                <SafeAreaView style={[styles.modalContainer, { backgroundColor: colors.background }]}>
+                <View style={[styles.modalContainer, { backgroundColor: colors.background }]}>
                     {/* Modal Header */}
                     <View style={[styles.modalHeader, { borderBottomColor: colors.border }]}>
                         <Text style={[styles.modalTitle, { color: colors.text }]}>
                             Select {label}
                         </Text>
-                        <TouchableOpacity
+                        <Pressable
                             onPress={() => {
                                 Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
                                 setModalVisible(false);
@@ -150,7 +154,7 @@ export const FriendSelector = memo(({ type, friends, groups, selectedIds, onTogg
                             <Text style={styles.doneButtonText}>
                                 Done {selectedIds.length > 0 ? `(${selectedIds.length})` : ''}
                             </Text>
-                        </TouchableOpacity>
+                        </Pressable>
                     </View>
 
                     {/* Search Bar */}
@@ -167,9 +171,9 @@ export const FriendSelector = memo(({ type, friends, groups, selectedIds, onTogg
                                 clearButtonMode="while-editing"
                             />
                             {searchQuery.length > 0 && (
-                                <TouchableOpacity onPress={() => setSearchQuery('')}>
+                                <Pressable onPress={() => setSearchQuery('')}>
                                     <X size={16} color={colors.textSecondary} />
-                                </TouchableOpacity>
+                                </Pressable>
                             )}
                         </View>
                     </View>
@@ -192,7 +196,7 @@ export const FriendSelector = memo(({ type, friends, groups, selectedIds, onTogg
                         renderItem={({ item }) => {
                             const isSelected = selectedIds.includes(item.id);
                             return (
-                                <TouchableOpacity
+                                <Pressable
                                     style={[
                                         styles.listItem,
                                         !isSkeuomorphic && {
@@ -211,7 +215,6 @@ export const FriendSelector = memo(({ type, friends, groups, selectedIds, onTogg
                                         Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
                                         onToggle(item.id);
                                     }}
-                                    activeOpacity={0.7}
                                 >
                                     <View style={isSkeuomorphic ? (isSelected ? [styles.skeuoItemInner, skeuo.outset.dark] : [styles.skeuoItemInner, skeuo.inset.light]) : { flexDirection: 'row', alignItems: 'center', flex: 1, gap: 12 }}>
                                         {/* Avatar */}
@@ -244,7 +247,7 @@ export const FriendSelector = memo(({ type, friends, groups, selectedIds, onTogg
                                             {isSelected && <Check size={12} color="white" strokeWidth={3} />}
                                         </View>
                                     </View>
-                                </TouchableOpacity>
+                                </Pressable>
                             );
                         }}
                         ListEmptyComponent={
@@ -253,7 +256,7 @@ export const FriendSelector = memo(({ type, friends, groups, selectedIds, onTogg
                             </Text>
                         }
                     />
-                </SafeAreaView>
+                </View>
             </Modal>
         </>
     );
