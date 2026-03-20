@@ -35,6 +35,55 @@ const mapSplitDetailsToReal = (details: Record<string, number>, friends: Friend[
     return realDetails;
 };
 
+// Helper to map a raw DB expense row to a store Expense object using local friend mapping
+const mapRowToExpense = (e: any, friends: Friend[], userId: string): Expense => {
+    const friendMap = new Map<string, string>();
+    friends.forEach(f => {
+        if (f.linkedUserId) friendMap.set(f.linkedUserId, f.id);
+    });
+
+    const mapRealToLocal = (realId: string | null): string => {
+        if (!realId || realId === userId) return 'self';
+        return friendMap.get(realId) || realId;
+    };
+
+    const localPayerId = mapRealToLocal(e.payer_id);
+    let localSplitWith: string[] = [];
+    let localSplitDetails: Record<string, number> = {};
+
+    // Use split_with and split_details from the payload if available (they should be)
+    localSplitWith = (e.split_with || [])
+        .map((realId: string) => mapRealToLocal(realId))
+        .filter((id: string) => id !== 'self');
+
+    if (e.split_details) {
+        Object.entries(e.split_details).forEach(([realId, amount]) => {
+            localSplitDetails[mapRealToLocal(realId)] = Number(amount);
+        });
+    }
+
+    return {
+        id: e.id,
+        description: e.description,
+        amount: Number(e.amount),
+        payerId: localPayerId,
+        payerName: e.payer_name || undefined,
+        groupId: e.group_id || undefined,
+        splitWith: localSplitWith,
+        date: e.date,
+        splitType: e.split_type,
+        splitDetails: localSplitDetails,
+        category: e.category,
+        isSettlement: e.is_settlement as boolean,
+        isPersonal: e.is_personal || false,
+        createdBy: e.created_by || undefined,
+        billUrl: e.bill_url || undefined
+    };
+};
+
+// Module-level variable for debouncing fetchData
+let fetchDataTimeout: NodeJS.Timeout | null = null;
+
 // --------------------------
 
 export interface Friend {
@@ -227,8 +276,6 @@ export interface UserProfile {
 
 interface SplittyState {
     session: Session | null;
-    setSession: (session: Session | null) => void;
-    fetchData: () => Promise<void>;
     friends: Friend[];
     groups: Group[];
     expenses: Expense[];
@@ -285,6 +332,9 @@ interface SplittyState {
     dashboardViewPreference: 'tree' | 'list';
     setDashboardViewPreference: (pref: 'tree' | 'list') => void;
     unknownFriendNames: Record<string, string>;
+    isRefreshing: boolean;
+    fetchData: () => Promise<void>;
+    setSession: (session: Session | null) => void;
     isRolloverEnabled: boolean;
     setRolloverEnabled: (enabled: boolean) => void;
     budgetAlertsSent: Record<string, boolean>;
@@ -361,9 +411,33 @@ export const useSplittyStore = create<SplittyState>()(
     persist(
         (set, get) => ({
             session: null,
+            friends: [],
+            groups: [],
+            expenses: [],
+            activities: [],
+            budgets: [],
+            categories: CATEGORIES,
+            categoryOrder: [],
+            hiddenBudgetCategories: [],
+            unknownFriendNames: {},
+            isRefreshing: false,
+            notificationsEnabled: true,
+            dashboardViewPreference: 'list',
+            isRolloverEnabled: false,
+            currency: 'USD',
+            accent: 'classic',
+            appearance: 'light',
+            userProfile: { name: '', email: '' },
+            budgetAlertsSent: {},
+            designPreference: 'existing',
+            theme: 'light',
+            isDarkMode: false,
+            colors: getThemeColors('light', 'classic'),
             setSession: (session) => set({ session }),
             fetchData: async () => {
+                if (get().isRefreshing) return;
                 console.log('🚀 fetchData started...');
+                set({ isRefreshing: true });
                 const { session } = get();
                 if (!session?.user) {
                     console.log('⚠️ No session found in fetchData');
@@ -748,7 +822,8 @@ export const useSplittyStore = create<SplittyState>()(
                 if (categoriesModified) {
                     finalStateToSet.categories = sanitizedCategories;
                 }
-
+                
+                finalStateToSet.isRefreshing = false;
                 set(finalStateToSet);
 
                 // Proactively sync new unknown names discovered this session
@@ -762,15 +837,6 @@ export const useSplittyStore = create<SplittyState>()(
                     }
                 }
             },
-            friends: [],
-            groups: [],
-            expenses: [],
-            activities: [],
-            budgets: [],
-            categories: CATEGORIES,
-            categoryOrder: [],
-            hiddenBudgetCategories: [],
-            unknownFriendNames: {},
             setCategoryOrder: (order) => {
                 set({ categoryOrder: order });
                 const { session } = get();
@@ -1029,10 +1095,6 @@ export const useSplittyStore = create<SplittyState>()(
                     return { budgets: [...state.budgets, { month, categories: newCategories }] };
                 }
             }),
-            userProfile: {
-                name: 'Guest',
-                email: '',
-            },
             updateUserProfile: (profile) => {
                 const updatedProfile = { ...get().userProfile, ...profile };
                 set({ userProfile: updatedProfile });
@@ -1111,7 +1173,7 @@ export const useSplittyStore = create<SplittyState>()(
                         id: groupId,
                         name,
                         created_by: session.user.id
-                    }).then(({ error }) => {
+                    }).then(({ error }: { error: any }) => {
                         if (!error) {
                             const memberInserts = [
                                 { group_id: groupId, user_id: session.user.id },
@@ -1126,7 +1188,7 @@ export const useSplittyStore = create<SplittyState>()(
                             ];
 
                             if (memberInserts.length > 1) {
-                                supabase.from('group_members').insert(memberInserts).then(({ error: memberError }) => {
+                                supabase.from('group_members').insert(memberInserts).then(({ error: memberError }: { error: any }) => {
                                     if (memberError) {
                                         console.error("Error adding members:", memberError);
                                         Alert.alert("Error", "Group created but failed to sync some members. Ensure friends are linked to real users.");
@@ -1195,7 +1257,7 @@ export const useSplittyStore = create<SplittyState>()(
                             bill_url: updatedExpense.billUrl
                         })
                             .eq('id', id)
-                            .then(async ({ error }) => {
+                            .then(async ({ error }: { error: any }) => {
                                 if (error) {
                                     console.error("Expense edit sync error:", error);
                                 } else {
@@ -1265,10 +1327,6 @@ export const useSplittyStore = create<SplittyState>()(
                     };
                 });
             },
-            theme: 'light',
-            appearance: 'light',
-            accent: 'classic',
-            colors: getThemeColors('light', 'classic'),
             setTheme: (theme: ThemeName) => {
                 let app: AppearanceMode = 'dark';
                 let acc: AccentName = 'classic';
@@ -1309,8 +1367,6 @@ export const useSplittyStore = create<SplittyState>()(
                     });
                 }
             },
-            isDarkMode: false,
-            notificationsEnabled: true,
             setNotificationsEnabled: (enabled) => {
                 set({ notificationsEnabled: enabled });
                 const { session } = get();
@@ -1338,7 +1394,6 @@ export const useSplittyStore = create<SplittyState>()(
                     console.log('Push Data: Local Notifications Ready');
                 }
             },
-            dashboardViewPreference: 'tree',
             setDashboardViewPreference: (pref) => {
                 set({ dashboardViewPreference: pref });
                 const { session } = get();
@@ -1359,7 +1414,6 @@ export const useSplittyStore = create<SplittyState>()(
                     colors: getThemeColors(nextMode, state.accent)
                 };
             }),
-            isRolloverEnabled: false,
             setRolloverEnabled: (enabled: boolean) => {
                 set({ isRolloverEnabled: enabled });
                 const { session } = get();
@@ -1374,8 +1428,6 @@ export const useSplittyStore = create<SplittyState>()(
                     });
                 }
             },
-            budgetAlertsSent: {},
-            designPreference: 'existing',
             setDesignPreference: (pref) => {
                 set({ designPreference: pref });
                 const { session } = get();
@@ -1427,7 +1479,6 @@ export const useSplittyStore = create<SplittyState>()(
                 await supabase.auth.signOut();
                 get().clearData();
             },
-            currency: 'USD',
             setCurrency: (currency) => {
                 set(() => ({ currency }));
                 const { session } = get();
@@ -1947,9 +1998,10 @@ export const useSplittyStore = create<SplittyState>()(
 
                             if (payload.eventType === 'INSERT') {
                                 const newExp = payload.new as any;
-                                if (newExp.created_by !== session.user.id && notificationsEnabled) {
+                                const currentSession = get().session;
+                                if (currentSession?.user && newExp.created_by !== currentSession.user.id && notificationsEnabled) {
                                     const payer = get().friends.find(f => f.id === newExp.payer_id);
-                                    const payerName = newExp.payer_name || (newExp.payer_id === session.user.id ? 'You' : (payer?.name || 'Someone'));
+                                    const payerName = newExp.payer_name || (newExp.payer_id === currentSession.user.id ? 'You' : (payer?.name || 'Someone'));
                                     notificationService.notifyNewExpense(payerName, newExp.description, newExp.amount.toString(), 'calculating...');
                                 }
                             }
@@ -1966,15 +2018,48 @@ export const useSplittyStore = create<SplittyState>()(
                                 }
                             }
 
+
                             // Only refresh from server for events that we can't fully handle locally
-                            const isMyChange = (payload.new as any)?.created_by === session.user.id || (payload.old as any)?.created_by === session.user.id;
+                            const currentSession = get().session;
+                            const isMyChange = currentSession?.user && (
+                                (payload.new as any)?.created_by === currentSession.user.id || 
+                                (payload.old as any)?.created_by === currentSession.user.id
+                            );
+
+                            // OPTIMISTIC LOCAL UPDATE for instant sync
+                            if (payload.eventType === 'INSERT' || payload.eventType === 'UPDATE') {
+                                const newRow = payload.new as any;
+                                if (currentSession?.user) {
+                                    set((state) => {
+                                        const mappedExpense = mapRowToExpense(newRow, state.friends, currentSession.user.id);
+                                    let updatedExpenses = [...state.expenses];
+                                    
+                                    const index = updatedExpenses.findIndex(e => e.id === mappedExpense.id);
+                                    if (index >= 0) {
+                                        updatedExpenses[index] = mappedExpense;
+                                    } else {
+                                        updatedExpenses = [mappedExpense, ...updatedExpenses];
+                                    }
+
+                                    const { friends: newFriends, groups: newGroups } = calculateBalances(updatedExpenses, state.friends, state.groups);
+                                    return { 
+                                        expenses: updatedExpenses, 
+                                        friends: newFriends, 
+                                        groups: newGroups 
+                                    };
+                                });
+                                }
+                            }
 
                             // Refresh for:
                             // 1. Any UPDATE (to get latest metadata/calculations from server)
                             // 2. INSERTs from other users
                             if (payload.eventType === 'UPDATE' || (payload.eventType === 'INSERT' && !isMyChange)) {
-                                console.log('🔄 Triggering fetchData due to expense event...');
-                                fetchData();
+                                console.log('🔄 Debouncing fetchData due to expense event...');
+                                if (fetchDataTimeout) clearTimeout(fetchDataTimeout);
+                                fetchDataTimeout = setTimeout(() => {
+                                    fetchData();
+                                }, 1500); // 1.5s debounce to catch bulk updates
                             }
                         }
                     )
@@ -1998,7 +2083,8 @@ export const useSplittyStore = create<SplittyState>()(
                                     }));
                                 }
                             }
-                            const isMyFriend = (eventData)?.user_id === session.user.id;
+                            const currentSession = get().session;
+                            const isMyFriend = currentSession?.user && (eventData)?.user_id === currentSession.user.id;
 
                             if (isMyFriend) {
                                 if (payload.eventType === 'UPDATE') {
@@ -2053,7 +2139,7 @@ export const useSplittyStore = create<SplittyState>()(
                             event: 'INSERT',
                             schema: 'public',
                             table: 'activity_logs',
-                            filter: `user_id=eq.${session.user.id}`
+                            filter: `user_id=eq.${get().session?.user?.id}`
                         },
                         (payload: any) => {
                             console.log('🔔 Real-time Activity Log:', payload.new);
