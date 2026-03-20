@@ -7,9 +7,11 @@ interface StyledInputProps extends TextInputProps {
     label?: string;
     labelStyle?: StyleProp<TextStyle>;
     containerStyle?: StyleProp<ViewStyle>;
+    rightAccessory?: React.ReactNode;
+    inputStyle?: StyleProp<TextStyle>;
 }
 
-export const StyledInput: React.FC<StyledInputProps> = ({ label, style, labelStyle, containerStyle, ...props }) => {
+export const StyledInput: React.FC<StyledInputProps> = ({ label, style, labelStyle, containerStyle, rightAccessory, inputStyle, ...props }) => {
     const colors = useSplittyStore(s => s.colors);
     const designPreference = useSplittyStore(s => s.designPreference);
     const appearance = useSplittyStore(s => s.appearance);
@@ -24,17 +26,24 @@ export const StyledInput: React.FC<StyledInputProps> = ({ label, style, labelSty
                 <View style={[
                     styles.skeuoInsetWrapper, 
                     { backgroundColor: isDark ? 'rgba(0,0,0,0.2)' : 'rgba(0,0,0,0.05)' },
-                    skeuo.inset.dark
+                    skeuo.inset.dark,
+                    styles.inputContainer
                 ]}>
                     <TextInput
                         style={[styles.input, {
                             color: colors.text,
                             backgroundColor: 'transparent',
                             borderWidth: 0,
-                        }, style]}
+                            flex: 1
+                        }, inputStyle]}
                         placeholderTextColor={colors.textSecondary}
                         {...props}
                     />
+                    {rightAccessory && (
+                        <View style={styles.accessoryContainer}>
+                            {rightAccessory}
+                        </View>
+                    )}
                 </View>
             </View>
         );
@@ -43,15 +52,23 @@ export const StyledInput: React.FC<StyledInputProps> = ({ label, style, labelSty
     return (
         <View style={[styles.container, containerStyle]}>
             {label && <Text style={[styles.label, { color: colors.text }, labelStyle]}>{label}</Text>}
-            <TextInput
-                style={[styles.input, {
-                    backgroundColor: colors.inputBackground,
-                    color: colors.text,
-                    borderColor: colors.border
-                }, style]}
-                placeholderTextColor={colors.textSecondary}
-                {...props}
-            />
+            <View style={[styles.inputContainer, {
+                backgroundColor: colors.inputBackground,
+                borderColor: colors.border,
+                borderWidth: 1,
+                borderRadius: 16
+            }, style]}>
+                <TextInput
+                    style={[styles.input, { color: colors.text, flex: 1 }, inputStyle]}
+                    placeholderTextColor={colors.textSecondary}
+                    {...props}
+                />
+                {rightAccessory && (
+                    <View style={styles.accessoryContainer}>
+                        {rightAccessory}
+                    </View>
+                )}
+            </View>
         </View>
     );
 };
@@ -67,9 +84,18 @@ const styles = StyleSheet.create({
         marginBottom: 8,
         marginLeft: 4,
     },
+    inputContainer: {
+        flexDirection: 'row',
+        alignItems: 'center',
+    },
     input: {
         padding: 16,
         fontSize: 16,
+    },
+    accessoryContainer: {
+        paddingRight: 16,
+        justifyContent: 'center',
+        alignItems: 'center',
     },
     skeuoInsetWrapper: {
         borderRadius: 16,

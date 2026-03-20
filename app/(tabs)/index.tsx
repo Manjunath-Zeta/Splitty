@@ -11,8 +11,13 @@ import { Skeuomorphic } from '../../constants/Colors';
 import { LinearGradient } from 'expo-linear-gradient';
 import * as Haptics from 'expo-haptics';
 
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { EmptyState } from '../../components/EmptyState';
+import { Receipt } from 'lucide-react-native';
+
 export default function DashboardScreen() {
     const router = useRouter();
+    const insets = useSafeAreaInsets();
 
     // Granular selectors — component only re-renders when these specific slices change
     const friends = useSplittyStore(s => s.friends);
@@ -30,6 +35,7 @@ export default function DashboardScreen() {
     const skeuo = isDark ? Skeuomorphic.dark : Skeuomorphic.light;
 
     const [refreshing, setRefreshing] = useState(false);
+    const getCategory = useSplittyStore(s => s.getCategoryById);
 
     // Memoized balance summaries
     const owed = useMemo(() => friends.reduce((acc, f) => f.balance > 0 ? acc + f.balance : acc, 0), [friends]);
@@ -41,8 +47,8 @@ export default function DashboardScreen() {
             .filter(e => !e.isPersonal)
             .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
             .slice(0, 5)
-            .map(e => ({ ...e, _category: getCategoryById(e.category) }));
-    }, [expenses]);
+            .map(e => ({ ...e, _category: getCategory(e.category) }));
+    }, [expenses, getCategory]);
 
     const handleDelete = useCallback((id: string) => {
         Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
@@ -72,9 +78,9 @@ export default function DashboardScreen() {
     }, [fetchData]);
 
     return (
-        <View style={[styles.safeArea, { flex: 1, backgroundColor: isSkeuomorphic ? skeuo.background : colors.background }]}>
+        <View style={[styles.safeArea, { backgroundColor: isSkeuomorphic ? skeuo.background : colors.background, paddingTop: insets.top }]}>
             <ScrollView
-                contentContainerStyle={styles.container}
+                contentContainerStyle={[styles.container, { paddingBottom: insets.bottom + 160 }]}
                 refreshControl={
                     <RefreshControl
                         refreshing={refreshing}
@@ -289,9 +295,11 @@ export default function DashboardScreen() {
                             ))
                         )
                     ) : (
-                        <GlassCard style={[styles.activityCard, { backgroundColor: colors.surface }]}>
-                            <Text style={{ color: colors.textSecondary, textAlign: 'center' }}>No recent activity yet. Start spliting bills!</Text>
-                        </GlassCard>
+                        <EmptyState
+                            icon={Receipt}
+                            title="No Activity Yet"
+                            message="When you split bills with friends, they'll show up here."
+                        />
                     )}
                 </View>
 

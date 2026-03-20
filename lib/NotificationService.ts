@@ -8,6 +8,8 @@ Notifications.setNotificationHandler({
     shouldShowAlert: true,
     shouldPlaySound: true,
     shouldSetBadge: false,
+    shouldShowBanner: true,
+    shouldShowList: true,
   }),
 });
 
@@ -43,15 +45,22 @@ class NotificationService {
       }
       
       if (finalStatus !== 'granted') {
-        console.log('Failed to get push token for push notification!');
-        return;
+        console.warn('Failed to get push token for push notification! Permissions not granted.');
+        return undefined;
       }
       
       try {
+        // Check if the native module is available before calling getExpoPushTokenAsync
+        if (!Notifications.getExpoPushTokenAsync) {
+          console.warn('Notifications.getExpoPushTokenAsync is not available. Is the native module linked correctly?');
+          return undefined;
+        }
+
         const projectId =
           Constants?.expoConfig?.extra?.eas?.projectId ?? Constants?.easConfig?.projectId;
         if (!projectId) {
-          throw new Error('Project ID not found');
+          console.warn('Project ID not found in Constants. Cannot get Expo Push Token.');
+          return undefined;
         }
         
         const token = (
@@ -63,10 +72,12 @@ class NotificationService {
         console.log('Expo Push Token:', token);
         return token;
       } catch (e) {
-        console.error('Error getting expo push token', e);
+        console.warn('Error getting expo push token', e);
+        return undefined;
       }
     } else {
-      console.log('Must use physical device for Push Notifications');
+      console.warn('Must use physical device for Push Notifications');
+      return undefined;
     }
   }
 

@@ -9,8 +9,11 @@ import { useSplittyStore } from '../../store/useSplittyStore';
 import { Users, Plus, Pencil, Trash2 } from 'lucide-react-native';
 import { Skeuomorphic } from '../../constants/Colors';
 import { LinearGradient } from 'expo-linear-gradient';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { EmptyState } from '../../components/EmptyState';
 
 export default function GroupsScreen() {
+    const insets = useSafeAreaInsets();
     const router = useRouter();
     const groups = useSplittyStore(s => s.groups);
     const friends = useSplittyStore(s => s.friends);
@@ -89,8 +92,8 @@ export default function GroupsScreen() {
     };
 
     return (
-        <View style={[styles.safeArea, { backgroundColor: isSkeuomorphic ? skeuo.background : colors.background }]}>
-            <View style={styles.container}>
+        <View style={[styles.safeArea, { backgroundColor: isSkeuomorphic ? skeuo.background : colors.background, paddingTop: insets.top }]}>
+            <View style={[styles.container, { paddingBottom: insets.bottom + 100 }]}>
                 {!showAdd ? (
                     <VibrantButton
                         title="Create New Group"
@@ -223,7 +226,11 @@ export default function GroupsScreen() {
                                             </React.Fragment>
                                         )}
                                         ListEmptyComponent={
-                                            <Text style={[styles.emptyText, { color: colors.textSecondary }]}>No groups yet.</Text>
+                                            <EmptyState
+                                                icon={Users}
+                                                title="No Groups Yet"
+                                                message="Create a group to start sharing expenses with your travel buddies or roommates."
+                                            />
                                         }
                                     />
                                 </View>
@@ -281,7 +288,11 @@ export default function GroupsScreen() {
                                 </Pressable>
                             )}
                             ListEmptyComponent={
-                                <Text style={[styles.emptyText, { color: colors.textSecondary }]}>No groups yet.</Text>
+                                <EmptyState
+                                    icon={Users}
+                                    title="No Groups Yet"
+                                    message="Create a group to start sharing expenses with your travel buddies or roommates."
+                                />
                             }
                         />
                     )}

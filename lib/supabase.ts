@@ -1,4 +1,4 @@
-import * as SecureStore from 'expo-secure-store';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { createClient } from '@supabase/supabase-js';
 import { Platform } from 'react-native';
 
@@ -22,9 +22,11 @@ const secureStorage = {
             }
         }
         try {
-            return await SecureStore.getItemAsync(key);
+            console.log(`💾 Storage: GET ${key}`);
+            const val = await AsyncStorage.getItem(key);
+            return val;
         } catch (error) {
-            console.warn('⚠️ SecureStore.getItemAsync failed:', error);
+            console.warn(`⚠️ AsyncStorage.getItem failed for ${key}:`, error);
             return null;
         }
     },
@@ -36,9 +38,10 @@ const secureStorage = {
             return;
         }
         try {
-            return await SecureStore.setItemAsync(key, value);
+            console.log(`💾 Storage: SET ${key} (Length: ${value?.length})`);
+            return await AsyncStorage.setItem(key, value);
         } catch (error) {
-            console.warn('⚠️ SecureStore.setItemAsync failed:', error);
+            console.warn(`⚠️ AsyncStorage.setItem failed for ${key}:`, error);
         }
     },
     removeItem: async (key: string) => {
@@ -49,18 +52,17 @@ const secureStorage = {
             return;
         }
         try {
-            return await SecureStore.deleteItemAsync(key);
+            return await AsyncStorage.removeItem(key);
         } catch (error) {
-            console.warn('⚠️ SecureStore.deleteItemAsync failed:', error);
+            console.warn('⚠️ AsyncStorage.removeItem failed:', error);
         }
     },
 };
 
 // Create client with fallback handling to prevent app crash if env vars are missing
-let supabaseInstance;
-try {
+const createSupabaseClient = () => {
     if (supabaseUrl && supabaseAnonKey) {
-        supabaseInstance = createClient(supabaseUrl, supabaseAnonKey, {
+        return createClient(supabaseUrl, supabaseAnonKey, {
             auth: {
                 storage: secureStorage as any,
                 autoRefreshToken: true,
@@ -68,21 +70,49 @@ try {
                 detectSessionInUrl: Platform.OS === 'web',
             },
         });
-    } else {
-        // Handle missing config gracefully instead of letting createClient throw
-        supabaseInstance = {
-            auth: {
-                getSession: () => Promise.resolve({ data: { session: null }, error: null }),
-                onAuthStateChange: () => ({ data: { subscription: { unsubscribe: () => { } } } }),
-            },
-            from: () => ({
-                select: () => ({ order: () => ({ eq: () => ({ single: () => Promise.resolve({ data: null, error: { message: 'Supabase config missing' } }) }) }) }),
-            }),
-        } as any;
     }
-} catch (error) {
-    console.error('❌ Failed to initialize Supabase client:', error);
-}
+    
+    // Handle missing config gracefully
+    console.warn('⚠️ Supabase config missing. Using mock client.');
+    return {
+        auth: {
+            getSession: () => Promise.resolve({ data: { session: null }, error: null }),
+            onAuthStateChange: () => ({ data: { subscription: { unsubscribe: () => { } } } }),
+            getUser: () => Promise.resolve({ data: { user: null }, error: null }),
+        },
+        from: () => ({
+            select: () => ({
+                order: () => ({
+                    eq: () => ({
+                        single: () => Promise.resolve({ data: null, error: { message: 'Supabase config missing' } }),
+                        returns: () => ({
+                            eq: () => Promise.resolve({ data: [], error: null }),
+                        })
+                    }),
+                    limit: () => ({
+                        returns: () => Promise.resolve({ data: [], error: null }),
+                    })
+                }),
+                eq: () => ({
+                    single: () => Promise.resolve({ data: null, error: null }),
+                    returns: () => Promise.resolve({ data: [], error: null }),
+                })
+            }),
+            insert: () => ({ select: () => ({ single: () => Promise.resolve({ data: null, error: null }) }) }),
+            upsert: () => ({ select: () => ({ single: () => Promise.resolve({ data: null, error: null }) }) }),
+            update: () => ({ eq: () => ({ select: () => ({ single: () => Promise.resolve({ data: null, error: null }) }) }) }),
+            delete: () => ({ eq: () => Promise.resolve({ error: null }) }),
+            rpc: () => Promise.resolve({ data: null, error: null }),
+        }),
+        rpc: () => Promise.resolve({ data: null, error: null }),
+        storage: {
+            from: () => ({
+                upload: () => Promise.resolve({ data: null, error: null }),
+                getPublicUrl: () => ({ data: { publicUrl: '' } }),
+            })
+        }
+    } as any;
+};
 
-export const supabase = supabaseInstance;
+export const supabase = createSupabaseClient();
 

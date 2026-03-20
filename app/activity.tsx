@@ -10,17 +10,20 @@ import {
     Pressable
 } from 'react-native';
 import { useRouter, Stack } from 'expo-router';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useSplittyStore } from '../store/useSplittyStore';
 import { GlassCard } from '../components/GlassCard';
 import { CategoryIcon } from '../components/CategoryIcon';
 import { VibrantButton } from '../components/VibrantButton';
-import { ArrowLeft, Search, Trash2, Banknote, Users } from 'lucide-react-native';
-import { getCategoryById } from '../constants/Categories';
+import { ArrowLeft, Search, Trash2, Banknote, Users, Receipt } from 'lucide-react-native';
+import { EmptyState } from '../components/EmptyState';
+import { CATEGORIES } from '../constants/Categories';
 import * as Haptics from 'expo-haptics';
 import { Skeuomorphic } from '../constants/Colors';
 import { LinearGradient } from 'expo-linear-gradient';
 
 export default function ActivityScreen() {
+    const insets = useSafeAreaInsets();
     const router = useRouter();
 
     const expenses = useSplittyStore(s => s.expenses);
@@ -37,6 +40,8 @@ export default function ActivityScreen() {
     const isSkeuomorphic = designPreference === 'skeuomorphic';
     const isDark = appearance === 'dark';
     const skeuo = isDark ? Skeuomorphic.dark : Skeuomorphic.light;
+
+    const getCategory = useSplittyStore(s => s.getCategoryById);
 
     const [searchQuery, setSearchQuery] = useState('');
     const [selectedTag, setSelectedTag] = useState<string | null>(null);
@@ -68,11 +73,11 @@ export default function ActivityScreen() {
             .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
             .map(e => ({
                 ...e,
-                _category: getCategoryById(e.category),
+                _category: getCategory(e.category),
                 _payerName: e.payerId === 'self' ? 'You' : friends.find(f => f.id === e.payerId)?.name || unknownFriendNames[e.payerId] || 'Unknown',
                 _groupName: e.groupId ? groups.find(g => g.id === e.groupId)?.name : undefined,
             }));
-    }, [expenses, searchQuery, selectedTag, friends, groups, unknownFriendNames]);
+    }, [expenses, searchQuery, selectedTag, friends, groups, unknownFriendNames, getCategory]);
 
     const allUniqueTags = useMemo(() => {
         return Array.from(new Set(expenses.flatMap(e => e.tags || []))).sort();
@@ -100,25 +105,7 @@ export default function ActivityScreen() {
         setRefreshing(false);
     }, [fetchData]);
 
-    const Header = () => (
-        <View style={styles.header}>
-            {isSkeuomorphic ? (
-                <View style={[styles.skeuoIconWrapper, skeuo.outset.light]}>
-                    <View style={[styles.skeuoIconInner, skeuo.outset.dark]}>
-                        <Pressable onPress={() => router.back()} style={[styles.backButtonSkeuo, { backgroundColor: skeuo.background }]}>
-                            <ArrowLeft size={24} color={colors.text} />
-                        </Pressable>
-                    </View>
-                </View>
-            ) : (
-                <Pressable onPress={() => router.back()} style={styles.backButton}>
-                    <ArrowLeft size={24} color={colors.text} />
-                </Pressable>
-            )}
-            <Text style={[styles.headerTitle, { color: colors.text }]}>All Activity</Text>
-            <View style={{ width: 44 }} />
-        </View>
-    );
+
 
     const renderItem = useCallback(({ item }: { item: typeof filteredExpenses[0] }) => (
         <Pressable
@@ -234,7 +221,31 @@ export default function ActivityScreen() {
         <View style={[styles.safeArea, { backgroundColor: isSkeuomorphic ? skeuo.background : colors.background }]}>
             <Stack.Screen options={{ headerShown: false }} />
 
-            <Header />
+            <View style={[styles.header, { paddingTop: insets.top + (isSkeuomorphic ? 10 : 0) }]}>
+                {isSkeuomorphic ? (
+                    <View style={[styles.skeuoIconWrapper, skeuo.outset.light]}>
+                        <View style={[styles.skeuoIconInner, skeuo.outset.dark]}>
+                            <Pressable 
+                                onPress={() => router.back()} 
+                                style={[styles.backButtonSkeuo, { backgroundColor: skeuo.background }]}
+                                hitSlop={20}
+                            >
+                                <ArrowLeft size={24} color={colors.text} />
+                            </Pressable>
+                        </View>
+                    </View>
+                ) : (
+                    <Pressable 
+                        onPress={() => router.back()} 
+                        style={styles.backButton}
+                        hitSlop={20}
+                    >
+                        <ArrowLeft size={24} color={colors.text} />
+                    </Pressable>
+                )}
+                <Text style={[styles.headerTitle, { color: colors.text }]}>All Activity</Text>
+                <View style={{ width: 44 }} />
+            </View>
 
             <View style={styles.searchContainer}>
                 {isSkeuomorphic ? (
@@ -313,9 +324,11 @@ export default function ActivityScreen() {
                 }
                 renderItem={renderItem}
                 ListEmptyComponent={
-                    <View style={styles.emptyContainer}>
-                        <Text style={{ color: colors.textSecondary }}>No activity found.</Text>
-                    </View>
+                    <EmptyState
+                        icon={Receipt}
+                        title="No Expenses Found"
+                        message={searchQuery ? `No results for "${searchQuery}"` : "You haven't added any split bills yet."}
+                    />
                 }
                 removeClippedSubviews
                 maxToRenderPerBatch={12}

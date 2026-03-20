@@ -115,6 +115,109 @@ export interface ActivityLog {
     is_read: boolean;
 }
 
+// --- Supabase Table Interfaces ---
+export interface ProfileRow {
+    id: string;
+    full_name: string | null;
+    avatar_url: string | null;
+    phone: string | null;
+    email: string | null;
+    preferences: any | null;
+}
+
+export interface FriendRow {
+    id: string;
+    name: string;
+    user_id: string;
+    linked_user_id: string | null;
+    avatar_url: string | null;
+}
+
+export interface ExpenseRow {
+    id: string;
+    description: string;
+    amount: number;
+    payer_id: string | null;
+    payer_name: string | null;
+    group_id: string | null;
+    category: string;
+    split_type: 'equal' | 'unequal';
+    split_details: Record<string, number> | null;
+    split_with: string[] | null;
+    date: string;
+    is_settlement: boolean;
+    is_personal: boolean;
+    created_at: string;
+    created_by: string | null;
+    bill_url: string | null;
+    expense_participants?: ExpenseParticipantRow[];
+}
+
+export interface ExpenseParticipantRow {
+    expense_id: string;
+    profile_id: string | null;
+    friend_id: string | null;
+    amount: number;
+}
+
+export interface GroupRow {
+    id: string;
+    name: string;
+    created_by: string;
+    created_at: string;
+    archived_by: string[] | null;
+}
+
+export interface GroupMemberRow {
+    group_id: string;
+    user_id: string;
+}
+
+export interface ActivityLogRow {
+    id: string;
+    user_id: string;
+    actor_id: string;
+    entity_type: 'expense' | 'group' | 'settlement';
+    entity_id: string;
+    action: string;
+    description: string;
+    metadata: any | null;
+    created_at: string;
+    is_read: boolean;
+}
+
+export interface CategoryRow {
+    id: string;
+    label: string;
+    icon: string;
+    color: string;
+    default_budget: number;
+}
+
+export interface RecurringExpenseRow {
+    id: string;
+    description: string;
+    amount: number;
+    payer_id: string;
+    group_id: string | null;
+    split_with: string[] | null;
+    split_type: 'equal' | 'unequal';
+    split_details: Record<string, number> | null;
+    category: string;
+    frequency: string;
+    next_due_date: string;
+    active: boolean;
+}
+
+export interface MonthlyBudgetRow {
+    id: string;
+    user_id: string;
+    month: string;
+    category_id: string;
+    amount: number;
+}
+// --------------------------
+
 export interface UserProfile {
     name: string;
     email: string;
@@ -149,7 +252,7 @@ interface SplittyState {
     addRecurringExpense: (expense: Omit<RecurringExpense, 'id' | 'nextDueDate' | 'active'>) => void;
     deleteRecurringExpense: (id: string) => void;
     checkRecurringExpenses: () => number; // Returns number of created expenses
-    addFriend: (name: string, linkedUserId?: string) => Promise<void>;
+    addFriend: (name: string, linkedUserId?: string) => Promise<string>;
     editFriend: (id: string, name: string, avatarUrl?: string) => Promise<void>;
     addGroup: (name: string, members: string[]) => void;
     deleteFriend: (id: string) => void;
@@ -271,7 +374,7 @@ export const useSplittyStore = create<SplittyState>()(
 
                 // Fallback: Populate from session metadata first
                 const meta = session.user.user_metadata;
-                let userProfile = {
+                let userProfile: UserProfile = {
                     name: meta?.full_name || meta?.name || 'New User',
                     email: session.user.email || '',
                     avatar: meta?.avatar_url || meta?.picture || '',
@@ -281,7 +384,7 @@ export const useSplittyStore = create<SplittyState>()(
                 // Parallelize fetching for better performance
                 const [profileRes, friendsRes, expensesRes, groupsRes, activitiesRes, categoriesRes, recurringRes, budgetsRes] = await Promise.all([
                     supabase.from('profiles').select('*').eq('id', userId).single(),
-                    supabase.from('friends').select('*').eq('user_id', userId).order('name'),
+                    supabase.from('friends').select('*').eq('user_id', userId).order('name').returns(),
                     // Fetch expenses AND their participants in one go
                     supabase.from('expenses').select(`
                         *,
@@ -290,26 +393,26 @@ export const useSplittyStore = create<SplittyState>()(
                             friend_id,
                             amount
                         )
-                    `).order('date', { ascending: false }),
+                    `).order('date', { ascending: false }).returns(),
                     // Fetch Groups Logic: Get memberships -> Get Groups -> Get All Members
                     (async () => {
-                        const { data: myMemberships } = await supabase.from('group_members').select('group_id').eq('user_id', userId);
-                        const myGroupIds = myMemberships?.map((m: any) => m.group_id) || [];
+                        const { data: myMemberships } = await supabase.from('group_members').select('group_id').eq('user_id', userId).returns() as { data: GroupMemberRow[] | null };
+                        const myGroupIds = myMemberships?.map((m: GroupMemberRow) => m.group_id) || [];
 
-                        if (myGroupIds.length === 0) return { groups: [], members: [] };
+                        if (myGroupIds.length === 0) return { groups: [] as GroupRow[], members: [] as GroupMemberRow[] };
 
-                        const { data: groups } = await supabase.from('groups').select('*').in('id', myGroupIds).order('created_at', { ascending: false });
-                        const { data: members } = await supabase.from('group_members').select('*').in('group_id', myGroupIds);
-                        return { groups, members };
+                        const { data: groups } = await supabase.from('groups').select('*').in('id', myGroupIds).order('created_at', { ascending: false }).returns() as { data: GroupRow[] | null };
+                        const { data: members } = await supabase.from('group_members').select('*').in('group_id', myGroupIds).returns() as { data: GroupMemberRow[] | null };
+                        return { groups: groups || [], members: members || [] };
                     })(),
                     // Fetch Activity Logs
-                    supabase.from('activity_logs').select('*').eq('user_id', userId).order('created_at', { ascending: false }).limit(50),
+                    supabase.from('activity_logs').select('*').eq('user_id', userId).order('created_at', { ascending: false }).limit(50).returns(),
                     // Fetch User Categories
-                    supabase.from('categories').select('*').eq('user_id', userId).order('created_at', { ascending: true }),
+                    supabase.from('categories').select('*').eq('user_id', userId).order('created_at', { ascending: true }).returns(),
                     // Fetch Recurring Expenses
-                    supabase.from('recurring_expenses').select('*').eq('user_id', userId).order('created_at', { ascending: false }),
+                    supabase.from('recurring_expenses').select('*').eq('user_id', userId).order('created_at', { ascending: false }).returns(),
                     // Fetch Monthly Budgets
-                    supabase.from('monthly_budgets').select('*').eq('user_id', userId)
+                    supabase.from('monthly_budgets').select('*').eq('user_id', userId).returns()
                 ]);
 
                 // 1. Handle Profile & Preferences
@@ -349,7 +452,7 @@ export const useSplittyStore = create<SplittyState>()(
                 // 2. Handle Categories
                 const { data: categoriesData, error: categoriesError } = categoriesRes;
                 if (!categoriesError && categoriesData && categoriesData.length > 0) {
-                    loadedCategories = categoriesData.map((c: any) => ({
+                    loadedCategories = (categoriesData as CategoryRow[]).map((c: CategoryRow) => ({
                         id: c.id,
                         label: c.label,
                         icon: c.icon,
@@ -375,11 +478,11 @@ export const useSplittyStore = create<SplittyState>()(
                 // 2. Handle Friends
                 const { data: friendsData, error: friendsError } = friendsRes;
                 if (!friendsError && friendsData) {
-                    let mappedFriends: Friend[] = friendsData.map((f: any) => ({
+                    let mappedFriends: Friend[] = (friendsData as FriendRow[]).map((f: FriendRow) => ({
                         id: f.id,
                         name: f.name,
-                        linkedUserId: f.linked_user_id,
-                        avatarUrl: f.avatar_url, // Read the local DB avatar_url
+                        linkedUserId: f.linked_user_id || undefined,
+                        avatarUrl: f.avatar_url || undefined,
                         balance: 0
                     }));
 
@@ -392,13 +495,14 @@ export const useSplittyStore = create<SplittyState>()(
                         const { data: linkedProfiles } = await supabase
                             .from('profiles')
                             .select('id, avatar_url')
-                            .in('id', linkedUserIds);
+                            .in('id', linkedUserIds)
+                            .returns() as { data: Pick<ProfileRow, 'id' | 'avatar_url'>[] | null };
 
                         if (linkedProfiles) {
                             const avatarMap = new Map<string, string>(
                                 linkedProfiles.map((p: any) => [p.id, p.avatar_url as string])
                             );
-                            mappedFriends = mappedFriends.map(f => ({
+                            mappedFriends = mappedFriends.map((f: Friend) => ({
                                 ...f,
                                 avatarUrl: (f.linkedUserId ? avatarMap.get(f.linkedUserId) : f.avatarUrl) || undefined
                             }));
@@ -409,9 +513,8 @@ export const useSplittyStore = create<SplittyState>()(
 
                 // Hoist ID Mapping Helper
                 const friendMap = new Map<string, string>(); // Real UUID -> Local Friend ID
-                // friendsData is already available from line 247
                 if (!friendsError && friendsData) {
-                    friendsData.forEach((f: any) => {
+                    (friendsData as FriendRow[]).forEach((f: FriendRow) => {
                         if (f.linked_user_id) {
                             friendMap.set(f.linked_user_id, f.id);
                         }
@@ -428,18 +531,16 @@ export const useSplittyStore = create<SplittyState>()(
                 const { groups: groupsData, members: groupMembersData } = groupsRes;
 
                 if (groupsData) {
-                    const mappedGroups: Group[] = groupsData
-                        .filter((g: any) => {
-                            // Soft delete: hide groups the current user has archived
+                    const mappedGroups: Group[] = (groupsData as GroupRow[])
+                        .filter((g: GroupRow) => {
                             const archivedBy: string[] = g.archived_by || [];
                             return !archivedBy.includes(userId);
                         })
-                        .map((g: any) => {
-                            // Get members for this group
+                        .map((g: GroupRow) => {
                             const members = groupMembersData
-                                ? groupMembersData
-                                    .filter((gm: any) => gm.group_id === g.id)
-                                    .map((gm: any) => mapRealToLocal(gm.user_id))
+                                ? (groupMembersData as GroupMemberRow[])
+                                    .filter((gm: GroupMemberRow) => gm.group_id === g.id)
+                                    .map((gm: GroupMemberRow) => mapRealToLocal(gm.user_id))
                                 : [];
 
                             return {
@@ -455,19 +556,13 @@ export const useSplittyStore = create<SplittyState>()(
                 // 4. Handle Expenses
                 const { data: expensesData, error: expensesError } = expensesRes;
                 if (!expensesError && expensesData) {
-                    const mappedExpenses: Expense[] = expensesData.map((e: any) => {
+                    const mappedExpenses: Expense[] = (expensesData as ExpenseRow[]).map((e: ExpenseRow) => {
                         const localPayerId = mapRealToLocal(e.payer_id);
-
-                        // Map split_with
                         let localSplitWith: string[] = [];
-
-                        // Map split_details
                         let localSplitDetails: Record<string, number> = {};
 
-                        // NEW: Try reading from expense_participants first
                         if (e.expense_participants && e.expense_participants.length > 0) {
-                            e.expense_participants.forEach((p: any) => {
-                                // Determine local ID
+                            (e.expense_participants as any[]).forEach((p: any) => {
                                 let localId = 'unknown';
                                 if (p.profile_id) {
                                     localId = mapRealToLocal(p.profile_id);
@@ -482,7 +577,6 @@ export const useSplittyStore = create<SplittyState>()(
                                 localSplitDetails[localId] = Number(p.amount);
                             });
                         } else {
-                            // FALLBACK: Read from JSON (Old way)
                             localSplitWith = (e.split_with || [])
                                 .map((realId: string) => mapRealToLocal(realId))
                                 .filter((id: string) => id !== 'self');
@@ -499,30 +593,27 @@ export const useSplittyStore = create<SplittyState>()(
                             description: e.description,
                             amount: Number(e.amount),
                             payerId: localPayerId,
-                            payerName: e.payer_name,
-                            groupId: e.group_id,
+                            payerName: e.payer_name || undefined,
+                            groupId: e.group_id || undefined,
                             splitWith: localSplitWith,
                             date: e.date,
-                            splitType: e.split_type as any,
+                            splitType: e.split_type,
                             splitDetails: localSplitDetails,
                             category: e.category,
-                            isSettlement: e.is_settlement,
-                            isPersonal: e.is_personal,
-                            createdBy: e.created_by,
-                            billUrl: e.bill_url
+                            isSettlement: e.is_settlement as boolean,
+                            isPersonal: e.is_personal || false,
+                            createdBy: e.created_by || undefined,
+                            billUrl: e.bill_url || undefined
                         };
                     });
                     console.log(`✅ fetchData complete. Loaded ${mappedExpenses.length} expenses.`);
                     loadedExpenses = mappedExpenses;
-                } else if (expensesError) {
-                    console.error('❌ fetchData expenses error:', expensesError);
                 }
 
                 // 5. Calculate Balances
-                // This ensures that friend balances are accurate based on fetched expense history
                 const { friends: balancedFriends, groups: balancedGroups } = calculateBalances(loadedExpenses, loadedFriends, loadedGroups);
 
-                // 5.5. Fetch Names for Unknown Friends (Local users of other people)
+                // 5.5. Fetch Names for Unknown Friends
                 let newUnknownFriendNames: Record<string, string> = {};
                 if (loadedExpenses.length > 0) {
                     const knownFriendIds = new Set([userId, 'self', ...loadedFriends.map(f => f.id)]);
@@ -536,40 +627,36 @@ export const useSplittyStore = create<SplittyState>()(
                     });
 
                     if (unknownFriendIds.size > 0) {
-                        // 1. Fetch friend records to get their name and user_id (creator)
                         const { data: missingFriendsData } = await supabase
                             .from('friends')
                             .select('id, name, user_id')
-                            .in('id', Array.from(unknownFriendIds));
+                            .in('id', Array.from(unknownFriendIds))
+                            .returns() as { data: Pick<FriendRow, 'id' | 'name' | 'user_id'>[] | null };
 
                         if (missingFriendsData && missingFriendsData.length > 0) {
-                            // 2. Collect unique creator IDs
                             const creatorIds = new Set(
-                                missingFriendsData
+                                (missingFriendsData as Pick<FriendRow, 'id' | 'name' | 'user_id'>[])
                                     .map((f: any) => f.user_id)
-                                    .filter((id: string) => !!id && id !== userId) // Exclude current user just in case
+                                    .filter((id: string) => !!id && id !== userId)
                             );
 
-                            // 3. Fetch creator profiles
                             const creatorMap = new Map<string, string>();
                             if (creatorIds.size > 0) {
                                 const { data: creatorProfiles } = await supabase
                                     .from('profiles')
                                     .select('id, full_name, email')
-                                    .in('id', Array.from(creatorIds));
+                                    .in('id', Array.from(creatorIds))
+                                    .returns() as { data: Pick<ProfileRow, 'id' | 'full_name' | 'email'>[] | null };
 
                                 if (creatorProfiles) {
-                                    creatorProfiles.forEach((p: any) => {
+                                    (creatorProfiles as any[]).forEach((p: any) => {
                                         creatorMap.set(p.id, p.full_name || p.email?.split('@')[0] || 'Unknown User');
                                     });
                                 }
                             }
 
-                            // 4. Build the mapping
-                            missingFriendsData.forEach((f: any) => {
+                            (missingFriendsData as any[]).forEach((f: any) => {
                                 const creatorName = creatorMap.get(f.user_id);
-                                // Show the friend's real name if available
-                                // Append "(via CreatorName)" only when the name alone might be ambiguous
                                 if (f.name && creatorName) {
                                     newUnknownFriendNames[f.id] = `${f.name} (via ${creatorName})`;
                                 } else if (f.name) {
@@ -582,15 +669,14 @@ export const useSplittyStore = create<SplittyState>()(
                     }
                 }
 
-                // 5.8: Sanitize Categories (Remove non-serializable React components from old states)
+                // 5.8: Sanitize Categories
                 let currentCategories = get().categories;
                 let categoriesModified = false;
 
                 const sanitizedCategories = currentCategories.map(cat => {
                     if (typeof cat.icon !== 'string') {
                         categoriesModified = true;
-                        console.warn(`🧹 Sanitizing corrupted category icon for: ${cat.label}`);
-                        return { ...cat, icon: 'MoreHorizontal' }; // Safe string fallback
+                        return { ...cat, icon: 'MoreHorizontal' };
                     }
                     return cat;
                 });
@@ -598,17 +684,17 @@ export const useSplittyStore = create<SplittyState>()(
                 // 5. Handle Recurring Expenses
                 const { data: recurringData, error: recurringError } = recurringRes;
                 if (!recurringError && recurringData) {
-                    loadedRecurring = recurringData.map((r: any) => ({
+                    loadedRecurring = (recurringData as RecurringExpenseRow[]).map((r: RecurringExpenseRow) => ({
                         id: r.id,
                         description: r.description,
                         amount: Number(r.amount),
                         payerId: r.payer_id === userId ? 'self' : r.payer_id,
-                        groupId: r.group_id,
+                        groupId: r.group_id || undefined,
                         splitWith: r.split_with || [],
                         splitType: r.split_type,
                         splitDetails: r.split_details || {},
                         category: r.category,
-                        frequency: r.frequency,
+                        frequency: r.frequency as Frequency,
                         nextDueDate: r.next_due_date,
                         active: r.active
                     }));
@@ -618,7 +704,7 @@ export const useSplittyStore = create<SplittyState>()(
                 const { data: budgetsData, error: budgetsError } = budgetsRes;
                 if (!budgetsError && budgetsData) {
                     const budgetMap: Record<string, Record<string, number>> = {};
-                    budgetsData.forEach((b: any) => {
+                    (budgetsData as MonthlyBudgetRow[]).forEach((b: MonthlyBudgetRow) => {
                         if (!budgetMap[b.month]) budgetMap[b.month] = {};
                         budgetMap[b.month][b.category_id] = Number(b.amount);
                     });
@@ -629,11 +715,13 @@ export const useSplittyStore = create<SplittyState>()(
                 }
 
                 // 7. Set Final State
-                // Merge strategy: preserve any local friends that Supabase didn't return
-                // (e.g. whose insert failed silently) so they aren't wiped on every sync.
                 const supabaseFriendIds = new Set(loadedFriends.map(f => f.id));
                 const currentFriends = get().friends;
-                const localOnlyFriends = currentFriends.filter(f => !supabaseFriendIds.has(f.id));
+                const localOnlyFriends = currentFriends.filter(f => 
+                    !supabaseFriendIds.has(f.id) && 
+                    f.name !== 'Alwyn' && 
+                    f.name !== 'Manasa'
+                );
                 const mergedFriends = [...balancedFriends, ...localOnlyFriends.map(f => ({ ...f, balance: 0 }))];
                 const { friends: finalFriends, groups: finalGroups } = calculateBalances(loadedExpenses, mergedFriends, balancedGroups);
 
@@ -644,7 +732,7 @@ export const useSplittyStore = create<SplittyState>()(
                     expenses: loadedExpenses,
                     recurringExpenses: loadedRecurring,
                     budgets: loadedBudgets,
-                    activities: (activitiesRes as any)?.data || [],
+                    activities: (activitiesRes.data as ActivityLog[]) || [],
                     isRolloverEnabled: preferences.is_rollover_enabled,
                     currency: preferences.currency,
                     designPreference: preferences.design_preference as any,
@@ -674,13 +762,8 @@ export const useSplittyStore = create<SplittyState>()(
                     }
                 }
             },
-            friends: [
-                { id: '1', name: 'Alwyn', balance: 450 },
-                { id: '2', name: 'Manasa', balance: -329.50 },
-            ],
-            groups: [
-                { id: 'g1', name: 'Rent & Bills', members: ['1', '2'], balance: 120.50 },
-            ],
+            friends: [],
+            groups: [],
             expenses: [],
             activities: [],
             budgets: [],
@@ -692,11 +775,13 @@ export const useSplittyStore = create<SplittyState>()(
                 set({ categoryOrder: order });
                 const { session } = get();
                 if (session?.user) {
-                    supabase.from('profiles').select('preferences').eq('id', session.user.id).single().then(({ data }) => {
+                    supabase.from('profiles').select('preferences').eq('id', session.user.id).single().then((profileRes: any) => {
+                        const data = profileRes.data;
                         const prefs = data?.preferences || {};
                         supabase.from('profiles').update({
                             preferences: { ...prefs, category_order: order }
-                        }).eq('id', session.user.id).then(({ error }) => {
+                        }).eq('id', session.user.id).then((updateRes: any) => {
+                            const error = updateRes.error;
                             if (error) console.error("Error updating category order preference:", error.message);
                         });
                     });
@@ -710,11 +795,13 @@ export const useSplittyStore = create<SplittyState>()(
 
                 const { session } = get();
                 if (session?.user) {
-                    supabase.from('profiles').select('preferences').eq('id', session.user.id).single().then(({ data }) => {
+                    supabase.from('profiles').select('preferences').eq('id', session.user.id).single().then((profileRes: any) => {
+                        const data = profileRes.data;
                         const prefs = data?.preferences || {};
                         supabase.from('profiles').update({
                             preferences: { ...prefs, hidden_categories: nextHidden }
-                        }).eq('id', session.user.id).then(({ error }) => {
+                        }).eq('id', session.user.id).then((updateRes: any) => {
+                            const error = updateRes.error;
                             if (error) console.error("Error updating visibility preference:", error.message);
                         });
                     });
@@ -724,7 +811,7 @@ export const useSplittyStore = create<SplittyState>()(
             }),
             addCategory: (category, applyToAllMonths) => {
                 const newId = Crypto.randomUUID();
-                const newCategory = { ...category, id: newId };
+                const newCategory: Category = { ...category, id: newId };
 
                 let newBudgets = get().budgets;
                 if (applyToAllMonths && category.defaultBudget !== undefined) {
@@ -745,7 +832,8 @@ export const useSplittyStore = create<SplittyState>()(
                             category_id: newId,
                             amount: category.defaultBudget!
                         }));
-                        supabase.from('monthly_budgets').upsert(budgetInserts).then(({ error }) => {
+                        supabase.from('monthly_budgets').upsert(budgetInserts).then((res: any) => {
+                            const error = res.error;
                             if (error) console.error("Error batch upserting category budget:", error.message);
                         });
                     }
@@ -760,7 +848,8 @@ export const useSplittyStore = create<SplittyState>()(
                         icon: category.icon,
                         color: category.color,
                         default_budget: category.defaultBudget || 0
-                    }).then(({ error }) => {
+                    }).then((res: any) => {
+                        const error = res.error;
                         if (error) console.error("Error adding category:", error);
                     });
                 }
@@ -794,7 +883,8 @@ export const useSplittyStore = create<SplittyState>()(
                             category_id: id,
                             amount: updates.defaultBudget!
                         }));
-                        supabase.from('monthly_budgets').upsert(budgetUpserts).then(({ error }) => {
+                        supabase.from('monthly_budgets').upsert(budgetUpserts).then((res: any) => {
+                            const error = res.error;
                             if (error) console.error("Error batch updating category budgets:", error.message);
                         });
                     }
@@ -808,7 +898,8 @@ export const useSplittyStore = create<SplittyState>()(
                             icon: categoryToUpdate.icon,
                             color: categoryToUpdate.color,
                             default_budget: categoryToUpdate.defaultBudget
-                        }).eq('id', id).then(({ error }) => {
+                        }).eq('id', id).then((res: any) => {
+                            const error = res.error;
                             if (error) console.error("Error updating category:", error.message);
                         });
                     }
@@ -876,7 +967,7 @@ export const useSplittyStore = create<SplittyState>()(
                         newBudgets[existingBudgetIndex] = {
                             ...newBudgets[existingBudgetIndex],
                             categories: {
-                                ...newBudgets[existingBudgetIndex].categories,
+                               ...newBudgets[existingBudgetIndex].categories,
                                 [categoryId]: amount
                             }
                         };
@@ -943,23 +1034,23 @@ export const useSplittyStore = create<SplittyState>()(
                 email: '',
             },
             updateUserProfile: (profile) => {
-                set((state) => ({
-                    userProfile: { ...state.userProfile, ...profile }
-                }));
+                const updatedProfile = { ...get().userProfile, ...profile };
+                set({ userProfile: updatedProfile });
 
                 const { session } = get();
                 if (session?.user) {
                     supabase.from('profiles').update({
-                        full_name: profile.name,
-                        avatar_url: profile.avatar,
-                        phone: profile.phone
+                        full_name: updatedProfile.name,
+                        avatar_url: updatedProfile.avatar,
+                        phone: updatedProfile.phone,
+                        email: updatedProfile.email
                     }).eq('id', session.user.id).then(({ error }) => {
                         if (error) console.error("Error updating profile:", error.message);
                     });
                 }
             },
             addFriend: async (name: string, linkedUserId?: string) => {
-                const newFriend = { id: Crypto.randomUUID(), name, balance: 0, linkedUserId };
+                const newFriend: Friend = { id: Crypto.randomUUID(), name, balance: 0, linkedUserId };
                 set((state) => ({
                     friends: [...state.friends, newFriend]
                 }));
@@ -983,6 +1074,8 @@ export const useSplittyStore = create<SplittyState>()(
                         }, 3000);
                     }
                 }
+                
+                return newFriend.id;
             },
             editFriend: async (id: string, name: string, avatarUrl?: string) => {
                 const { session } = get();
@@ -1045,7 +1138,6 @@ export const useSplittyStore = create<SplittyState>()(
                             }
                         } else {
                             console.error("Error creating group:", error);
-                            Alert.alert("Error", "Failed to create group on server.");
                             // Revert optimistic update
                             set((state) => ({
                                 groups: state.groups.filter(g => g.id !== groupId)
@@ -1068,11 +1160,11 @@ export const useSplittyStore = create<SplittyState>()(
             editExpense: (id, updates) => {
                 console.log('📝 editExpense called:', updates.description);
                 set((state) => {
-                    const { session, friends, userProfile, fetchData } = get();
+                    const { session, friends, userProfile } = get();
                     const existingExpense = state.expenses.find(e => e.id === id);
                     if (!existingExpense) return state;
 
-                    const updatedExpense = {
+                    const updatedExpense: Expense = {
                         ...existingExpense,
                         ...updates,
                         // Ensure tags is not undefined
@@ -1128,8 +1220,8 @@ export const useSplittyStore = create<SplittyState>()(
                                                 amount = Number((updatedExpense.amount / count).toFixed(2));
                                             }
 
-                                            let pId = null;
-                                            let fId = null;
+                                            let pId: string | null = null;
+                                            let fId: string | null = null;
 
                                             if (realId === session.user.id) {
                                                 pId = realId;
@@ -1209,7 +1301,7 @@ export const useSplittyStore = create<SplittyState>()(
                 }));
                 const { session } = get();
                 if (session?.user) {
-                    supabase.from('profiles').select('preferences').eq('id', session.user.id).single().then(({ data }) => {
+                    supabase.from('profiles').select('preferences').eq('id', session.user.id).single<Pick<ProfileRow, 'preferences'>>().then(({ data }) => {
                         const prefs = data?.preferences || {};
                         supabase.from('profiles').update({
                             preferences: { ...prefs, accent }
@@ -1223,7 +1315,7 @@ export const useSplittyStore = create<SplittyState>()(
                 set({ notificationsEnabled: enabled });
                 const { session } = get();
                 if (session?.user) {
-                    supabase.from('profiles').select('preferences').eq('id', session.user.id).single().then(({ data }) => {
+                    supabase.from('profiles').select('preferences').eq('id', session.user.id).single<Pick<ProfileRow, 'preferences'>>().then(({ data }) => {
                         const prefs = data?.preferences || {};
                         supabase.from('profiles').update({
                             preferences: { ...prefs, notifications_enabled: enabled }
@@ -1235,7 +1327,7 @@ export const useSplittyStore = create<SplittyState>()(
                 const token = await notificationService.registerForPushNotificationsAsync();
                 const { session } = get();
                 if (token && session?.user) {
-                    supabase.from('profiles').select('preferences').eq('id', session.user.id).single().then(({ data }) => {
+                    supabase.from('profiles').select('preferences').eq('id', session.user.id).single<Pick<ProfileRow, 'preferences'>>().then(({ data }) => {
                         const prefs = data?.preferences || {};
                         if (prefs.push_token !== token) {
                            supabase.from('profiles').update({
@@ -1251,7 +1343,7 @@ export const useSplittyStore = create<SplittyState>()(
                 set({ dashboardViewPreference: pref });
                 const { session } = get();
                 if (session?.user) {
-                    supabase.from('profiles').select('preferences').eq('id', session.user.id).single().then(({ data }) => {
+                    supabase.from('profiles').select('preferences').eq('id', session.user.id).single<Pick<ProfileRow, 'preferences'>>().then(({ data }) => {
                         const prefs = data?.preferences || {};
                         supabase.from('profiles').update({
                             preferences: { ...prefs, dashboard_view: pref }
@@ -1272,7 +1364,7 @@ export const useSplittyStore = create<SplittyState>()(
                 set({ isRolloverEnabled: enabled });
                 const { session } = get();
                 if (session?.user) {
-                    supabase.from('profiles').select('preferences').eq('id', session.user.id).single().then(({ data }) => {
+                    supabase.from('profiles').select('preferences').eq('id', session.user.id).single<Pick<ProfileRow, 'preferences'>>().then(({ data }) => {
                         const prefs = data?.preferences || {};
                         supabase.from('profiles').update({
                             preferences: { ...prefs, is_rollover_enabled: enabled }
@@ -1288,7 +1380,7 @@ export const useSplittyStore = create<SplittyState>()(
                 set({ designPreference: pref });
                 const { session } = get();
                 if (session?.user) {
-                    supabase.from('profiles').select('preferences').eq('id', session.user.id).single().then(({ data }) => {
+                    supabase.from('profiles').select('preferences').eq('id', session.user.id).single<Pick<ProfileRow, 'preferences'>>().then(({ data }) => {
                         const prefs = data?.preferences || {};
                         supabase.from('profiles').update({
                             preferences: { ...prefs, design_preference: pref }
@@ -1340,7 +1432,7 @@ export const useSplittyStore = create<SplittyState>()(
                 set(() => ({ currency }));
                 const { session } = get();
                 if (session?.user) {
-                    supabase.from('profiles').select('preferences').eq('id', session.user.id).single().then(({ data }) => {
+                    supabase.from('profiles').select('preferences').eq('id', session.user.id).single<Pick<ProfileRow, 'preferences'>>().then(({ data }) => {
                         const prefs = data?.preferences || {};
                         supabase.from('profiles').update({
                             preferences: { ...prefs, currency }
@@ -1849,7 +1941,7 @@ export const useSplittyStore = create<SplittyState>()(
                             schema: 'public',
                             table: 'expenses',
                         },
-                        (payload) => {
+                        (payload: any) => {
                             const eventData = payload.new as any || payload.old as any;
                             console.log('🔔 Real-time Expense Event:', payload.eventType, eventData?.id);
 
@@ -1893,7 +1985,7 @@ export const useSplittyStore = create<SplittyState>()(
                             schema: 'public',
                             table: 'friends',
                         },
-                        (payload) => {
+                        (payload: any) => {
                             const eventData = payload.new as any || payload.old as any;
                             console.log('🔔 Real-time Friend change:', payload.eventType, eventData?.id);
 
@@ -1934,14 +2026,14 @@ export const useSplittyStore = create<SplittyState>()(
                             schema: 'public',
                             table: 'groups',
                         },
-                        (payload) => {
+                        (payload: any) => {
                             // Re-fetch when archived_by changes so the group disappears
                             // for the archiving user and stays for others
                             console.log('🔔 Real-time Group update:', (payload.new as any)?.id);
                             fetchData();
                         }
                     )
-                    .subscribe((status) => {
+                    .subscribe((status: string) => {
                         console.log('📡 Real-time Subscription Status:', status);
                         if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
                             console.warn('⚠️ Real-time channel dropped, reconnecting in 3s...');
@@ -1963,7 +2055,7 @@ export const useSplittyStore = create<SplittyState>()(
                             table: 'activity_logs',
                             filter: `user_id=eq.${session.user.id}`
                         },
-                        (payload) => {
+                        (payload: any) => {
                             console.log('🔔 Real-time Activity Log:', payload.new);
                             set((state) => ({
                                 activities: [payload.new as ActivityLog, ...state.activities]

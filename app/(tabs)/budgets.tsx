@@ -4,6 +4,7 @@ import {
     Pressable, FlatList, Dimensions, Platform
 } from 'react-native';
 import { useRouter } from 'expo-router';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ChevronLeft, ChevronRight, BarChart2 } from 'lucide-react-native';
 import { useSplittyStore } from '../../store/useSplittyStore';
 import { CategoryIcon } from '../../components/CategoryIcon';
@@ -166,6 +167,7 @@ const TransactionRow = ({ expense, colors, isDarkMode }: { expense: any; colors:
 // ─── Main Screen ──────────────────────────────────────────────────────────────
 export default function BudgetsScreen() {
     const router = useRouter();
+    const insets = useSafeAreaInsets();
     const colors = useSplittyStore(s => s.colors);
     const isDarkMode = useSplittyStore(s => s.isDarkMode);
     const budgets = useSplittyStore(s => s.budgets);
@@ -362,7 +364,7 @@ export default function BudgetsScreen() {
     const spentPct = hasBudget ? Math.min((totalSpent / totalBudget) * 100, 100) : 0;
 
     return (
-        <View style={[styles.safe, { backgroundColor: designPreference === 'skeuomorphic' ? (isDarkMode ? Skeuomorphic.dark.background : Skeuomorphic.light.background) : colors.background }]}>
+        <View style={[styles.safe, { backgroundColor: designPreference === 'skeuomorphic' ? (isDarkMode ? Skeuomorphic.dark.background : Skeuomorphic.light.background) : colors.background, paddingTop: insets.top }]}>
             {/* ── Month Navigator ── */}
             <View style={styles.header}>
                 <Pressable onPress={handlePrevMonth} style={styles.navBtn}>
@@ -375,7 +377,7 @@ export default function BudgetsScreen() {
             </View>
 
             <ScrollView
-                contentContainerStyle={styles.scroll}
+                contentContainerStyle={[styles.scroll, { paddingBottom: insets.bottom + 120 }]}
                 showsVerticalScrollIndicator={false}
             >
                 {/* ── Hero Card ── */}

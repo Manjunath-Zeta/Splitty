@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, Switch, Pressable, Alert, Modal } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, Switch, Pressable, Alert, Modal, Platform } from 'react-native';
 import { Image } from 'expo-image';
 import { AccentPalettes, AccentName, AppearanceMode, Skeuomorphic } from '../../constants/Colors';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -8,6 +8,7 @@ import { GlassCard } from '../../components/GlassCard';
 import { useSplittyStore } from '../../store/useSplittyStore';
 import { User, Bell, Trash2, LogOut, ChevronRight, CreditCard, DollarSign, Activity, Palette, X, Tag, BarChart2 } from 'lucide-react-native';
 import { useRouter } from 'expo-router';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 export default function SettingsScreen() {
     const clearData = useSplittyStore(s => s.clearData);
@@ -27,6 +28,7 @@ export default function SettingsScreen() {
     const designPreference = useSplittyStore(s => s.designPreference);
     const setDesignPreference = useSplittyStore(s => s.setDesignPreference);
     const router = useRouter();
+    const insets = useSafeAreaInsets();
 
     const isDark = appearance === 'dark';
     const isSkeuomorphic = designPreference === 'skeuomorphic';
@@ -149,8 +151,8 @@ export default function SettingsScreen() {
     };
 
     return (
-        <View style={[styles.safeArea, { backgroundColor: isSkeuomorphic ? skeuo.background : colors.background }]}>
-            <ScrollView contentContainerStyle={styles.container}>
+        <View style={[styles.safeArea, { backgroundColor: isSkeuomorphic ? skeuo.background : colors.background, paddingTop: insets.top }]}>
+            <ScrollView contentContainerStyle={[styles.container, { paddingBottom: insets.bottom + 120 }]}>
                 <Text style={[styles.headerTitle, { color: colors.text }]}>Settings</Text>
 
                 <View style={styles.section}>
@@ -283,6 +285,7 @@ export default function SettingsScreen() {
                             <ChevronRight size={20} color={colors.textSecondary} />,
                             () => router.push('/manage-categories')
                         )}
+                        <View style={[styles.separator, { backgroundColor: colors.border }]} />
                         {renderSettingItem(
                             <Bell size={20} color={colors.textSecondary} />,
                             "Notifications",
@@ -335,8 +338,7 @@ export default function SettingsScreen() {
                 ))}
 
                 <View style={styles.footer}>
-                    <Text style={[styles.versionText, { color: colors.textSecondary }]}>Splitty v1.0.0</Text>
-                    <Text style={[styles.copyrightText, { color: colors.textSecondary }]}>Made with ❤️ by AntiGravity</Text>
+                    <Text style={[styles.versionText, { color: colors.textSecondary }]}>Splitty v1.0.0 (Build 2)</Text>
                 </View>
             </ScrollView>
 
@@ -387,7 +389,6 @@ const styles = StyleSheet.create({
     },
     container: {
         padding: 20,
-        paddingBottom: 40,
     },
     headerTitle: {
         fontSize: 28,

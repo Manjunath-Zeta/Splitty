@@ -5,7 +5,10 @@ import { useSplittyStore } from '../../store/useSplittyStore';
 import { Skeuomorphic } from '../../constants/Colors';
 import { LinearGradient } from 'expo-linear-gradient';
 
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+
 export default function TabsLayout() {
+    const insets = useSafeAreaInsets();
     const appearance = useSplittyStore(s => s.appearance);
     const colors = useSplittyStore(s => s.colors);
     const designPreference = useSplittyStore(s => s.designPreference);
@@ -16,44 +19,34 @@ export default function TabsLayout() {
     return (
         <Tabs
             screenOptions={{
+                headerShown: false,
                 tabBarActiveTintColor: colors.primary,
                 tabBarInactiveTintColor: colors.textSecondary,
                 tabBarStyle: isSkeuomorphic ? {
-                    position: 'absolute',
-                    bottom: Platform.OS === 'ios' ? 30 : 20,
-                    left: 16,
-                    right: 16,
-                    height: 74, // Increased height for labels
-                    borderRadius: 37, // Half of height
+                    height: 60 + insets.bottom,
+                    paddingBottom: insets.bottom > 0 ? insets.bottom - 8 : 10,
+                    borderTopLeftRadius: 30,
+                    borderTopRightRadius: 30,
                     backgroundColor: skeuo.background,
                     borderTopWidth: 0,
                     ...skeuo.outset.dark,
-                    shadowOffset: { width: 0, height: 10 },
+                    shadowOffset: { width: 0, height: -10 }, // Shadow upwards since it's at the bottom
                     shadowRadius: 20,
                     elevation: 10,
                 } : {
                     backgroundColor: colors.surface,
                     borderTopColor: colors.border,
-                    height: Platform.OS === 'ios' ? 88 : 64,
-                    paddingBottom: Platform.OS === 'ios' ? 30 : 10,
+                    height: (Platform.OS === 'ios' ? 64 : 64) + insets.bottom,
+                    paddingBottom: insets.bottom || 10,
                 },
                 tabBarBackground: isSkeuomorphic ? () => (
-                    <View style={[StyleSheet.absoluteFill, { borderRadius: 37, overflow: 'hidden' }]}>
-                        <View style={[StyleSheet.absoluteFill, skeuo.outset.light, { borderRadius: 37 }]} />
+                    <View style={[StyleSheet.absoluteFill, { borderTopLeftRadius: 30, borderTopRightRadius: 30, overflow: 'hidden' }]}>
                         <LinearGradient
                             colors={skeuo.surfaceGradient}
-                            style={[StyleSheet.absoluteFill, { borderRadius: 37 }]}
+                            style={StyleSheet.absoluteFill}
                         />
                     </View>
                 ) : undefined,
-                headerStyle: {
-                    backgroundColor: isSkeuomorphic ? skeuo.background : colors.background,
-                },
-                headerTitleStyle: {
-                    color: colors.text,
-                    fontWeight: 'bold',
-                },
-                headerShadowVisible: false,
                 tabBarShowLabel: true, // Labels should be visible
                 tabBarLabelStyle: isSkeuomorphic ? {
                     marginBottom: 8,
@@ -61,7 +54,7 @@ export default function TabsLayout() {
                     fontWeight: '600',
                 } : undefined,
                 tabBarItemStyle: isSkeuomorphic ? {
-                    paddingTop: 8,
+                    paddingTop: 4,
                 } : undefined,
             }}
         >

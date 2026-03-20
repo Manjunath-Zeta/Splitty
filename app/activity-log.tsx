@@ -15,6 +15,7 @@ import { ArrowLeft, Clock, Activity, Users } from 'lucide-react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useSplittyStore, ActivityLog } from '../store/useSplittyStore';
 import { GlassCard } from '../components/GlassCard';
+import { EmptyState } from '../components/EmptyState';
 import { Skeuomorphic } from '../constants/Colors';
 import { LinearGradient } from 'expo-linear-gradient';
 
@@ -97,13 +98,25 @@ export default function ActivityLogScreen() {
         const CardContent = () => (
             <View style={styles.cardContent}>
                 <View style={[styles.iconContainer, { backgroundColor: isSkeuomorphic ? 'rgba(0,0,0,0.03)' : colors.surface }]}>
-                    {isExpense ? (
-                        <Activity size={20} color={colors.primary} />
-                    ) : isGroup ? (
-                        <Users size={20} color={colors.secondary || '#4bc0c0'} />
-                    ) : (
-                        <Activity size={20} color={colors.textSecondary} />
-                    )}
+                    {(() => {
+                        if (isExpense) {
+                            const categoryId = meta.category;
+                            const categories = useSplittyStore.getState().categories;
+                            const category = categories.find(c => c.id === categoryId);
+                            
+                            if (category) {
+                                try {
+                                    const { [category.icon as keyof typeof import('lucide-react-native')]: IconComponent } = require('lucide-react-native');
+                                    if (IconComponent) return <IconComponent size={20} color={category.color || colors.primary} />;
+                                } catch (e) {}
+                            }
+                            return <Activity size={20} color={colors.primary} />;
+                        }
+                        if (isGroup) {
+                            return <Users size={20} color={colors.secondary || '#4bc0c0'} />;
+                        }
+                        return <Activity size={20} color={colors.textSecondary} />;
+                    })()}
                 </View>
                 <View style={styles.textContainer}>
                     <Text style={[styles.description, { color: colors.text }]}>
@@ -211,12 +224,11 @@ export default function ActivityLogScreen() {
                     <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} tintColor={colors.primary} />
                 }
                 ListEmptyComponent={
-                    <View style={styles.emptyContainer}>
-                        <Activity size={48} color={colors.textSecondary} style={{ opacity: 0.5 }} />
-                        <Text style={[styles.emptyText, { color: colors.textSecondary }]}>
-                            No activity yet
-                        </Text>
-                    </View>
+                    <EmptyState
+                        icon={Activity}
+                        title="No Activity Logged"
+                        message="Your split bills and group changes will appear here."
+                    />
                 }
             />
         </View>

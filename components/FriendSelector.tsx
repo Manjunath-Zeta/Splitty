@@ -6,10 +6,15 @@ import {
     Modal,
     FlatList,
     TextInput,
-    Pressable
+    Pressable,
+    Alert,
+    ActivityIndicator
 } from 'react-native';
-import { Check, Search, X, Users, ChevronRight } from 'lucide-react-native';
+import { Check, Search, X, Users, ChevronRight, UserPlus } from 'lucide-react-native';
 import { Friend, Group, useSplittyStore } from '../store/useSplittyStore';
+// import * as Contacts from 'expo-contacts';
+import { parsePhoneNumberWithError } from 'libphonenumber-js';
+import { supabase } from '../lib/supabase';
 import * as Haptics from 'expo-haptics';
 import { Skeuomorphic } from '../constants/Colors';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -33,6 +38,8 @@ export const FriendSelector = memo(({ type, friends, groups, selectedIds, onTogg
 
     const [modalVisible, setModalVisible] = useState(false);
     const [searchQuery, setSearchQuery] = useState('');
+    const [isImporting, setIsImporting] = useState(false);
+    const addFriend = useSplittyStore(state => state.addFriend);
 
     const items = type === 'individual' ? friends : groups;
 
@@ -54,6 +61,86 @@ export const FriendSelector = memo(({ type, friends, groups, selectedIds, onTogg
         if (disabled) return;
         Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
         setModalVisible(true);
+    };
+
+    const importContact = async () => {
+        try {
+            // Dynamic require to prevent evaluation error
+            const Contacts = require('expo-contacts');
+            if (!Contacts?.requestPermissionsAsync) {
+                Alert.alert('Module Missing', 'The contacts module is not available on this build.');
+                return;
+            }
+            const { status } = await Contacts.requestPermissionsAsync();
+            if (status !== 'granted') {
+                Alert.alert('Permission Denied', 'Please allow contacts access in your device settings.');
+                return;
+            }
+
+            const contact = await Contacts.presentContactPickerAsync();
+            if (!contact) return; 
+
+            const phoneRecord = contact.phoneNumbers?.[0];
+            if (!phoneRecord?.number) {
+                Alert.alert('No Phone Number', 'The selected contact does not have a phone number.');
+                return;
+            }
+
+            const rawNumber = phoneRecord.number;
+            let normalizedNumber = rawNumber;
+            try {
+                // Try parsing cleanly first (defaulting to US if no country code provided, though devices vary)
+                const phoneNumberObj = parsePhoneNumberWithError(rawNumber, 'US');
+                normalizedNumber = phoneNumberObj.format('E.164'); 
+            } catch (err) {
+                // Fallback to basic stripping
+                normalizedNumber = rawNumber.replace(/[^\d+]/g, '');
+            }
+
+            setIsImporting(true);
+            const resolvedName = [contact.firstName, contact.lastName].filter(Boolean).join(' ').trim();
+            const contactName = contact.name || resolvedName || contact.company || 'Unknown Contact';
+
+            // Check if phone number is registered in Supabase
+            const { data, error } = await supabase.rpc('lookup_user_by_phone', { search_phone: normalizedNumber });
+            
+            if (error) {
+                console.error("Lookup error:", error);
+                throw error;
+            }
+
+            let newFriendId: string;
+            if (data && data.id) {
+                const existingLinkedFriend = items.find(f => (f as any).linkedUserId === data.id);
+                if (existingLinkedFriend) {
+                    newFriendId = existingLinkedFriend.id;
+                    Alert.alert('Success', `Auto-selected existing friend ${existingLinkedFriend.name}!`);
+                } else {
+                    newFriendId = await addFriend(contactName, data.id);
+                    Alert.alert('Success', `Matched with registered user ${data.full_name}!`);
+                }
+            } else {
+                const existingLocalFriend = items.find(f => f.name.toLowerCase() === contactName.toLowerCase());
+                if (existingLocalFriend) {
+                    newFriendId = existingLocalFriend.id;
+                    Alert.alert('Success', `Auto-selected existing contact ${existingLocalFriend.name}!`);
+                } else {
+                    newFriendId = await addFriend(contactName, undefined);
+                    Alert.alert('Success', `Added ${contactName} as a local contact.`);
+                }
+            }
+
+            // Auto-select the newly added or existing friend
+            if (!selectedIds.includes(newFriendId)) {
+                onToggle(newFriendId);
+            }
+
+        } catch (error) {
+            console.error(error);
+            Alert.alert('Error', 'Failed to import contact.');
+        } finally {
+            setIsImporting(false);
+        }
     };
 
     return (
@@ -177,6 +264,32 @@ export const FriendSelector = memo(({ type, friends, groups, selectedIds, onTogg
                             )}
                         </View>
                     </View>
+
+                    {/* Import Contact Button */}
+                    {type === 'individual' && (
+                        <Pressable 
+                            style={[
+                                styles.importContactButton, 
+                                isSkeuomorphic ? skeuo.outset.light : { backgroundColor: colors.primary + '15' }
+                            ]}
+                            onPress={importContact}
+                            disabled={isImporting}
+                        >
+                            <View style={isSkeuomorphic ? [styles.skeuoImportInner, skeuo.outset.dark] : styles.importInner}>
+                                {isImporting ? (
+                                    <ActivityIndicator size="small" color={isSkeuomorphic ? colors.text : colors.primary} />
+                                ) : (
+                                    <UserPlus size={18} color={isSkeuomorphic ? colors.text : colors.primary} />
+                                )}
+                                <Text style={[
+                                    styles.importContactText, 
+                                    { color: isSkeuomorphic ? colors.text : colors.primary }
+                                ]}>
+                                    {isImporting ? 'Importing...' : 'Add from Contacts'}
+                                </Text>
+                            </View>
+                        </Pressable>
+                    )}
 
                     {/* Selected count header */}
                     {selectedIds.length > 0 && (
@@ -408,5 +521,29 @@ const styles = StyleSheet.create({
         borderRadius: 24,
         gap: 12,
         flex: 1,
+    },
+    importContactButton: {
+        marginHorizontal: 16,
+        marginBottom: 8,
+        borderRadius: 24,
+    },
+    importInner: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        paddingVertical: 12,
+        gap: 8,
+    },
+    skeuoImportInner: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        paddingVertical: 12,
+        gap: 8,
+        borderRadius: 24,
+    },
+    importContactText: {
+        fontWeight: '600',
+        fontSize: 15,
     }
 });

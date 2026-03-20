@@ -9,6 +9,9 @@ import { supabase } from '../lib/supabase';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import * as SplashScreen from 'expo-splash-screen';
+import * as Linking from 'expo-linking';
+import * as SecureStore from 'expo-secure-store';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 // Prevent the splash screen from auto-hiding before asset loading is complete.
 SplashScreen.preventAutoHideAsync().catch(() => {
@@ -20,9 +23,14 @@ export default function RootLayout() {
     const segments = useSegments();
     const setSession = useSplittyStore(s => s.setSession);
     const fetchData = useSplittyStore(s => s.fetchData);
+    const session = useSplittyStore(state => state.session);
     const subscribeToChanges = useSplittyStore(s => s.subscribeToChanges);
     const initNotifications = useSplittyStore(s => s.initNotifications);
-    const session = useSplittyStore(state => state.session);
+
+    // Deep trace for session changes
+    useEffect(() => {
+        console.log('RootLayout: [TRACE] Session changed state:', !!session);
+    }, [session]);
 
     const rootNavigationState = useRootNavigationState();
     const [isReady, setIsReady] = useState(false);
@@ -37,15 +45,32 @@ export default function RootLayout() {
             Alert.alert('Recurring Expenses', `${count} new expense(s) have been added based on your schedule.`);
         }
 
+        const checkPendingPhone = async (currentSession: any) => {
+            if (!currentSession) return;
+            try {
+                const pendingPhone = await AsyncStorage.getItem('pending_phone_number');
+                if (pendingPhone) {
+                    await supabase.from('profiles').update({ phone: pendingPhone }).eq('id', currentSession.user.id);
+                    await AsyncStorage.removeItem('pending_phone_number'); // This line was already present in the original code.
+                    console.log("RootLayout: Applied pending phone number to profile.");
+                }
+            } catch (e) {
+                console.error("Failed to apply pending phone", e);
+            }
+        };
+
         // Auth Initial Session
-        supabase.auth.getSession().then(({ data: { session } }: any) => {
+        supabase.auth.getSession().then(async ({ data: { session } }: any) => {
             console.log('RootLayout: Session fetched', !!session);
+            await checkPendingPhone(session);
             setSession(session);
             setIsReady(true);
         });
 
         // Auth Listener
-        const { data: { subscription: authSubscription } } = supabase.auth.onAuthStateChange((event: any, session: any) => {
+        const { data: { subscription: authSubscription } } = supabase.auth.onAuthStateChange(async (event: any, session: any) => {
+            console.log(`RootLayout: Auth State Event: ${event}`, !!session);
+            await checkPendingPhone(session);
             setSession(session);
         });
 
@@ -63,8 +88,8 @@ export default function RootLayout() {
             SplashScreen.hideAsync().catch(() => { });
         }, 500);
 
-        const inAuthGroup = segments[0] === 'auth';
-        const isAtRoot = segments.length === 0 || segments[0] === 'index';
+        const inAuthGroup = segments[0] === 'auth' || segments[0] === '(auth)';
+        const isAtRoot = segments.length < 1 || segments[0] === 'index' || segments[0] === '';
         const isInsideTabs = segments[0] === '(tabs)';
         const isOnProtectedScreen = segments[0] === 'add-expense' || 
                                    segments[0] === 'set-budget' || 
@@ -72,13 +97,16 @@ export default function RootLayout() {
 
         // Use a small delay but only if we AREN'T already where we're supposed to be
         // This avoids the "double jump" and modal closing
+        console.log('RootLayout: Testing Redirect Conditions', { session: !!session, inAuthGroup, isAtRoot });
         if (session && (inAuthGroup || isAtRoot)) {
-            console.log('RootLayout: REDIRECT TRIGGERED -> /(tabs)');
+            console.log('RootLayout: AUTHENTICATED REDIRECT -> /(tabs)', { segments });
             fetchData();
             router.replace('/(tabs)');
         } else if (!session && !inAuthGroup) {
-            console.log('RootLayout: REDIRECT TRIGGERED -> /auth');
+            console.log('RootLayout: UNAUTHENTICATED REDIRECT -> /auth', { segments });
             router.replace('/auth');
+        } else {
+            console.log('RootLayout: No redirect needed or handled.', { session: !!session, segments });
         }
     }, [session, segments, rootNavigationState, isReady]);
 
