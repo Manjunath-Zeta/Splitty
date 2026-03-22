@@ -20,24 +20,55 @@ Splitty is a skeuomorphic expense tracking and bill-splitting application built 
 ### 1. Global State (`useSplittyStore`)
 The store is the heart of the application. It handles:
 - **Data Persistence**: Syncs with Supabase.
+- **Optimistic Updates**: UI updates immediately (e.g., `addExpense`, `editFriend`) before the server confirms, ensuring a "snappy" feel.
+- **Real-time Sync**: Uses Supabase Realtime (`subscribeToChanges`) to reflect changes from other users (inserts, deletes, updates) instantly.
 - **Theming**: Manages `appearance` (light/dark) and `designPreference` (skeuomorphic/flat).
 - **Data Isolation**: Functions like `fetchData` **MUST** always filter by `user_id` using the session's user ID.
 
-### 2. Navigation & Auth Guard (`app/_layout.tsx`)
+### 2. ID Mapping (Real UUIDs vs Local IDs)
+The app uses a dual ID system to handle "local friends" vs "linked real users":
+- **`self`**: Always represents the current session user.
+- **UUIDs**: Real Supabase profile IDs.
+- **Local IDs**: Unique IDs for friends who are not yet linked to a real user.
+- **Helpers**: Use `mapToRealId` and `mapToLocalId` in the store to translate between these contexts when syncing with the DB.
+
+### 3. Dual Write Pattern
+When adding or editing expenses, the store performs a **Dual Write**:
+1. It updates the `expenses` table.
+2. It simultaneously manages the `expense_participants` table to ensure accurate split records for all involved parties (profiles and friends).
+
+### 4. Navigation & Auth Guard (`app/_layout.tsx`)
 The root layout manages the authentication state and redirection logic.
 - **Redirection Logic**: Carefully handles the transition between `(auth)` and `(tabs)`. 
 - **Critical**: Avoid direct state mutations that trigger redirection loops. Always verify the current path using `segments` before navigating.
 
-### 3. Design System
+### 5. Design System
 The app uses a premium skeuomorphic design.
 - **Theme Tokens**: Located in `constants/Colors.ts`.
 - **Skeuo Utilities**: `skeuo.outset`, `skeuo.inset`, and `skeuo.surfaceGradient` are applied to `View` components to create depth.
 
 ---
 
-## 💎 Best Practices & Cleanup
+## ⚡ Features Implementation
 
-### ✅ Granular Store Selectors
+### 📸 Bill Attachments
+- **Storage**: Bills are uploaded to the `bills` bucket in Supabase Storage under `user_id/timestamp.ext`.
+- **Logic**: Use `uploadBill(uri)` in the store which returns a public URL to be stored with the expense.
+
+### 🔔 Push Notifications
+- **Registration**: Handled via `initNotifications()` using `expo-notifications`.
+- **Sync**: The push token is stored in the user's `profiles.preferences`.
+- **Triggers**: Budget alerts and new expense notifications are triggered both locally (for speed) and can be extended via Supabase Edge Functions.
+
+### ✅ Optimistic UI Updates
+When performing mutations (adding expenses, editing friends), update the local store state **immediately**. This prevents the UI from feeling sluggish. Always handle the server response in the background and only trigger a full `fetchData` or revert if a critical sync error occurs.
+
+### ✅ Debounced Server Sync
+Real-time listeners (`subscribeToChanges`) can trigger many events in rapid succession. Use a debounce (e.g., 1.5s) before calling `fetchData` to avoid redundant network requests and UI flickering during bulk updates.
+
+---
+
+## ⚠️ Common Pitfalls & Mistakes to Avoid
 **Avoid**: `const { friends, expenses } = useSplittyStore();` (Triggers re-render on *any* store change).
 **Prioritize**:
 ```typescript

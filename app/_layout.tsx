@@ -10,8 +10,8 @@ import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import * as SplashScreen from 'expo-splash-screen';
 import * as Linking from 'expo-linking';
-import * as SecureStore from 'expo-secure-store';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { normalizePhoneNumber } from '../lib/utils';
 
 // Prevent the splash screen from auto-hiding before asset loading is complete.
 SplashScreen.preventAutoHideAsync().catch(() => {
@@ -50,9 +50,10 @@ export default function RootLayout() {
             try {
                 const pendingPhone = await AsyncStorage.getItem('pending_phone_number');
                 if (pendingPhone) {
-                    await supabase.from('profiles').update({ phone: pendingPhone }).eq('id', currentSession.user.id);
-                    await AsyncStorage.removeItem('pending_phone_number'); // This line was already present in the original code.
-                    console.log("RootLayout: Applied pending phone number to profile.");
+                    const normalized = normalizePhoneNumber(pendingPhone);
+                    await supabase.from('profiles').update({ phone: normalized }).eq('id', currentSession.user.id);
+                    await AsyncStorage.removeItem('pending_phone_number');
+                    console.log("RootLayout: Applied pending phone number to profile:", normalized);
                 }
             } catch (e) {
                 console.error("Failed to apply pending phone", e);

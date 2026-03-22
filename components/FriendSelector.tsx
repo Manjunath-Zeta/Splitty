@@ -116,7 +116,7 @@ export const FriendSelector = memo(({ type, friends, groups, selectedIds, onTogg
                     newFriendId = existingLinkedFriend.id;
                     Alert.alert('Success', `Auto-selected existing friend ${existingLinkedFriend.name}!`);
                 } else {
-                    newFriendId = await addFriend(contactName, data.id);
+                    newFriendId = await addFriend(contactName, data.id, normalizedNumber);
                     Alert.alert('Success', `Matched with registered user ${data.full_name}!`);
                 }
             } else {
@@ -125,7 +125,7 @@ export const FriendSelector = memo(({ type, friends, groups, selectedIds, onTogg
                     newFriendId = existingLocalFriend.id;
                     Alert.alert('Success', `Auto-selected existing contact ${existingLocalFriend.name}!`);
                 } else {
-                    newFriendId = await addFriend(contactName, undefined);
+                    newFriendId = await addFriend(contactName, undefined, normalizedNumber);
                     Alert.alert('Success', `Added ${contactName} as a local contact.`);
                 }
             }

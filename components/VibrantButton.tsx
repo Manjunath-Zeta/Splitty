@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Pressable, Text, StyleSheet, ViewStyle, TextStyle, View, Platform, StyleProp } from 'react-native';
+import { Pressable, Text, StyleSheet, ViewStyle, TextStyle, View, Platform, StyleProp, ActivityIndicator } from 'react-native';
 import { Skeuomorphic } from '../constants/Colors';
 import { useSplittyStore } from '../store/useSplittyStore';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -12,6 +12,7 @@ interface VibrantButtonProps {
     variant?: 'primary' | 'secondary' | 'outline';
     disabled?: boolean;
     leftIcon?: React.ReactNode;
+    loading?: boolean;
 }
 
 export const VibrantButton: React.FC<VibrantButtonProps> = ({
@@ -21,7 +22,8 @@ export const VibrantButton: React.FC<VibrantButtonProps> = ({
     textStyle,
     variant = 'primary',
     disabled = false,
-    leftIcon
+    leftIcon,
+    loading = false
 }) => {
     const colors = useSplittyStore(s => s.colors);
     const designPreference = useSplittyStore(s => s.designPreference);
@@ -79,16 +81,22 @@ export const VibrantButton: React.FC<VibrantButtonProps> = ({
                             end={{ x: 1, y: 1 }}
                         >
                             <View style={styles.content}>
-                                {leftIcon && <View style={[styles.iconContainer, !title && { marginRight: 0 }]}>{leftIcon}</View>}
-                                {title ? (
-                                    <Text style={[
-                                        styles.text,
-                                        { color: disabled ? colors.textSecondary : (isSecondary ? colors.text : (isOutline ? colors.primary : colors.primary)) },
-                                        textStyle
-                                    ]}>
-                                        {title}
-                                    </Text>
-                                ) : null}
+                                {loading ? (
+                                    <ActivityIndicator size="small" color={isOutline ? colors.primary : 'white'} />
+                                ) : (
+                                    <>
+                                        {leftIcon && <View style={[styles.iconContainer, !title && { marginRight: 0 }]}>{leftIcon}</View>}
+                                        {title ? (
+                                            <Text style={[
+                                                styles.text,
+                                                { color: disabled ? colors.textSecondary : (isSecondary ? colors.text : (isOutline ? colors.primary : colors.primary)) },
+                                                textStyle
+                                            ]}>
+                                                {title}
+                                            </Text>
+                                        ) : null}
+                                    </>
+                                )}
                             </View>
                         </LinearGradient>
                     </View>
@@ -117,19 +125,25 @@ export const VibrantButton: React.FC<VibrantButtonProps> = ({
                 pressed && { opacity: 0.8 }
             ]}
             onPress={onPress}
-            disabled={disabled}
+            disabled={disabled || loading}
         >
             <View style={styles.content}>
-                {leftIcon && <View style={[styles.iconContainer, !title && { marginRight: 0 }]}>{leftIcon}</View>}
-                {title ? (
-                    <Text style={[
-                        styles.text,
-                        { color: finalTextColor },
-                        textStyle
-                    ]}>
-                        {title}
-                    </Text>
-                ) : null}
+                {loading ? (
+                    <ActivityIndicator size="small" color={isOutline ? colors.primary : 'white'} />
+                ) : (
+                    <>
+                        {leftIcon && <View style={[styles.iconContainer, !title && { marginRight: 0 }]}>{leftIcon}</View>}
+                        {title ? (
+                            <Text style={[
+                                styles.text,
+                                { color: finalTextColor },
+                                textStyle
+                            ]}>
+                                {title}
+                            </Text>
+                        ) : null}
+                    </>
+                )}
             </View>
         </Pressable>
     );

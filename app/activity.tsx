@@ -152,6 +152,9 @@ export default function ActivityScreen() {
                             </View>
                             <View style={styles.activityRight}>
                                 <Text style={[styles.activityAmount, { color: colors.text }]}>{formatCurrency(item.amount)}</Text>
+                                <Text style={[styles.paidByText, { color: colors.textSecondary }]}>
+                                    Paid by {item._payerName}
+                                </Text>
                                 <VibrantButton
                                     onPress={() => handleDelete(item.id)}
                                     variant="outline"
@@ -205,6 +208,9 @@ export default function ActivityScreen() {
                     </View>
                     <View style={styles.activityRight}>
                         <Text style={[styles.activityAmount, { color: colors.text }]}>{formatCurrency(item.amount)}</Text>
+                        <Text style={[styles.paidByText, { color: colors.textSecondary }]}>
+                            Paid by {item._payerName}
+                        </Text>
                         <VibrantButton
                             onPress={() => handleDelete(item.id)}
                             variant="outline"

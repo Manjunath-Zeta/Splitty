@@ -12,9 +12,9 @@ import {
 import { useRouter } from 'expo-router';
 import * as WebBrowser from 'expo-web-browser';
 import * as AppleAuthentication from 'expo-apple-authentication';
-import * as SecureStore from 'expo-secure-store';
 import * as Linking from 'expo-linking';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { normalizePhoneNumber } from '../lib/utils';
 import { supabase } from '../lib/supabase';
 import { useSplittyStore } from '../store/useSplittyStore';
 import { VibrantButton } from '../components/VibrantButton';
@@ -43,7 +43,7 @@ export default function AuthScreen() {
         }
         setLoading(true);
         try {
-            await SecureStore.setItemAsync('pending_phone_number', phoneNumber.replace(/\D/g, ''));
+            await AsyncStorage.setItem('pending_phone_number', normalizePhoneNumber(phoneNumber));
             const isWeb = Platform.OS === 'web';
             // Use Linking so it works in Expo Go, Dev Client, or Prod automatically
             const redirectUri = isWeb ? window.location.origin : Linking.createURL('');
@@ -146,7 +146,7 @@ export default function AuthScreen() {
         }
         setLoading(true);
         try {
-            await SecureStore.setItemAsync('pending_phone_number', phoneNumber.replace(/\D/g, ''));
+            await AsyncStorage.setItem('pending_phone_number', normalizePhoneNumber(phoneNumber));
             const credential = await AppleAuthentication.signInAsync({
                 requestedScopes: [
                     AppleAuthentication.AppleAuthenticationScope.FULL_NAME,
@@ -155,9 +155,18 @@ export default function AuthScreen() {
             });
             
             if (credential.identityToken) {
+                const fullName = credential.fullName
+                    ? `${credential.fullName.givenName || ''} ${credential.fullName.familyName || ''}`.trim()
+                    : null;
+
                 const { error } = await supabase.auth.signInWithIdToken({
                     provider: 'apple',
                     token: credential.identityToken,
+                    options: {
+                        data: {
+                            full_name: fullName,
+                        }
+                    }
                 });
                 
                 if (error) throw error;

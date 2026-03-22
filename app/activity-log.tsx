@@ -137,7 +137,7 @@ export default function ActivityLogScreen() {
                             {meta.amount !== undefined && (
                                 <View style={[styles.badge, { backgroundColor: colors.primary + '15' }]}>
                                     <Text style={[styles.badgeText, { color: colors.primary }]}>
-                                        {meta.payer_name ? `${meta.payer_name} paid ` : ''}
+                                        {meta.payer_name ? `${meta.payer_name} paid ` : 'Total: '}
                                         {formatCurrency(Number(meta.amount))}
                                     </Text>
                                 </View>

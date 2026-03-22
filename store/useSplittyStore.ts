@@ -9,6 +9,14 @@ import { notificationService } from '../lib/NotificationService';
 import * as Crypto from 'expo-crypto';
 import { CATEGORIES, Category } from '../constants/Categories';
 
+// --- Phone Normalization Helper ---
+const normalizePhone = (phone: string | undefined | null): string => {
+    if (!phone) return '';
+    // Remove all non-numeric characters and take only the last 10 digits
+    const numeric = phone.replace(/\D/g, '');
+    return numeric.length > 10 ? numeric.slice(-10) : numeric;
+};
+
 // --- ID Mapping Helpers ---
 const mapToRealId = (localId: string, friends: Friend[], sessionUserId: string): string => {
     if (localId === 'self') return sessionUserId;
@@ -53,8 +61,7 @@ const mapRowToExpense = (e: any, friends: Friend[], userId: string): Expense => 
 
     // Use split_with and split_details from the payload if available (they should be)
     localSplitWith = (e.split_with || [])
-        .map((realId: string) => mapRealToLocal(realId))
-        .filter((id: string) => id !== 'self');
+        .map((realId: string) => mapRealToLocal(realId));
 
     if (e.split_details) {
         Object.entries(e.split_details).forEach(([realId, amount]) => {
@@ -90,6 +97,7 @@ export interface Friend {
     id: string;
     name: string;
     balance: number;
+    phone?: string;
     linkedUserId?: string;
     avatarUrl?: string;
 }
@@ -178,6 +186,7 @@ export interface FriendRow {
     id: string;
     name: string;
     user_id: string;
+    phone: string | null;
     linked_user_id: string | null;
     avatar_url: string | null;
 }
@@ -299,7 +308,7 @@ interface SplittyState {
     addRecurringExpense: (expense: Omit<RecurringExpense, 'id' | 'nextDueDate' | 'active'>) => void;
     deleteRecurringExpense: (id: string) => void;
     checkRecurringExpenses: () => number; // Returns number of created expenses
-    addFriend: (name: string, linkedUserId?: string) => Promise<string>;
+    addFriend: (name: string, linkedUserId?: string, phone?: string) => Promise<string>;
     editFriend: (id: string, name: string, avatarUrl?: string) => Promise<void>;
     addGroup: (name: string, members: string[]) => void;
     deleteFriend: (id: string) => void;
@@ -359,7 +368,10 @@ const calculateBalances = (expenses: Expense[], friends: Friend[], groups: Group
         }
 
         const amounts: { [id: string]: number } = {};
-        if (expense.splitType === 'unequal' && expense.splitDetails) {
+        // Prefer stored splitDetails when available (covers both equal and unequal splits
+        // loaded from DB via expense_participants). Only recalculate if splitDetails is empty.
+        const hasStoredDetails = expense.splitDetails && Object.keys(expense.splitDetails).length > 0;
+        if (hasStoredDetails) {
             Object.assign(amounts, expense.splitDetails);
         } else {
             const totalPeople = participants.length + 1; // + Self
@@ -555,6 +567,7 @@ export const useSplittyStore = create<SplittyState>()(
                     let mappedFriends: Friend[] = (friendsData as FriendRow[]).map((f: FriendRow) => ({
                         id: f.id,
                         name: f.name,
+                        phone: f.phone || undefined,
                         linkedUserId: f.linked_user_id || undefined,
                         avatarUrl: f.avatar_url || undefined,
                         balance: 0
@@ -644,16 +657,12 @@ export const useSplittyStore = create<SplittyState>()(
                                     localId = mapRealToLocal(p.friend_id);
                                 }
 
-                                if (localId !== 'self') {
-                                    localSplitWith.push(localId);
-                                }
+                                localSplitWith.push(localId);
 
                                 localSplitDetails[localId] = Number(p.amount);
                             });
-                        } else {
                             localSplitWith = (e.split_with || [])
-                                .map((realId: string) => mapRealToLocal(realId))
-                                .filter((id: string) => id !== 'self');
+                                .map((realId: string) => mapRealToLocal(realId));
 
                             if (e.split_details) {
                                 Object.entries(e.split_details).forEach(([realId, amount]) => {
@@ -790,12 +799,31 @@ export const useSplittyStore = create<SplittyState>()(
 
                 // 7. Set Final State
                 const supabaseFriendIds = new Set(loadedFriends.map(f => f.id));
+                const supabaseLinkedUserIds = new Set(loadedFriends.map(f => f.linkedUserId).filter(id => !!id));
+                const supabasePhones = new Set(loadedFriends.map(f => normalizePhone(f.phone)).filter(p => !!p));
+                const supabaseNames = new Set(loadedFriends.map(f => f.name.toLowerCase().trim()));
+
                 const currentFriends = get().friends;
-                const localOnlyFriends = currentFriends.filter(f => 
-                    !supabaseFriendIds.has(f.id) && 
-                    f.name !== 'Alwyn' && 
-                    f.name !== 'Manasa'
-                );
+                const localOnlyFriends = currentFriends.filter(f => {
+                    // Prune if ID matches (standard)
+                    if (supabaseFriendIds.has(f.id)) return false;
+                    
+                    // Prune if linkedUserId matches (already synced but maybe with different ID)
+                    if (f.linkedUserId && supabaseLinkedUserIds.has(f.linkedUserId)) return false;
+
+                    // Prune if normalized phone matches
+                    const normPhone = normalizePhone(f.phone);
+                    if (normPhone && supabasePhones.has(normPhone)) return false;
+
+                    // Final safety prune: if name matches exactly and it's local only, it's likely a duplicate
+                    const normName = f.name.toLowerCase().trim();
+                    if (supabaseNames.has(normName) && !f.linkedUserId && !f.phone) return false;
+
+                    // Hardcoded exclusions
+                    if (f.name === 'Alwyn' || f.name === 'Manasa') return false;
+
+                    return true;
+                });
                 const mergedFriends = [...balancedFriends, ...localOnlyFriends.map(f => ({ ...f, balance: 0 }))];
                 const { friends: finalFriends, groups: finalGroups } = calculateBalances(loadedExpenses, mergedFriends, balancedGroups);
 
@@ -984,7 +1012,7 @@ export const useSplittyStore = create<SplittyState>()(
 
                 const { session } = get();
                 if (session?.user) {
-                    supabase.from('categories').delete().eq('id', categoryId).then(({ error }) => {
+                    supabase.from('categories').delete().eq('id', categoryId).then(({ error }: { error: any }) => {
                         if (error) console.error("Error deleting category:", error);
                     });
                 }
@@ -1021,7 +1049,7 @@ export const useSplittyStore = create<SplittyState>()(
                             category_id: categoryId,
                             amount
                         }, { onConflict: 'user_id,month,category_id' })
-                        .then(({ error }) => {
+                        .then(({ error }: any) => {
                             if (error) console.error("Error upserting monthly budget:", error.message);
                         });
                 }
@@ -1106,24 +1134,52 @@ export const useSplittyStore = create<SplittyState>()(
                         avatar_url: updatedProfile.avatar,
                         phone: updatedProfile.phone,
                         email: updatedProfile.email
-                    }).eq('id', session.user.id).then(({ error }) => {
+                    }).eq('id', session.user.id).then(({ error }: { error: any }) => {
                         if (error) console.error("Error updating profile:", error.message);
                     });
                 }
             },
-            addFriend: async (name: string, linkedUserId?: string) => {
-                const newFriend: Friend = { id: Crypto.randomUUID(), name, balance: 0, linkedUserId };
+            addFriend: async (name: string, linkedUserId?: string, phone?: string) => {
+                const normPhone = normalizePhone(phone);
+                const { friends, session } = get();
+
+                // Check for existing friend with same phone or linkedUserId
+                const existingFriend = friends.find(f => 
+                    (normPhone && normalizePhone(f.phone) === normPhone) ||
+                    (linkedUserId && f.linkedUserId === linkedUserId)
+                );
+
+                if (existingFriend) {
+                    console.log(`Matching with existing friend: ${existingFriend.name}`);
+                    // If the existing friend is not linked yet but we have a link now, update it
+                    if (linkedUserId && !existingFriend.linkedUserId) {
+                        set((state) => ({
+                            friends: state.friends.map(f => 
+                                f.id === existingFriend.id ? { ...f, linkedUserId, name: name || f.name } : f
+                            )
+                        }));
+
+                        if (session?.user) {
+                             supabase.from('friends').update({ linked_user_id: linkedUserId, name }).eq('id', existingFriend.id).then(({ error }: { error: any }) => {
+                                 if (error) console.error("Error updating friend link:", error.message);
+                             });
+                        }
+                    }
+                    return existingFriend.id;
+                }
+
+                const newFriend: Friend = { id: Crypto.randomUUID(), name, balance: 0, linkedUserId, phone: normPhone || undefined };
                 set((state) => ({
                     friends: [...state.friends, newFriend]
                 }));
 
-                const { session } = get();
                 if (session?.user) {
                     const insertPayload = {
                         id: newFriend.id,
                         name: newFriend.name,
                         user_id: session.user.id,
-                        linked_user_id: linkedUserId
+                        linked_user_id: linkedUserId,
+                        phone: normPhone || null
                     };
                     const { error } = await supabase.from('friends').insert(insertPayload);
                     if (error) {
@@ -1278,8 +1334,8 @@ export const useSplittyStore = create<SplittyState>()(
                                             if (updatedExpense.splitType === 'unequal') {
                                                 amount = realSplitDetails[realId] || 0;
                                             } else {
-                                                const count = (updatedExpense.splitWith?.length || 0) + 1;
-                                                amount = Number((updatedExpense.amount / count).toFixed(2));
+                                            const count = new Set([...(updatedExpense.splitWith || []), 'self']).size;
+                                            amount = Number((updatedExpense.amount / count).toFixed(2));
                                             }
 
                                             let pId: string | null = null;
@@ -1359,7 +1415,7 @@ export const useSplittyStore = create<SplittyState>()(
                 }));
                 const { session } = get();
                 if (session?.user) {
-                    supabase.from('profiles').select('preferences').eq('id', session.user.id).single<Pick<ProfileRow, 'preferences'>>().then(({ data }) => {
+                    supabase.from('profiles').select('preferences').eq('id', session.user.id).single().then(({ data }: any) => {
                         const prefs = data?.preferences || {};
                         supabase.from('profiles').update({
                             preferences: { ...prefs, accent }
@@ -1371,7 +1427,7 @@ export const useSplittyStore = create<SplittyState>()(
                 set({ notificationsEnabled: enabled });
                 const { session } = get();
                 if (session?.user) {
-                    supabase.from('profiles').select('preferences').eq('id', session.user.id).single<Pick<ProfileRow, 'preferences'>>().then(({ data }) => {
+                    supabase.from('profiles').select('preferences').eq('id', session.user.id).single().then(({ data }: any) => {
                         const prefs = data?.preferences || {};
                         supabase.from('profiles').update({
                             preferences: { ...prefs, notifications_enabled: enabled }
@@ -1383,7 +1439,7 @@ export const useSplittyStore = create<SplittyState>()(
                 const token = await notificationService.registerForPushNotificationsAsync();
                 const { session } = get();
                 if (token && session?.user) {
-                    supabase.from('profiles').select('preferences').eq('id', session.user.id).single<Pick<ProfileRow, 'preferences'>>().then(({ data }) => {
+                    supabase.from('profiles').select('preferences').eq('id', session.user.id).single().then(({ data }: { data: any }) => {
                         const prefs = data?.preferences || {};
                         if (prefs.push_token !== token) {
                            supabase.from('profiles').update({
@@ -1398,7 +1454,7 @@ export const useSplittyStore = create<SplittyState>()(
                 set({ dashboardViewPreference: pref });
                 const { session } = get();
                 if (session?.user) {
-                    supabase.from('profiles').select('preferences').eq('id', session.user.id).single<Pick<ProfileRow, 'preferences'>>().then(({ data }) => {
+                    supabase.from('profiles').select('preferences').eq('id', session.user.id).single().then(({ data }: any) => {
                         const prefs = data?.preferences || {};
                         supabase.from('profiles').update({
                             preferences: { ...prefs, dashboard_view: pref }
@@ -1418,11 +1474,11 @@ export const useSplittyStore = create<SplittyState>()(
                 set({ isRolloverEnabled: enabled });
                 const { session } = get();
                 if (session?.user) {
-                    supabase.from('profiles').select('preferences').eq('id', session.user.id).single<Pick<ProfileRow, 'preferences'>>().then(({ data }) => {
+                    supabase.from('profiles').select('preferences').eq('id', session.user.id).single().then(({ data }: any) => {
                         const prefs = data?.preferences || {};
                         supabase.from('profiles').update({
                             preferences: { ...prefs, is_rollover_enabled: enabled }
-                        }).eq('id', session.user.id).then(({ error }) => {
+                        }).eq('id', session.user.id).then(({ error }: { error: any }) => {
                             if (error) console.error("Error updating rollover preference:", error.message);
                         });
                     });
@@ -1432,11 +1488,11 @@ export const useSplittyStore = create<SplittyState>()(
                 set({ designPreference: pref });
                 const { session } = get();
                 if (session?.user) {
-                    supabase.from('profiles').select('preferences').eq('id', session.user.id).single<Pick<ProfileRow, 'preferences'>>().then(({ data }) => {
+                    supabase.from('profiles').select('preferences').eq('id', session.user.id).single().then(({ data }: any) => {
                         const prefs = data?.preferences || {};
                         supabase.from('profiles').update({
                             preferences: { ...prefs, design_preference: pref }
-                        }).eq('id', session.user.id).then(({ error }) => {
+                        }).eq('id', session.user.id).then(({ error }: { error: any }) => {
                             if (error) console.error("Error updating design preference:", error.message);
                         });
                     });
@@ -1483,11 +1539,11 @@ export const useSplittyStore = create<SplittyState>()(
                 set(() => ({ currency }));
                 const { session } = get();
                 if (session?.user) {
-                    supabase.from('profiles').select('preferences').eq('id', session.user.id).single<Pick<ProfileRow, 'preferences'>>().then(({ data }) => {
+                    supabase.from('profiles').select('preferences').eq('id', session.user.id).single().then(({ data }: any) => {
                         const prefs = data?.preferences || {};
                         supabase.from('profiles').update({
                             preferences: { ...prefs, currency }
-                        }).eq('id', session.user.id).then(({ error }) => {
+                        }).eq('id', session.user.id).then(({ error }: any) => {
                             if (error) console.error("Error updating currency preference:", error.message);
                         });
                     });
@@ -1634,7 +1690,7 @@ export const useSplittyStore = create<SplittyState>()(
                                         // 'allParticipants' here tries to include self.
                                         // Let's use the exact amounts if we can, 
                                         // but if splitDetails is empty (equal split), we calculate.
-                                        const count = (newExpense.splitWith?.length || 0) + 1; // +1 for self
+                                        const count = new Set([...(newExpense.splitWith || []), 'self']).size;
                                         amount = Number((newExpense.amount / count).toFixed(2));
 
                                         // Handle remainder? For MVP, simple division.
@@ -1846,7 +1902,7 @@ export const useSplittyStore = create<SplittyState>()(
                         split_with: expense.splitWith,
                         split_details: expense.splitDetails,
                         split_type: expense.splitType
-                    }).then(({ error }) => {
+                    }).then(({ error }: any) => {
                         if (error) console.error("Error adding recurring expense:", error.message);
                     });
                 }
@@ -1858,7 +1914,7 @@ export const useSplittyStore = create<SplittyState>()(
             deleteRecurringExpense: (id) => {
                 const { session } = get();
                 if (session?.user) {
-                    supabase.from('recurring_expenses').delete().eq('id', id).then(({ error }) => {
+                    supabase.from('recurring_expenses').delete().eq('id', id).then(({ error }: any) => {
                         if (error) console.error("Error deleting recurring expense:", error.message);
                     });
                 }
@@ -1920,7 +1976,7 @@ export const useSplittyStore = create<SplittyState>()(
                 });
                 const { session } = get();
                 if (session?.user) {
-                    supabase.from('friends').delete().eq('id', id).then(({ error }) => {
+                    supabase.from('friends').delete().eq('id', id).then(({ error }: any) => {
                         if (error) console.error("Error deleting friend:", error);
                     });
                 }
@@ -1939,14 +1995,14 @@ export const useSplittyStore = create<SplittyState>()(
                         .select('archived_by')
                         .eq('id', id)
                         .single()
-                        .then(({ data }) => {
+                        .then(({ data }: any) => {
                             const current: string[] = data?.archived_by || [];
                             if (!current.includes(session.user.id)) {
                                 supabase
                                     .from('groups')
                                     .update({ archived_by: [...current, session.user.id] })
                                     .eq('id', id)
-                                    .then(({ error }) => {
+                                    .then(({ error }: any) => {
                                         if (error) console.error('Error archiving group:', error);
                                     });
                             }
@@ -1962,7 +2018,7 @@ export const useSplittyStore = create<SplittyState>()(
                 const { session } = get();
                 if (session?.user) {
                     // Update name
-                    supabase.from('groups').update({ name }).eq('id', id).then(({ error }) => {
+                    supabase.from('groups').update({ name }).eq('id', id).then(({ error }: any) => {
                         if (error) console.error("Error updating group:", error);
                     });
 
@@ -1970,7 +2026,13 @@ export const useSplittyStore = create<SplittyState>()(
                     supabase.from('group_members').delete().eq('group_id', id).then(() => {
                         const memberInserts = [
                             { group_id: id, user_id: session.user.id }, // Always include self
-                            ...members.filter(mId => mId !== 'self').map(mId => ({ group_id: id, user_id: mId }))
+                            ...members
+                                .filter(mId => mId !== 'self')
+                                .map(mId => {
+                                    const friend = get().friends.find(f => f.id === mId);
+                                    return friend?.linkedUserId ? { group_id: id, user_id: friend.linkedUserId } : null;
+                                })
+                                .filter((m): m is { group_id: string, user_id: string } => m !== null)
                         ];
                         // Filtering out 'self' and mapping to actual UUIDs. 
                         // Note: If friend is local, we might need a separate way to track group members 

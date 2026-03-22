@@ -7,7 +7,7 @@ import { GlassCard } from '../../components/GlassCard';
 import { StyledInput } from '../../components/StyledInput';
 import { VibrantButton } from '../../components/VibrantButton';
 import { useSplittyStore } from '../../store/useSplittyStore';
-import { UserPlus, Banknote, Users } from 'lucide-react-native';
+import { UserPlus, Banknote, Users, Plus } from 'lucide-react-native';
 import { supabase } from '../../lib/supabase';
 import { InitialsAvatar } from '../../components/InitialsAvatar';
 import * as Haptics from 'expo-haptics';
@@ -17,7 +17,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { EmptyState } from '../../components/EmptyState';
 // Removed static import to prevent fatal crash if native module is missing
 // import * as Contacts from 'expo-contacts';
-import parsePhoneNumber from 'libphonenumber-js';
+import { normalizePhoneNumber } from '../../lib/utils';
 
 console.log('EVAL: friends.tsx loaded');
 export default function FriendsScreen() {
@@ -64,23 +64,73 @@ export default function FriendsScreen() {
             }
         };
         fetchContacts();
+        fetchData(); // Ensure friends are loaded
     }, []);
 
     const filteredContacts = useMemo(() => {
-        if (!inputValue.trim() || inputValue.length < 1) return [];
-        const lowerInput = inputValue.toLowerCase();
+        const trimmed = inputValue.trim();
+        if (!trimmed || trimmed.length < 1) return [];
+        const lowerInput = trimmed.toLowerCase();
         
-        return deviceContacts.filter(c => {
-            const name = c.name || [c.firstName, c.lastName].filter(Boolean).join(' ') || '';
-            if (name.toLowerCase().includes(lowerInput)) return true;
-            
-            const phoneStr = (c.phoneNumbers as any[])?.map((p: any) => p.number?.replace(/\D/g, '')).join(' ') || '';
-            const searchDigits = inputValue.replace(/\D/g, '');
-            if (searchDigits && phoneStr.includes(searchDigits)) return true;
+        const getContactName = (c: any) => c.name || [c.firstName, c.lastName].filter(Boolean).join(' ') || '';
 
-            return false;
+        return deviceContacts.filter(c => {
+            const name = getContactName(c);
+            const lowerName = name.toLowerCase().trim();
+            const searchDigits = trimmed.replace(/\D/g, '');
+            
+            // Name matching
+            const nameWords = lowerName.split(/\s+/);
+            const nameMatch = lowerInput.length === 1 
+                ? nameWords.some((w: string) => w.startsWith(lowerInput))
+                : lowerName.includes(lowerInput);
+                
+            // Phone matching
+            const phoneStr = (c.phoneNumbers as any[])?.map((p: any) => p.number?.replace(/\D/g, '')).join(' ') || '';
+            const phoneMatch = searchDigits && phoneStr.includes(searchDigits);
+
+            return nameMatch || phoneMatch;
+        }).sort((a, b) => {
+            const aName = getContactName(a).toLowerCase();
+            const bName = getContactName(b).toLowerCase();
+            
+            const aStarts = aName.startsWith(lowerInput);
+            const bStarts = bName.startsWith(lowerInput);
+            if (aStarts && !bStarts) return -1;
+            if (!aStarts && bStarts) return 1;
+            
+            const aWords = aName.split(/\s+/);
+            const bWords = bName.split(/\s+/);
+            const aWordStarts = aWords.some((w: string) => w.startsWith(lowerInput));
+            const bWordStarts = bWords.some((w: string) => w.startsWith(lowerInput));
+            if (aWordStarts && !bWordStarts) return -1;
+            if (!aWordStarts && bWordStarts) return 1;
+
+            return aName.localeCompare(bName);
         }).slice(0, 5);
     }, [inputValue, deviceContacts]);
+
+    const filteredFriends = useMemo(() => {
+        const trimmed = inputValue.trim();
+        if (!trimmed) return friends;
+        const lowerInput = trimmed.toLowerCase();
+        const searchDigits = trimmed.replace(/\D/g, '');
+
+        const filtered = friends.filter(f => {
+            const nameMatch = f.name.toLowerCase().includes(lowerInput);
+            const phoneMatch = f.phone && searchDigits && normalizePhoneNumber(f.phone).includes(searchDigits);
+            return nameMatch || phoneMatch;
+        }).sort((a, b) => {
+            const aStarts = a.name.toLowerCase().startsWith(lowerInput);
+            const bStarts = b.name.toLowerCase().startsWith(lowerInput);
+            if (aStarts && !bStarts) return -1;
+            if (!aStarts && bStarts) return 1;
+            return a.name.localeCompare(b.name);
+        });
+        
+        console.log(`[DEBUG] inputValue: "${trimmed}", friends count: ${friends.length}, filtered count: ${filtered.length}`);
+        return filtered;
+    }, [inputValue, friends]);
 
     const isSkeuomorphic = designPreference === 'skeuomorphic';
     const isDark = appearance === 'dark';
@@ -103,7 +153,8 @@ export default function FriendsScreen() {
             // Check if input looks like phone (digits > 9)
             const digitsOnly = input.replace(/\D/g, '');
             if (digitsOnly.length >= 10) {
-                const { data, error } = await supabase.rpc('lookup_user_by_phone', { search_phone: digitsOnly });
+                const normalized = normalizePhoneNumber(input);
+                const { data, error } = await supabase.rpc('lookup_user_by_phone', { search_phone: normalized });
                 if (data) foundUser = data;
             }
 
@@ -116,7 +167,9 @@ export default function FriendsScreen() {
                         {
                             text: "Add Friend",
                             onPress: () => {
-                                addFriend(foundUser.full_name || input, foundUser.id);
+                                const digitsOnly = input.replace(/\D/g, '');
+                                const phone = digitsOnly.length >= 10 ? normalizePhoneNumber(input) : undefined;
+                                addFriend(foundUser.full_name || input, foundUser.id, phone);
                                 setInputValue('');
                             }
                         }
@@ -132,7 +185,9 @@ export default function FriendsScreen() {
                         {
                             text: "Add Local Friend",
                             onPress: () => {
-                                addFriend(input);
+                                const digitsOnly = input.replace(/\D/g, '');
+                                const phone = digitsOnly.length >= 10 ? normalizePhoneNumber(input) : undefined;
+                                addFriend(input, undefined, phone);
                                 setInputValue('');
                             }
                         }
@@ -158,16 +213,13 @@ export default function FriendsScreen() {
                 return;
             }
 
-            // Parse and format to E.164 (like '+14155552671')
-            // Using a default country if parsing fails locally (assume US or let library detect if country code included)
-            let normalizedNumber = phoneNumberRaw.replace(/\s+/g, '');
-            try {
-                const phoneNumber = parsePhoneNumber(phoneNumberRaw, 'US'); // Fallback country 'US'
-                if (phoneNumber) {
-                    normalizedNumber = phoneNumber.number as string; // E.164 format
-                }
-            } catch (e) {
-                console.warn("Phone number parsing failed, falling back to stripped number", e);
+            // Normalize to last 10 digits for consistent matching
+            const normalizedNumber = normalizePhoneNumber(phoneNumberRaw);
+
+            if (normalizedNumber.length < 10) {
+                Alert.alert("Invalid Phone", "This contact's phone number is too short to look up.");
+                setIsImporting(false);
+                return;
             }
 
             const resolvedName = [contact.firstName, contact.lastName].filter(Boolean).join(' ').trim();
@@ -188,7 +240,7 @@ export default function FriendsScreen() {
                 }
 
                 // Link them!
-                addFriend(contactName, matchedUser.id);
+                addFriend(contactName, matchedUser.id, normalizedNumber);
                 setInputValue('');
                 Alert.alert("User Found!", `${contactName} was found as a registered Splitty user and added!`);
             } else {
@@ -204,7 +256,7 @@ export default function FriendsScreen() {
                     return;
                 }
 
-                addFriend(contactName);
+                addFriend(contactName, undefined, normalizedNumber);
                 setInputValue('');
                 Alert.alert("Added Local Friend", `${contactName} doesn't seem to be verified on Splitty. Added as a local friend.`);
             }
@@ -270,58 +322,67 @@ export default function FriendsScreen() {
         );
     };
 
-    return (
-        <View style={[styles.safeArea, { backgroundColor: isSkeuomorphic ? skeuo.background : colors.background, paddingTop: insets.top }]}>
-            <View style={[styles.container, { paddingBottom: insets.bottom + 100 }]}>
-                <View style={isSkeuomorphic ? [styles.skeuoAddWrapper, skeuo.outset.light] : null}>
-                    <View style={isSkeuomorphic ? [styles.skeuoAddInner, skeuo.outset.dark] : null}>
-                        <LinearGradient
-                            colors={isSkeuomorphic ? skeuo.surfaceGradient : ['transparent', 'transparent']}
-                            style={[styles.addCard, !isSkeuomorphic && { backgroundColor: colors.surface }]}
-                        >
-                            <Text style={[styles.sectionTitle, { color: colors.text }]}>Add Friend</Text>
-                            <Text style={{ color: colors.textSecondary, marginBottom: 8, fontSize: 13 }}>
-                                Search by phone to link real users. If not found, they'll be added locally.
-                            </Text>
-                            <View style={styles.row}>
-                                <View style={{ flex: 1 }}>
-                                    <StyledInput
-                                        placeholder="Name or Phone"
-                                        value={inputValue}
-                                        onChangeText={setInputValue}
-                                        containerStyle={{ marginBottom: 0 }}
-                                        style={{ backgroundColor: isSkeuomorphic ? 'transparent' : colors.inputBackground, color: colors.text }}
-                                        placeholderTextColor={colors.textSecondary}
-                                        autoCapitalize="none"
-                                        rightAccessory={
-                                            <Pressable onPress={handleImportFromPicker} disabled={isImporting || loading} hitSlop={10}>
-                                                <Users color={colors.primary} size={20} style={{ opacity: (isImporting || loading) ? 0.5 : 1 }} />
-                                            </Pressable>
-                                        }
-                                    />
-                                </View>
-                                <VibrantButton
-                                    onPress={handleAddFriend}
-                                    style={styles.smallAddButton}
-                                    variant="primary"
-                                    disabled={loading || isImporting}
-                                    leftIcon={<UserPlus color="white" size={20} />}
+    const renderSearchHeader = () => (
+        <View>
+            {/* Add Friend Card */}
+            <View style={isSkeuomorphic ? [styles.skeuoAddWrapper, skeuo.outset.light] : null}>
+                <View style={isSkeuomorphic ? [styles.skeuoAddInner, skeuo.outset.dark] : null}>
+                    <LinearGradient
+                        colors={isSkeuomorphic ? skeuo.surfaceGradient : ['transparent', 'transparent']}
+                        style={[styles.addCard, !isSkeuomorphic && { backgroundColor: colors.surface }]}
+                    >
+                        <Text style={[styles.sectionTitle, { color: colors.text }]}>Add Friend</Text>
+                        <Text style={{ color: colors.textSecondary, marginBottom: 8, fontSize: 13 }}>
+                            Search by phone to link real users. If not found, they'll be added locally.
+                        </Text>
+                        <View style={styles.row}>
+                            <View style={{ flex: 1 }}>
+                                <StyledInput
+                                    placeholder="Name or Phone"
+                                    value={inputValue}
+                                    onChangeText={setInputValue}
+                                    containerStyle={{ marginBottom: 0 }}
+                                    style={{ backgroundColor: isSkeuomorphic ? 'transparent' : colors.inputBackground, color: colors.text }}
+                                    placeholderTextColor={colors.textSecondary}
+                                    autoCapitalize="none"
+                                    rightAccessory={
+                                        <Pressable onPress={handleImportFromPicker} disabled={isImporting || loading} hitSlop={10}>
+                                            <Users color={colors.primary} size={20} style={{ opacity: (isImporting || loading) ? 0.5 : 1 }} />
+                                        </Pressable>
+                                    }
                                 />
                             </View>
-                            {filteredContacts.length > 0 && (
-                                <View style={[styles.inlineContactsDropdown, { backgroundColor: isSkeuomorphic ? skeuo.surface : colors.inputBackground }]}>
+                            <VibrantButton
+                                onPress={handleAddFriend}
+                                style={styles.smallAddButton}
+                                variant="primary"
+                                loading={loading}
+                                disabled={loading || isImporting || !inputValue.trim()}
+                                leftIcon={<Plus color="white" size={20} />}
+                            />
+                        </View>
+
+                        {filteredContacts.length > 0 ? (
+                            <View style={[styles.inlineContactsDropdown, { backgroundColor: isSkeuomorphic ? 'rgba(0,0,0,0.05)' : colors.background + '80' }]}>
+                                <View style={styles.contactsGrid}>
                                     {filteredContacts.map((contact, index) => {
                                         const name = contact.name || [contact.firstName, contact.lastName].filter(Boolean).join(' ') || 'Unknown Contact';
                                         const phone = contact.phoneNumbers?.[0]?.number || '';
+                                        const initials = name.split(' ').map((n: string) => n[0]).join('').substring(0, 2).toUpperCase();
+                                        
                                         return (
                                             <Pressable 
                                                 key={(contact as any).id || index.toString()} 
-                                                style={[styles.inlineContactRow, index < filteredContacts.length - 1 && { borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: colors.border }]}
+                                                style={({ pressed }) => [
+                                                    styles.inlineContactRow, 
+                                                    { opacity: pressed ? 0.7 : 1 },
+                                                    index < filteredContacts.length - 1 && { borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: colors.border + '20' }
+                                                ]}
                                                 onPress={() => processContactData(contact)}
                                                 disabled={isImporting}
                                             >
-                                                <View style={[styles.inlineContactAvatar, { backgroundColor: colors.primary }]}>
-                                                    <Text style={{color: 'white', fontWeight: 'bold'}}>{name.charAt(0).toUpperCase()}</Text>
+                                                <View style={[styles.inlineContactAvatar, { backgroundColor: colors.primary + '20' }]}>
+                                                    <Text style={{color: colors.primary, fontWeight: 'bold'}}>{initials}</Text>
                                                 </View>
                                                 <View style={{flex: 1}}>
                                                     <Text style={[styles.inlineContactName, { color: colors.text }]} numberOfLines={1}>{name}</Text>
@@ -331,20 +392,38 @@ export default function FriendsScreen() {
                                         );
                                     })}
                                 </View>
-                            )}
-                        </LinearGradient>
-                    </View>
-                </View>
+                            </View>
+                        ) : inputValue.trim().length > 0 && deviceContacts.length > 0 ? (
+                            <View style={{ marginTop: 16, alignItems: 'center' }}>
+                                <Text style={{ color: colors.textSecondary, fontSize: 13, textAlign: 'center' }}>
+                                    No contacts match "{inputValue.trim()}" on this device.
+                                </Text>
+                            </View>
+                        ) : null}
 
-                <View style={[styles.listContainer, { flex: 1 }]}>
-                    <Text style={[styles.sectionTitle, { color: colors.text }]}>Your Friends</Text>
-                    {isSkeuomorphic ? (
+                    </LinearGradient>
+                </View>
+            </View>
+
+            {/* Friends Section Header */}
+            <View style={styles.listHeader}>
+                <Text style={[styles.sectionTitle, { color: colors.text }]}>Your Friends</Text>
+            </View>
+        </View>
+    );
+
+    return (
+        <View style={[styles.safeArea, { backgroundColor: isSkeuomorphic ? skeuo.background : colors.background, paddingTop: insets.top }]}>
+            <View style={styles.container}>
+                {isSkeuomorphic ? (
+                    <View style={[styles.listContainer, { flex: 1 }]}>
                         <View style={[styles.skeuoListWrapper, skeuo.outset.light]}>
                             <View style={[styles.skeuoListInner, skeuo.outset.dark]}>
                                 <View style={[styles.skeuoListContent, { backgroundColor: skeuo.background }]}>
                                     <FlatList
-                                        data={friends}
+                                        data={filteredFriends}
                                         keyExtractor={(item) => item.id}
+                                        ListHeaderComponent={renderSearchHeader()}
                                         renderItem={({ item, index }) => (
                                             <React.Fragment key={item.id}>
                                                 <Pressable
@@ -382,7 +461,7 @@ export default function FriendsScreen() {
                                                         )}
                                                     </View>
                                                 </Pressable>
-                                                {index < friends.length - 1 && (
+                                                {index < filteredFriends.length - 1 && (
                                                     <View style={[styles.separator, { backgroundColor: colors.border + '20' }]} />
                                                 )}
                                             </React.Fragment>
@@ -390,11 +469,11 @@ export default function FriendsScreen() {
                                         ListEmptyComponent={
                                             <EmptyState
                                                 icon={UserPlus}
-                                                title="No Friends Yet"
-                                                message="Search for friends by email or phone to start splitting bills."
+                                                title={inputValue.trim() ? "No matching friends" : "No Friends Yet"}
+                                                message={inputValue.trim() ? "We couldn't find any friends matching your search." : "Search for friends by email or phone to start splitting bills."}
                                             />
                                         }
-                                        contentContainerStyle={{ paddingBottom: 20 }}
+                                        contentContainerStyle={{ paddingBottom: 150 }}
                                         refreshControl={
                                             <RefreshControl
                                                 refreshing={refreshing}
@@ -406,67 +485,68 @@ export default function FriendsScreen() {
                                 </View>
                             </View>
                         </View>
-                    ) : (
-                        <FlatList
-                            data={friends}
-                            keyExtractor={(item) => item.id}
-                            renderItem={({ item }) => (
-                                <Pressable
-                                    style={({ pressed }) => [[styles.cardWrapper, { backgroundColor: colors.surface }], { opacity: pressed ? 0.8 : 1 }]}
-                                    onPress={() => router.push({ pathname: '/friend-details/[id]', params: { id: item.id } })}
-                                >
-                                    <View style={styles.friendCard}>
-                                        <View style={{ marginRight: 16 }}>
-                                            <InitialsAvatar
-                                                name={item.name}
-                                                avatarUrl={item.avatarUrl}
-                                                size={44}
-                                                isLocal={!item.linkedUserId}
-                                            />
-                                        </View>
-                                        <View style={styles.friendInfo}>
-                                            <Text style={[styles.friendName, { color: colors.text }]}>{item.name}</Text>
-                                            <Text style={[
-                                                styles.friendBalance,
-                                                { color: item.balance >= 0 ? colors.success : colors.accent }
-                                            ]}>
-                                                {item.balance >= 0 ? `Owes you ${formatCurrency(item.balance)}` : `You owe ${formatCurrency(Math.abs(item.balance))}`}
-                                            </Text>
-                                        </View>
-                                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-                                            {Math.abs(item.balance) > 0.01 && (
-                                                <VibrantButton
-                                                    onPress={() => {
-                                                        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                                                        handleSettleUp(item);
-                                                    }}
-                                                    variant="outline"
-                                                    style={styles.settleUpButton}
-                                                    leftIcon={<Banknote size={20} color={colors.success} />}
-                                                />
-                                            )}
-                                        </View>
+                    </View>
+                ) : (
+                    <FlatList
+                        data={filteredFriends}
+                        keyExtractor={(item) => item.id}
+                        ListHeaderComponent={renderSearchHeader()}
+                        renderItem={({ item }) => (
+                            <Pressable
+                                style={({ pressed }) => [[styles.cardWrapper, { backgroundColor: colors.surface }], { opacity: pressed ? 0.8 : 1 }]}
+                                onPress={() => router.push({ pathname: '/friend-details/[id]', params: { id: item.id } })}
+                            >
+                                <View style={styles.friendCard}>
+                                    <View style={{ marginRight: 16 }}>
+                                        <InitialsAvatar
+                                            name={item.name}
+                                            avatarUrl={item.avatarUrl}
+                                            size={44}
+                                            isLocal={!item.linkedUserId}
+                                        />
                                     </View>
-                                </Pressable>
-                            )}
-                            ListEmptyComponent={
-                                <EmptyState
-                                    icon={UserPlus}
-                                    title="No Friends Yet"
-                                    message="Search for friends by email or phone to start splitting bills."
-                                />
-                            }
-                            contentContainerStyle={{ paddingBottom: 20 }}
-                            refreshControl={
-                                <RefreshControl
-                                    refreshing={refreshing}
-                                    onRefresh={handleRefresh}
-                                    tintColor={colors.primary}
-                                />
-                            }
-                        />
-                    )}
-                </View>
+                                    <View style={styles.friendInfo}>
+                                        <Text style={[styles.friendName, { color: colors.text }]}>{item.name}</Text>
+                                        <Text style={[
+                                            styles.friendBalance,
+                                            { color: item.balance >= 0 ? colors.success : colors.accent }
+                                        ]}>
+                                            {item.balance >= 0 ? `Owes you ${formatCurrency(item.balance)}` : `You owe ${formatCurrency(Math.abs(item.balance))}`}
+                                        </Text>
+                                    </View>
+                                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                                        {Math.abs(item.balance) > 0.01 && (
+                                            <VibrantButton
+                                                onPress={() => {
+                                                    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                                                    handleSettleUp(item);
+                                                }}
+                                                variant="outline"
+                                                style={styles.settleUpButton}
+                                                leftIcon={<Banknote size={20} color={colors.success} />}
+                                            />
+                                        )}
+                                    </View>
+                                </View>
+                            </Pressable>
+                        )}
+                        ListEmptyComponent={
+                            <EmptyState
+                                icon={UserPlus}
+                                title={inputValue.trim() ? "No matching friends" : "No Friends Yet"}
+                                message={inputValue.trim() ? "We couldn't find any friends matching your search." : "Search for friends by email or phone to start splitting bills."}
+                            />
+                        }
+                        contentContainerStyle={{ paddingBottom: 150 }}
+                        refreshControl={
+                            <RefreshControl
+                                refreshing={refreshing}
+                                onRefresh={handleRefresh}
+                                tintColor={colors.primary}
+                            />
+                        }
+                    />
+                )}
             </View >
         </View>
     );
@@ -532,6 +612,9 @@ const styles = StyleSheet.create({
     friendName: {
         fontSize: 14,
         fontWeight: 'bold',
+    },
+    contactsGrid: {
+        marginTop: 4,
     },
     inlineContactsDropdown: {
         marginTop: 8,
