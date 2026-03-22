@@ -448,16 +448,15 @@ export const useSplittyStore = create<SplittyState>()(
             setSession: (session) => set({ session }),
             fetchData: async () => {
                 if (get().isRefreshing) return;
-                console.log('🚀 fetchData started...');
                 set({ isRefreshing: true });
                 const { session } = get();
                 if (!session?.user) {
-                    console.log('⚠️ No session found in fetchData');
                     return;
                 }
 
                 const userId = session.user.id;
 
+                try {
                 // Fallback: Populate from session metadata first
                 const meta = session.user.user_metadata;
                 let userProfile: UserProfile = {
@@ -661,6 +660,8 @@ export const useSplittyStore = create<SplittyState>()(
 
                                 localSplitDetails[localId] = Number(p.amount);
                             });
+                        } else {
+                            // Legacy fallback if relational participants are missing
                             localSplitWith = (e.split_with || [])
                                 .map((realId: string) => mapRealToLocal(realId));
 
@@ -689,7 +690,6 @@ export const useSplittyStore = create<SplittyState>()(
                             billUrl: e.bill_url || undefined
                         };
                     });
-                    console.log(`✅ fetchData complete. Loaded ${mappedExpenses.length} expenses.`);
                     loadedExpenses = mappedExpenses;
                 }
 
@@ -819,9 +819,6 @@ export const useSplittyStore = create<SplittyState>()(
                     const normName = f.name.toLowerCase().trim();
                     if (supabaseNames.has(normName) && !f.linkedUserId && !f.phone) return false;
 
-                    // Hardcoded exclusions
-                    if (f.name === 'Alwyn' || f.name === 'Manasa') return false;
-
                     return true;
                 });
                 const mergedFriends = [...balancedFriends, ...localOnlyFriends.map(f => ({ ...f, balance: 0 }))];
@@ -863,6 +860,10 @@ export const useSplittyStore = create<SplittyState>()(
                             preferences: { ...preferences, unknown_friend_names: mergedNames }
                         }).eq('id', userId).then();
                     }
+                }
+                } catch (error) {
+                    console.error("Error during fetchData:", error);
+                    set({ isRefreshing: false });
                 }
             },
             setCategoryOrder: (order) => {
@@ -1533,6 +1534,10 @@ export const useSplittyStore = create<SplittyState>()(
             },
             signOut: async () => {
                 await supabase.auth.signOut();
+                if (fetchDataTimeout) {
+                    clearTimeout(fetchDataTimeout);
+                    fetchDataTimeout = null;
+                }
                 get().clearData();
             },
             setCurrency: (currency) => {
@@ -1660,7 +1665,7 @@ export const useSplittyStore = create<SplittyState>()(
                             is_personal: newExpense.isPersonal,
                             created_by: session.user.id,
                             bill_url: newExpense.billUrl
-                        }).then(async ({ error }) => {
+                        }).then(async ({ error }: { error: any }) => {
                             if (error) {
                                 console.error("Expense sync error details:", error);
                             } else {

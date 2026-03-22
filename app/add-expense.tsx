@@ -48,6 +48,7 @@ export default function AddExpenseScreen() {
     const skeuo = isDark ? Skeuomorphic.dark : Skeuomorphic.light;
 
     const [isEditing, setIsEditing] = useState(!id);
+    const [isSaving, setIsSaving] = useState(false);
 
     const [description, setDescription] = useState('');
     const [amount, setAmount] = useState('');
@@ -74,7 +75,7 @@ export default function AddExpenseScreen() {
     const uploadBill = useSplittyStore(state => state.uploadBill);
 
     // Determine participants
-    const getParticipants = () => {
+    const participants = React.useMemo(() => {
         if (type === 'personal') return ['self'];
         if (selectedIds.length === 0) return ['self'];
 
@@ -82,13 +83,12 @@ export default function AddExpenseScreen() {
             // Self + All selected friends
             return Array.from(new Set(['self', ...selectedIds]));
         } else {
-            // Group (Single selection allowed for groups logic-wise typically, 
-            // but if we supported multi-group splits it would be complex. Sticking to 1 group).
+            // Group
             const groupId = selectedIds[0];
             const group = groups.find(g => g.id === groupId);
             return group ? Array.from(new Set(['self', ...group.members])) : ['self'];
         }
-    };
+    }, [type, selectedIds, groups]);
 
     const getName = (userId: string) => {
         if (userId === 'self') return 'You';
@@ -161,7 +161,10 @@ export default function AddExpenseScreen() {
     };
 
     const handleSave = () => {
-        if (!description || !amount) {
+        if (isSaving) return;
+        
+        const trimmedDesc = description.trim();
+        if (!trimmedDesc || !amount) {
             Alert.alert('Error', 'Please enter a description and amount');
             return;
         }
@@ -176,7 +179,6 @@ export default function AddExpenseScreen() {
             return;
         }
 
-        const participants = getParticipants();
         const splitDetails: Record<string, number> = {};
 
         if (splitType === 'unequal') {
@@ -197,13 +199,15 @@ export default function AddExpenseScreen() {
             }
         }
 
+        setIsSaving(true);
+
         const tagsArray = tagsInput
             .split(',')
             .map(t => t.trim().toLowerCase())
             .filter(t => t.length > 0);
 
         const expenseData = {
-            description,
+            description: trimmedDesc,
             amount: numericAmount,
             payerId,
             category,
@@ -277,7 +281,6 @@ export default function AddExpenseScreen() {
         }
     };
 
-    const participants = getParticipants();
 
     // Derived calculations for feedback
     const numericAmount = parseFloat(amount || '0');
@@ -583,6 +586,8 @@ export default function AddExpenseScreen() {
                             title={id ? "Update Expense" : "Save Expense"}
                             onPress={handleSave}
                             style={styles.saveButton}
+                            loading={isSaving}
+                            disabled={isSaving}
                         />
                     )}
                 </ScrollView >

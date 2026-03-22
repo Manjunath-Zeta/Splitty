@@ -27,17 +27,12 @@ export default function RootLayout() {
     const subscribeToChanges = useSplittyStore(s => s.subscribeToChanges);
     const initNotifications = useSplittyStore(s => s.initNotifications);
 
-    // Deep trace for session changes
-    useEffect(() => {
-        console.log('RootLayout: [TRACE] Session changed state:', !!session);
-    }, [session]);
 
     const rootNavigationState = useRootNavigationState();
     const [isReady, setIsReady] = useState(false);
 
     useEffect(() => {
         initNotifications();
-        console.log('RootLayout: Initializing Auth...');
 
         // Recurring Expenses Check
         const count = useSplittyStore.getState().checkRecurringExpenses();
@@ -53,7 +48,6 @@ export default function RootLayout() {
                     const normalized = normalizePhoneNumber(pendingPhone);
                     await supabase.from('profiles').update({ phone: normalized }).eq('id', currentSession.user.id);
                     await AsyncStorage.removeItem('pending_phone_number');
-                    console.log("RootLayout: Applied pending phone number to profile:", normalized);
                 }
             } catch (e) {
                 console.error("Failed to apply pending phone", e);
@@ -62,7 +56,6 @@ export default function RootLayout() {
 
         // Auth Initial Session
         supabase.auth.getSession().then(async ({ data: { session } }: any) => {
-            console.log('RootLayout: Session fetched', !!session);
             await checkPendingPhone(session);
             setSession(session);
             setIsReady(true);
@@ -70,7 +63,6 @@ export default function RootLayout() {
 
         // Auth Listener
         const { data: { subscription: authSubscription } } = supabase.auth.onAuthStateChange(async (event: any, session: any) => {
-            console.log(`RootLayout: Auth State Event: ${event}`, !!session);
             await checkPendingPhone(session);
             setSession(session);
         });
@@ -80,7 +72,6 @@ export default function RootLayout() {
 
     // Handle Auth Routing
     useEffect(() => {
-        console.log('RootLayout: useEffect triggered', { isReady, rootNavigationStateReady: !!rootNavigationState?.key, session: !!session, segments });
         if (!isReady || !rootNavigationState?.key) return;
 
         // Once navigation is ready AND auth is ready, we can hide the splash screen
@@ -98,16 +89,11 @@ export default function RootLayout() {
 
         // Use a small delay but only if we AREN'T already where we're supposed to be
         // This avoids the "double jump" and modal closing
-        console.log('RootLayout: Testing Redirect Conditions', { session: !!session, inAuthGroup, isAtRoot });
         if (session && (inAuthGroup || isAtRoot)) {
-            console.log('RootLayout: AUTHENTICATED REDIRECT -> /(tabs)', { segments });
             fetchData();
             router.replace('/(tabs)');
         } else if (!session && !inAuthGroup) {
-            console.log('RootLayout: UNAUTHENTICATED REDIRECT -> /auth', { segments });
             router.replace('/auth');
-        } else {
-            console.log('RootLayout: No redirect needed or handled.', { session: !!session, segments });
         }
     }, [session, segments, rootNavigationState, isReady]);
 
@@ -132,7 +118,6 @@ export default function RootLayout() {
 
         const handleAppStateChange = (nextState: AppStateStatus) => {
             if (appState.current.match(/inactive|background/) && nextState === 'active') {
-                console.log('📲 App came to foreground — refreshing data...');
                 fetchData();
             }
             appState.current = nextState;

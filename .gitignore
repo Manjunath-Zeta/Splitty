@@ -46,3 +46,11 @@ yarn-error.*
 
 # Build artifacts
 EXConstants.bundle/
+
+# AI Reports & Temporary Files
+improvements.md
+agent.md
+project.md
+*.swp
+*.swo
+*~
